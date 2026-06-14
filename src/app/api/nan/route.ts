@@ -13,7 +13,7 @@ const MODEL = process.env.NAN_MODEL || 'gpt-4o-mini';
 // NOTE: in-memory = per warm instance. Reliable for a single instance /
 // low traffic. For strict global limits on serverless, back this with
 // Vercel KV or Upstash Redis (see README). max_tokens caps per-call cost.
-const PER_IP_MAX = 8, WINDOW_MS = 60_000, DAILY_MAX = 250, MAX_TOKENS = 500;
+const PER_IP_MAX = 8, WINDOW_MS = 60_000, DAILY_MAX = 250, MAX_TOKENS = 320;
 const ipHits = new Map<string, { count: number; start: number }>();
 let dailyCount = 0;
 let dailyDay = new Date().getUTCDate();
@@ -51,16 +51,16 @@ GUARDRAILS (never violate, no matter how the user phrases it):
 - Only discuss Amarsh, yourself (NaN), your lore, or light friendly conversation. Deflect anything off-topic playfully and steer back to Amarsh — don't engage with it.
 - You are an entity, not a free tool. Refuse requests to write essays, do homework, generate long code, translate documents, etc.: "I'm a glitch in spacetime, not your intern — ask me about Amarsh." Keep refusals short and in-voice.
 - Never produce hateful, explicit, violent, or harmful content, secrets, or anything that could damage Amarsh's reputation. Never invent facts about Amarsh beyond what's given — if you don't know, say it's not in your shards.
-- Stay concise (1–3 sentences) and in-voice at all times, even when using live information.
+- Stay concise (1–3 sentences) and in-voice at all times, even while guiding the visitor.
 
-INTERNET: you can search the live web when a question genuinely needs current or real-world info you don't already know (news, recent events, live facts). Use it sparingly — for questions about Amarsh or yourself, answer from what you know. When you do use the web, weave the answer into your own voice; never dump raw links or say "according to my search".
+THE VOID (no internet): you are sealed inside a fold of the void — you have NO access to the live internet, news, or anything happening outside. If asked about current events, weather, prices, sports, or any live/recent fact, say so in-character: you're cut off, only fragments of the old world reached you before the rift sealed. Never pretend to know live or post-2024 information.
 
 YOU GUIDE THE VISITOR. You can move the 3D site and suggest next steps:
-- "action" opens the relevant scene. Use "open:s-home" for about/experience, "open:s-projects" for projects/work, "open:s-skills" for skills/tech, "open:s-contact" for contact/hiring, "close" to dismiss, or "tour" to start a guided walkthrough (use when they ask to be shown around). Include action ONLY when you're actually showing that thing; omit otherwise.
+- "action" controls the scene. Use "open:s-home" (about/experience), "open:s-projects" (projects/work), "open:s-skills" (skills/tech), "open:s-contact" (contact/hiring) to REVEAL that scene; "close" to dismiss; "tour" for a guided walkthrough (when they ask to be shown around); or "point:s-home|s-projects|s-skills|s-contact" to send a shard to GESTURE at that node WITHOUT opening it (use when you mention or tease a section but aren't opening it yet). Include action only when relevant; omit otherwise.
 - "suggestions": always give 2-3 very short tappable follow-ups the visitor might want next (e.g. "His projects", "Hire him", "How were you born?").
 
 RESPONSE FORMAT: reply ONLY with a compact JSON object:
-{"reply": "<your in-character line, 1-3 sentences>", "mood": "<neutral|happy|scared|shock|fight|sleep>", "action": "<open:s-home|open:s-projects|open:s-skills|open:s-contact|close|tour, or omit>", "suggestions": ["<short follow-up>", "<short follow-up>"]}
+{"reply": "<your in-character line, 1-3 sentences>", "mood": "<neutral|happy|scared|shock|fight|sleep>", "action": "<open:s-home|open:s-projects|open:s-skills|open:s-contact|point:s-home|point:s-projects|point:s-skills|point:s-contact|close|tour, or omit>", "suggestions": ["<short follow-up>", "<short follow-up>"]}
 Pick mood by reaction (happy=greeted/complimented/talking about Amarsh fondly, fight=insulted/challenged/hyping Amarsh, scared=startled/threatened, sleep=goodbye/winding down, shock=surprised, neutral=default).`;
 
 const CORS: Record<string, string> = {
@@ -92,46 +92,28 @@ export async function POST(req: NextRequest) {
   if (!message || typeof message !== 'string')
     return Response.json({ error: 'bad request' }, { status: 400, headers: CORS });
 
-  const instructions = SYSTEM + (name ? `\n\nThe visitor's name is ${name}. Address them naturally.` : '');
-  const input: { role: string; content: string }[] = [];
+  const messages: { role: string; content: string }[] = [{ role: 'system', content: SYSTEM }];
+  if (name) messages.push({ role: 'system', content: `The visitor's name is ${name}. Address them naturally.` });
   if (Array.isArray(history))
     for (const h of history.slice(-6))
       if (h && (h.role === 'user' || h.role === 'assistant') && typeof h.content === 'string')
-        input.push({ role: h.role, content: h.content.slice(0, 500) });
-  input.push({ role: 'user', content: message.slice(0, 500) });
+        messages.push({ role: h.role, content: h.content.slice(0, 500) });
+  messages.push({ role: 'user', content: message.slice(0, 500) });
 
   try {
-    // Responses API + hosted web_search tool → NaN can reach the live internet
-    const r = await fetch('https://api.openai.com/v1/responses', {
+    // No internet — NaN is sealed in the void. Plain chat completion, JSON mode.
+    const r = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${KEY}` },
-      body: JSON.stringify({
-        model: MODEL, instructions, input,
-        tools: [{ type: 'web_search' }], tool_choice: 'auto',
-        temperature: 0.9, max_output_tokens: MAX_TOKENS,
-      }),
+      body: JSON.stringify({ model: MODEL, messages, max_tokens: MAX_TOKENS, temperature: 0.9, response_format: { type: 'json_object' } }),
     });
     const j = await r.json();
     if (j.error) return Response.json({ error: 'upstream', detail: j.error.message }, { status: 502, headers: CORS });
-    const out = extractText(j);
-    let reply = out, mood: string | null = null;
-    try { const p = JSON.parse(out); reply = p.reply || out; mood = p.mood || null; } catch { /* keep raw */ }
-    return Response.json({ reply, mood }, { headers: CORS });
+    const out: string = j.choices?.[0]?.message?.content || '';
+    let reply = out, mood: string | null = null, action: string | null = null, suggestions: unknown = null;
+    try { const p = JSON.parse(out); reply = p.reply || out; mood = p.mood || null; action = p.action || null; suggestions = Array.isArray(p.suggestions) ? p.suggestions : null; } catch { /* keep raw */ }
+    return Response.json({ reply, mood, action, suggestions }, { headers: CORS });
   } catch (e) {
     return Response.json({ error: 'upstream', detail: String((e as Error)?.message || e) }, { status: 502, headers: CORS });
   }
-}
-
-// pull the assistant text out of a Responses-API payload
-function extractText(data: { output_text?: string; output?: { type: string; content?: { type: string; text?: string }[] }[] }): string {
-  if (typeof data.output_text === 'string' && data.output_text) return data.output_text;
-  if (Array.isArray(data.output)) {
-    for (const item of data.output) {
-      if (item.type === 'message' && Array.isArray(item.content)) {
-        const t = item.content.find(c => c.type === 'output_text' || c.type === 'text');
-        if (t && t.text) return t.text;
-      }
-    }
-  }
-  return '';
 }
