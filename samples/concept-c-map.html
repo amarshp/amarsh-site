@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept C — The Map</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body { background:#060610; color:#e0e0e0; font-family:'JetBrains Mono', monospace; overflow:hidden; height:100vh; }
+
+  canvas { position:fixed; inset:0; z-index:0; }
+
+  /* Boot overlay */
+  #boot {
+    position:fixed; inset:0; z-index:200; background:#000;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    transition: opacity 1s;
+  }
+  #boot.hide { opacity:0; pointer-events:none; }
+  .boot-ring-wrap { position:relative; width:240px; height:240px; margin-bottom:32px; }
+  .boot-ring {
+    position:absolute; border-radius:50%; border: 1.5px solid;
+    animation: spin 8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes spin-rev { to { transform: rotate(-360deg); } }
+  .boot-ring:nth-child(1) { inset:0; border-color:#00ff9f44; animation-duration:12s; }
+  .boot-ring:nth-child(2) { inset:20px; border-color:#0045ad55; animation-duration:8s; animation-name: spin-rev; }
+  .boot-ring:nth-child(3) { inset:40px; border-color:#ff590033; animation-duration:5s; }
+  .boot-core {
+    position:absolute; inset:60px; border-radius:50%;
+    border:1.5px solid #00ff9f;
+    box-shadow: 0 0 30px #00ff9f33, inset 0 0 30px #00ff9f11;
+    display:flex; align-items:center; justify-content:center;
+    font-size:11px; color:#00ff9f; letter-spacing:0.1em;
+  }
+  #boot-text { font-size:12px; color:#00ff9f66; text-align:center; }
+  .boot-status { font-size:12px; margin:3px 0; opacity:0; transition:opacity 0.3s; }
+  .boot-status.on { opacity:1; }
+
+  /* Nodes */
+  .node {
+    position:fixed; z-index:10;
+    display:flex; flex-direction:column; align-items:center;
+    cursor:pointer; transform:translate(-50%,-50%);
+    transition: transform 0.3s ease;
+  }
+  .node:hover { transform:translate(-50%,-50%) scale(1.15); }
+  .node-circle {
+    border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:22px; border:1.5px solid;
+    box-shadow: 0 0 20px; transition: all 0.3s;
+  }
+  .node-label {
+    margin-top:8px; font-size:10px; letter-spacing:0.1em; text-transform:uppercase;
+    opacity:0.5; transition:opacity 0.3s; white-space:nowrap;
+  }
+  .node:hover .node-label { opacity:1; }
+  .node-pulse {
+    position:absolute; border-radius:50%; border:1px solid;
+    animation: nodepulse 3s ease-out infinite;
+  }
+  @keyframes nodepulse {
+    0% { transform:scale(1); opacity:0.6; }
+    100% { transform:scale(2.2); opacity:0; }
+  }
+
+  /* Center node */
+  .center-node {
+    position:fixed; z-index:15; transform:translate(-50%,-50%);
+    display:flex; flex-direction:column; align-items:center;
+    pointer-events:none;
+  }
+  .center-circle {
+    width:90px; height:90px; border-radius:50%;
+    background:rgba(0,69,173,0.15); border:2px solid #0045ad;
+    display:flex; align-items:center; justify-content:center;
+    flex-direction:column; text-align:center;
+    box-shadow: 0 0 40px rgba(0,69,173,0.4), inset 0 0 20px rgba(0,69,173,0.1);
+  }
+  .center-name { font-size:12px; color:#fff; font-weight:500; }
+  .center-title { font-size:9px; color:#0045ad; margin-top:2px; text-transform:uppercase; letter-spacing:0.05em; }
+
+  /* Panel */
+  #panel {
+    position:fixed; top:50%; right:-480px; transform:translateY(-50%);
+    width:420px; background:rgba(6,6,16,0.97); border:1px solid #1a1a2e;
+    border-right:none; z-index:50; transition:right 0.4s cubic-bezier(0.16,1,0.3,1);
+    max-height:80vh; display:flex; flex-direction:column;
+    box-shadow:-20px 0 60px rgba(0,0,0,0.5);
+  }
+  #panel.open { right:0; }
+  .panel-bar {
+    display:flex; align-items:center; justify-content:space-between;
+    padding:14px 20px; border-bottom:1px solid #1a1a2e; flex-shrink:0;
+  }
+  .panel-tag { font-size:10px; color:#444; text-transform:uppercase; letter-spacing:0.1em; }
+  .panel-close { font-size:18px; color:#444; cursor:pointer; border:none; background:none; color:#444; line-height:1; }
+  .panel-close:hover { color:#fff; }
+  .panel-body { padding:24px; overflow-y:auto; flex:1; }
+  .panel-icon { font-size:40px; margin-bottom:16px; }
+  .panel-title { font-family:'Playfair Display', serif; font-size:28px; color:#fff; margin-bottom:6px; }
+  .panel-sub { font-size:11px; color:#444; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:20px; }
+  .panel-content { font-size:12px; color:#666; line-height:1.8; }
+  .panel-content strong { color:#aaa; }
+  .panel-highlight {
+    margin-top:20px; padding:14px; background:rgba(0,69,173,0.08);
+    border:1px solid rgba(0,69,173,0.2); border-radius:4px;
+  }
+  .panel-metric { font-family:'Playfair Display', serif; font-size:36px; color:#fff; }
+  .panel-metric-lbl { font-size:10px; color:#444; margin-top:2px; }
+  .tag-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+  .p-tag { font-size:10px; padding:4px 8px; border:1px solid #1a1a2e; color:#555; }
+  .panel-links { display:flex; gap:10px; margin-top:20px; flex-wrap:wrap; }
+  .p-link { font-size:10px; padding:8px 14px; border:1px solid #1a1a2e; color:#666; cursor:pointer; background:none; transition:all 0.2s; }
+  .p-link:hover { border-color:#0045ad; color:#0045ad; }
+
+  /* HUD elements */
+  .hud-tl { position:fixed; top:24px; left:24px; z-index:20; }
+  .hud-tr { position:fixed; top:24px; right:24px; z-index:20; text-align:right; }
+  .hud-text { font-size:10px; color:#333; text-transform:uppercase; letter-spacing:0.1em; margin-bottom:4px; }
+  .hud-val { font-size:11px; color:#555; }
+  .status-bar { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); z-index:20;
+    display:flex; align-items:center; gap:16px; font-size:10px; color:#333;
+    background:rgba(6,6,16,0.8); border:1px solid #1a1a2e; padding:8px 20px; }
+  .s-dot { width:5px; height:5px; border-radius:50%; }
+  .hint { position:fixed; bottom:24px; left:24px; z-index:20; font-size:10px; color:#222; }
+</style>
+</head>
+<body>
+
+<!-- Canvas for particle connections -->
+<canvas id="canvas"></canvas>
+
+<!-- Boot -->
+<div id="boot">
+  <div class="boot-ring-wrap">
+    <div class="boot-ring"></div>
+    <div class="boot-ring"></div>
+    <div class="boot-ring"></div>
+    <div class="boot-core">CORE</div>
+  </div>
+  <div id="boot-text">
+    <div class="boot-status" id="bs1">>> Mapping neural topology...</div>
+    <div class="boot-status" id="bs2">>> Loading knowledge graph...</div>
+    <div class="boot-status" id="bs3">>> Rendering mind map...</div>
+    <div class="boot-status" id="bs4" style="color:#00ff9f">>> AMARSH.MAP online ✓</div>
+  </div>
+</div>
+
+<!-- Main UI -->
+<div id="main-ui" style="display:none; opacity:0; transition:opacity 0.8s;">
+
+  <!-- HUD -->
+  <div class="hud-tl">
+    <div class="hud-text">Amarsh Pedapati</div>
+    <div class="hud-val">Senior AI Engineer · IIT Hyderabad</div>
+    <div class="hud-val" style="margin-top:2px; color:#0045ad;">OpenText · Hyderabad, India</div>
+  </div>
+  <div class="hud-tr">
+    <div class="hud-text">Status</div>
+    <div class="hud-val" style="color:#009b48;">● Available · 30d notice</div>
+    <div class="hud-val" style="margin-top:2px;">amarsh.pedapati@gmail.com</div>
+  </div>
+
+  <!-- Center node -->
+  <div class="center-node" id="center-node">
+    <div class="center-circle">
+      <div class="center-name">A</div>
+      <div class="center-title">Mind Map</div>
+    </div>
+  </div>
+
+  <!-- Orbital Nodes -->
+  <div class="node" id="node-work" onclick="openPanel('work')">
+    <div class="node-pulse" style="width:60px;height:60px;border-color:#0045ad44;top:-15px;left:-15px;"></div>
+    <div class="node-circle" style="width:52px;height:52px;background:rgba(0,69,173,0.15);border-color:#0045ad;box-shadow:0 0 20px rgba(0,69,173,0.4);">⚡</div>
+    <div class="node-label" style="color:#0045ad;">Work</div>
+  </div>
+  <div class="node" id="node-ai" onclick="openPanel('ai')">
+    <div class="node-pulse" style="width:56px;height:56px;border-color:#00ff9f33;top:-13px;left:-13px;animation-delay:0.5s"></div>
+    <div class="node-circle" style="width:48px;height:48px;background:rgba(0,255,159,0.08);border-color:#00ff9f55;box-shadow:0 0 20px rgba(0,255,159,0.2);">🤖</div>
+    <div class="node-label" style="color:#00ff9f88;">Agentic AI</div>
+  </div>
+  <div class="node" id="node-run" onclick="openPanel('run')">
+    <div class="node-pulse" style="width:52px;height:52px;border-color:#009b4833;top:-11px;left:-11px;animation-delay:1s"></div>
+    <div class="node-circle" style="width:44px;height:44px;background:rgba(0,155,72,0.1);border-color:#009b4855;box-shadow:0 0 15px rgba(0,155,72,0.2);">🏃</div>
+    <div class="node-label" style="color:#009b4888;">Endurance</div>
+  </div>
+  <div class="node" id="node-cube" onclick="openPanel('cube')">
+    <div class="node-pulse" style="width:52px;height:52px;border-color:#ff590033;top:-11px;left:-11px;animation-delay:1.5s"></div>
+    <div class="node-circle" style="width:44px;height:44px;background:rgba(255,89,0,0.08);border-color:#ff590044;box-shadow:0 0 15px rgba(255,89,0,0.2);">🧊</div>
+    <div class="node-label" style="color:#ff590066;">Speedcubing</div>
+  </div>
+  <div class="node" id="node-chess" onclick="openPanel('chess')">
+    <div class="node-pulse" style="width:52px;height:52px;border-color:#ffffff11;top:-11px;left:-11px;animation-delay:2s"></div>
+    <div class="node-circle" style="width:44px;height:44px;background:rgba(255,255,255,0.04);border-color:#ffffff22;box-shadow:0 0 15px rgba(255,255,255,0.05);">♔</div>
+    <div class="node-label" style="color:#555;">Chess</div>
+  </div>
+  <div class="node" id="node-content" onclick="openPanel('content')">
+    <div class="node-pulse" style="width:52px;height:52px;border-color:#ffd50033;top:-11px;left:-11px;animation-delay:0.8s"></div>
+    <div class="node-circle" style="width:44px;height:44px;background:rgba(255,213,0,0.06);border-color:#ffd50033;box-shadow:0 0 15px rgba(255,213,0,0.1);">✍️</div>
+    <div class="node-label" style="color:#ffd50066;">Content</div>
+  </div>
+  <div class="node" id="node-contact" onclick="openPanel('contact')">
+    <div class="node-pulse" style="width:52px;height:52px;border-color:#b9000033;top:-11px;left:-11px;animation-delay:1.2s"></div>
+    <div class="node-circle" style="width:44px;height:44px;background:rgba(185,0,0,0.08);border-color:#b9000044;box-shadow:0 0 15px rgba(185,0,0,0.2);">📡</div>
+    <div class="node-label" style="color:#b9000066;">Contact</div>
+  </div>
+
+  <!-- Panel -->
+  <div id="panel">
+    <div class="panel-bar">
+      <span class="panel-tag" id="panel-tag"></span>
+      <button class="panel-close" onclick="closePanel()">×</button>
+    </div>
+    <div class="panel-body" id="panel-body"></div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="status-bar">
+    <div class="s-dot" style="background:#0045ad;box-shadow:0 0 6px #0045ad;"></div>
+    <span>MIND MAP ONLINE</span>
+    <span style="color:#1a1a2e;">|</span>
+    <span>7 nodes active</span>
+    <span style="color:#1a1a2e;">|</span>
+    <span>click any node to explore</span>
+  </div>
+  <div class="hint">esc to close panel</div>
+</div>
+
+<script>
+// Boot
+const bootSteps = ['bs1','bs2','bs3','bs4'];
+let bIdx = 0;
+function nextBoot() {
+  if (bIdx >= bootSteps.length) {
+    setTimeout(() => {
+      document.getElementById('boot').classList.add('hide');
+      setTimeout(() => {
+        document.getElementById('boot').style.display = 'none';
+        const ui = document.getElementById('main-ui');
+        ui.style.display = 'block';
+        requestAnimationFrame(() => { ui.style.opacity = 1; });
+        positionNodes();
+        startCanvas();
+      }, 1000);
+    }, 600);
+    return;
+  }
+  const el = document.getElementById(bootSteps[bIdx++]);
+  el.classList.add('on');
+  setTimeout(nextBoot, 500);
+}
+setTimeout(nextBoot, 400);
+
+// Position nodes in orbit
+function positionNodes() {
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  document.getElementById('center-node').style.left = cx + 'px';
+  document.getElementById('center-node').style.top = cy + 'px';
+
+  const nodes = [
+    { id:'node-work', angle:-90, r:200 },
+    { id:'node-ai', angle:-20, r:220 },
+    { id:'node-run', angle:50, r:190 },
+    { id:'node-cube', angle:120, r:210 },
+    { id:'node-chess', angle:180, r:195 },
+    { id:'node-content', angle:240, r:215 },
+    { id:'node-contact', angle:310, r:200 },
+  ];
+  nodes.forEach(n => {
+    const el = document.getElementById(n.id);
+    const rad = n.angle * Math.PI / 180;
+    el.style.left = (cx + Math.cos(rad) * n.r) + 'px';
+    el.style.top = (cy + Math.sin(rad) * n.r) + 'px';
+  });
+}
+window.addEventListener('resize', positionNodes);
+
+// Canvas particle bg
+function startCanvas() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+
+  const particles = Array.from({length:80}, () => ({
+    x: Math.random() * canvas.width,
+    y: Math.random() * canvas.height,
+    vx: (Math.random()-0.5)*0.2,
+    vy: (Math.random()-0.5)*0.2,
+    r: Math.random()*1.5+0.5,
+  }));
+
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // Connect nearby particles
+    for (let i=0;i<particles.length;i++) {
+      for (let j=i+1;j<particles.length;j++) {
+        const dx = particles[i].x-particles[j].x;
+        const dy = particles[i].y-particles[j].y;
+        const d = Math.sqrt(dx*dx+dy*dy);
+        if (d<120) {
+          ctx.strokeStyle = `rgba(0,69,173,${(1-d/120)*0.15})`;
+          ctx.lineWidth = 0.5;
+          ctx.beginPath();
+          ctx.moveTo(particles[i].x,particles[i].y);
+          ctx.lineTo(particles[j].x,particles[j].y);
+          ctx.stroke();
+        }
+      }
+    }
+    // Draw particles
+    particles.forEach(p => {
+      ctx.fillStyle = 'rgba(0,69,173,0.4)';
+      ctx.beginPath();
+      ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+      ctx.fill();
+      p.x += p.vx; p.y += p.vy;
+      if(p.x<0||p.x>canvas.width) p.vx*=-1;
+      if(p.y<0||p.y>canvas.height) p.vy*=-1;
+    });
+    // Draw lines from center to nodes
+    const cx = window.innerWidth/2;
+    const cy = window.innerHeight/2;
+    ['node-work','node-ai','node-run','node-cube','node-chess','node-content','node-contact'].forEach(id => {
+      const n = document.getElementById(id);
+      if (!n) return;
+      const nx = parseFloat(n.style.left);
+      const ny = parseFloat(n.style.top);
+      const dist = Math.sqrt((nx-cx)**2+(ny-cy)**2);
+      ctx.strokeStyle = `rgba(0,69,173,0.12)`;
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4,8]);
+      ctx.beginPath();
+      ctx.moveTo(cx,cy);
+      ctx.lineTo(nx,ny);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+// Panel content
+const panelData = {
+  work: {
+    icon:'⚡', tag:'CAREER', title:'Work',
+    body:`<div class="panel-highlight" style="margin-bottom:16px; border-color:rgba(0,69,173,0.3);">
+      <div class="panel-metric">12×</div>
+      <div class="panel-metric-lbl">CI/CD migration speed · OpenText hackathon winner</div>
+    </div>
+    <div class="panel-content">
+      <strong>Senior AI Engineer @ OpenText</strong> (Jan 2026 – Present)<br>
+      AI Cockpit: enterprise agent orchestration. 2 weeks → 2 days planning. MCP + A2A protocol + SAP HANA integrations. In beta.<br><br>
+      <strong>Data Scientist @ Blend360</strong> (Oct 2023 – Dec 2025)<br>
+      Visa GenAI explainability platform for C-suite. Walmart: 45% uplift, 13.4M customers targeted. 7× Snowflake query speedup.<br><br>
+      <strong>ML Intern @ AIBOD Japan</strong> (2022)<br>
+      PyTorch CV pipeline · 32% misclassification reduction · unmanned retail AI.
+    </div>
+    <div class="tag-list"><span class="p-tag">OpenText</span><span class="p-tag">Blend360</span><span class="p-tag">Visa</span><span class="p-tag">Walmart</span><span class="p-tag">AIBOD Japan</span></div>`,
+  },
+  ai: {
+    icon:'🤖', tag:'EXPERTISE', title:'Agentic AI',
+    body:`<div class="panel-content">
+      <strong>3+ years building production agentic systems, RAG pipelines, LLM infra.</strong><br><br>
+      IIT Hyderabad · BTech AI · 2023<br><br>
+      Core stack: LangGraph · LangChain · MCP · A2A Protocol · RAG · Hybrid Retrieval · LLM-as-Judge · RAGAS · FastAPI · PyTorch · AWS Bedrock · SageMaker · Docker · Kubernetes<br><br>
+      <strong>PersonaRAG</strong> — open source eval-driven RAG. 4.75M words. 0 false positives across 30+ adversarial probes. 37/37 eval suite pass rate.
+    </div>
+    <div class="tag-list">
+      <span class="p-tag">LangGraph</span><span class="p-tag">MCP</span><span class="p-tag">RAG</span>
+      <span class="p-tag">A2A</span><span class="p-tag">RAGAS</span><span class="p-tag">Guardrails</span>
+      <span class="p-tag">LangSmith</span><span class="p-tag">PyTorch</span><span class="p-tag">FastAPI</span>
+    </div>`,
+  },
+  run: {
+    icon:'🏃', tag:'ENDURANCE', title:'Marathon Runner',
+    body:`<div class="panel-highlight">
+      <div class="panel-metric">42.2 km</div>
+      <div class="panel-metric-lbl">Full marathon finisher</div>
+    </div>
+    <div class="panel-content" style="margin-top:16px;">
+      The same discipline that ships a production agentic system is what drives through the last mile at km 38. Endurance is a mental model, not just a fitness metric.<br><br>
+      <strong>Principle:</strong> Systems that don't break under load — code or body.
+    </div>`,
+  },
+  cube: {
+    icon:'🧊', tag:'SPEEDCUBING', title:"Rubik's Cube",
+    body:`<div class="panel-highlight" style="border-color:rgba(255,89,0,0.3); background:rgba(255,89,0,0.06);">
+      <div class="panel-metric" style="color:#ff5900;">14.8 s</div>
+      <div class="panel-metric-lbl">Personal best · 3×3</div>
+    </div>
+    <div class="panel-content" style="margin-top:16px;">
+      Pattern recognition at speed. The same cognitive machinery that spots a hallucination in a RAG pipeline finds the optimal solving path in under 15 seconds.<br><br>
+      <strong>Principle:</strong> Search space reduction. Optimal paths. Execution under pressure.
+    </div>`,
+  },
+  chess: {
+    icon:'♔', tag:'STRATEGY', title:'Chess',
+    body:`<div class="panel-content">
+      <em style="font-size:15px; color:#888; line-height:1.6; display:block; margin-bottom:16px;">
+        "My unmatched perspicacity coupled with my sheer indefatigability makes me a feared opponent in any realm of human endeavor."
+      </em>
+      The grandmaster mindset: see 10 moves ahead, hold multiple scenarios simultaneously, commit to decisive action under uncertainty.<br><br>
+      <strong>Applied to AI systems design:</strong> architecture is strategy. Every design decision is a move.
+    </div>`,
+  },
+  content: {
+    icon:'✍️', tag:'CONTENT', title:'Content & Ideas',
+    body:`<div class="panel-content">
+      <strong>Where I share mental models.</strong><br><br>
+      Medium · Deep dives into LLMs, RAG architectures, agentic systems<br>
+      YouTube · Tech tutorials & engineering vlogs<br>
+      Instagram · Visual storytelling<br>
+      Podcast · Coming soon<br><br>
+      Building in public. Thinking out loud. Documenting the frontier.
+    </div>
+    <div class="panel-links">
+      <button class="p-link">Medium ↗</button>
+      <button class="p-link">YouTube ↗</button>
+      <button class="p-link">Instagram ↗</button>
+    </div>`,
+  },
+  contact: {
+    icon:'📡', tag:'CONTACT', title:'Get in Touch',
+    body:`<div class="panel-content">
+      <strong>Open to opportunities where I can build agentic systems that matter.</strong><br><br>
+      30 days notice · Hyderabad, India · Open to remote<br><br>
+      amarsh.pedapati@gmail.com<br>+91-9959822444
+    </div>
+    <div class="panel-links">
+      <button class="p-link" onclick="window.open('mailto:amarsh.pedapati@gmail.com')">Email ↗</button>
+      <button class="p-link" onclick="window.open('https://linkedin.com/in/amarshp','_blank')">LinkedIn ↗</button>
+      <button class="p-link" onclick="window.open('https://github.com/amarshp','_blank')">GitHub ↗</button>
+      <button class="p-link">↓ Resume</button>
+    </div>`,
+  },
+};
+
+function openPanel(key) {
+  const d = panelData[key];
+  document.getElementById('panel-tag').textContent = d.tag;
+  document.getElementById('panel-body').innerHTML = `
+    <div class="panel-icon">${d.icon}</div>
+    <div class="panel-title">${d.title}</div>
+    ${d.body}
+  `;
+  document.getElementById('panel').classList.add('open');
+}
+function closePanel() {
+  document.getElementById('panel').classList.remove('open');
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape') closePanel(); });
+</script>
+</body>
+</html>

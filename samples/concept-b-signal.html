@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept B — Signal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --black: #080808;
+    --white: #f0ede8;
+    --grey: #1a1a1a;
+    --mid: #888;
+    --rubik-blue: #0045AD;
+    --rubik-red: #B90000;
+    --rubik-green: #009B48;
+    --rubik-orange: #FF5900;
+    --rubik-yellow: #FFD500;
+    --mono: 'JetBrains Mono', monospace;
+    --serif: 'Playfair Display', serif;
+  }
+  html { scroll-behavior: smooth; }
+  body { background: var(--black); color: var(--white); font-family: var(--mono); overflow-x: hidden; }
+
+  /* Scan line texture */
+  body::before {
+    content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 999;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px);
+  }
+
+  /* Nav */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    padding: 16px 40px; display: flex; align-items: center; justify-content: space-between;
+    background: linear-gradient(to bottom, rgba(8,8,8,0.95), transparent);
+  }
+  .nav-logo { font-family: var(--mono); font-size: 13px; color: var(--mid); letter-spacing: 0.15em; }
+  .nav-logo span { color: var(--white); }
+  .nav-links { display: flex; gap: 28px; }
+  .nav-links a { font-size: 11px; color: var(--mid); text-decoration: none; letter-spacing: 0.1em; text-transform: uppercase; transition: color 0.2s; }
+  .nav-links a:hover { color: var(--white); }
+  .nav-status { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--rubik-green); }
+  .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--rubik-green); animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(0,155,72,0.4)} 50%{opacity:0.8;box-shadow:0 0 0 6px rgba(0,155,72,0)} }
+
+  /* Hero */
+  .hero {
+    min-height: 100vh; display: flex; flex-direction: column; justify-content: flex-end;
+    padding: 60px 40px 60px; position: relative; overflow: hidden;
+  }
+  .hero-bg {
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 20% 60%, rgba(0,69,173,0.08) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 20%, rgba(185,0,0,0.05) 0%, transparent 50%);
+  }
+  .hero-eyebrow { font-family: var(--mono); font-size: 11px; color: var(--mid); letter-spacing: 0.2em; text-transform: uppercase; margin-bottom: 24px; }
+  .hero-headline {
+    font-family: var(--serif); font-size: clamp(48px, 7vw, 100px);
+    font-weight: 900; line-height: 0.95; letter-spacing: -0.02em;
+    color: var(--white);
+  }
+  .hero-headline em { font-style: italic; color: transparent; -webkit-text-stroke: 1px rgba(255,255,255,0.3); }
+  .hero-subline {
+    margin-top: 32px; max-width: 600px;
+    font-family: var(--serif); font-size: 18px; font-style: italic; color: var(--mid);
+    line-height: 1.6;
+  }
+  .hero-bottom { margin-top: 60px; display: flex; align-items: flex-end; justify-content: space-between; }
+  .hero-stats { display: flex; gap: 40px; }
+  .stat { }
+  .stat-num { font-family: var(--serif); font-size: 42px; font-weight: 900; color: var(--white); line-height: 1; }
+  .stat-num sup { font-size: 16px; vertical-align: super; }
+  .stat-lbl { font-size: 10px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 4px; }
+  .hero-cta { display: flex; gap: 12px; }
+  .btn { padding: 12px 24px; font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; border: 1px solid; cursor: pointer; text-decoration: none; transition: all 0.2s; }
+  .btn-white { border-color: var(--white); color: var(--white); background: transparent; }
+  .btn-white:hover { background: var(--white); color: var(--black); }
+  .btn-outline { border-color: #333; color: var(--mid); background: transparent; }
+  .btn-outline:hover { border-color: var(--mid); color: var(--white); }
+
+  /* Grid layout */
+  .grid-section { padding: 0 40px 0; }
+  .big-grid { display: grid; grid-template-columns: repeat(12, 1fr); gap: 1px; background: #1a1a1a; border-top: 1px solid #1a1a1a; }
+  .cell {
+    background: var(--black); padding: 40px;
+    transition: background 0.2s;
+  }
+  .cell:hover { background: #0d0d0d; }
+  .cell-label { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.15em; margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .cell-label::after { content: ''; flex: 1; height: 1px; background: #1f1f1f; }
+
+  /* Job cards */
+  .job { margin-bottom: 28px; padding-bottom: 28px; border-bottom: 1px solid #111; }
+  .job:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+  .job-co { font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--white); margin-bottom: 4px; }
+  .job-title { font-size: 11px; color: var(--rubik-blue); text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 8px; }
+  .job-period { font-size: 10px; color: #444; margin-bottom: 12px; }
+  .job-desc { font-size: 12px; color: #777; line-height: 1.7; }
+  .job-highlight { color: var(--white); font-weight: 500; }
+
+  /* Big number cell */
+  .big-num { font-family: var(--serif); font-size: 80px; font-weight: 900; line-height: 1; color: var(--white); }
+  .big-num-sub { font-size: 11px; color: var(--mid); text-transform: uppercase; letter-spacing: 0.1em; margin-top: 8px; }
+
+  /* Quote cell */
+  .quote-text { font-family: var(--serif); font-size: 20px; font-style: italic; line-height: 1.6; color: var(--mid); }
+  .quote-text strong { color: var(--white); font-style: normal; }
+
+  /* Skills tags */
+  .skills-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+  .skill-tag {
+    font-size: 10px; padding: 5px 10px; border: 1px solid #222; color: #666;
+    transition: all 0.2s; cursor: default;
+  }
+  .skill-tag:hover { border-color: var(--rubik-blue); color: var(--rubik-blue); }
+
+  /* Beyond code */
+  .beyond-item { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+  .beyond-icon { font-size: 20px; }
+  .beyond-num { font-family: var(--serif); font-size: 32px; font-weight: 900; color: var(--white); }
+  .beyond-unit { font-size: 11px; color: var(--mid); }
+  .beyond-desc { font-size: 10px; color: #444; text-transform: uppercase; letter-spacing: 0.1em; }
+
+  /* Contact */
+  .contact-line { font-family: var(--serif); font-size: 28px; font-style: italic; color: var(--mid); margin-bottom: 24px; line-height: 1.4; }
+  .contact-email { font-family: var(--mono); font-size: 13px; color: var(--white); text-decoration: none; border-bottom: 1px solid #333; padding-bottom: 2px; transition: border-color 0.2s; }
+  .contact-email:hover { border-color: var(--white); }
+
+  /* Terminal widget */
+  #terminal-widget {
+    position: fixed; bottom: 0; right: 40px; width: 360px;
+    background: #050505; border: 1px solid #1a1a1a; border-bottom: none;
+    transform: translateY(100%); transition: transform 0.3s ease; z-index: 200;
+  }
+  #terminal-widget.open { transform: translateY(0); }
+  .tw-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px; border-bottom: 1px solid #1a1a1a; cursor: pointer;
+    background: #0a0a0a;
+  }
+  .tw-bar-left { display: flex; align-items: center; gap: 8px; font-size: 11px; color: #444; }
+  .tw-dots { display: flex; gap: 5px; }
+  .tw-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .tw-body { padding: 12px; font-size: 11px; color: #666; max-height: 200px; overflow-y: auto; }
+  .tw-line { margin: 1px 0; }
+  .tw-prompt { color: var(--rubik-green); }
+  .tw-input-row { display: flex; align-items: center; padding: 8px 12px; border-top: 1px solid #111; }
+  .tw-input { background: transparent; border: none; outline: none; color: var(--white); font-family: var(--mono); font-size: 11px; flex: 1; }
+
+  /* Terminal toggle */
+  #term-toggle {
+    position: fixed; bottom: 20px; right: 40px;
+    font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+    color: #444; border: 1px solid #222; padding: 8px 14px;
+    background: var(--black); cursor: pointer; z-index: 201;
+    transition: all 0.2s;
+  }
+  #term-toggle:hover { color: var(--rubik-green); border-color: var(--rubik-green); }
+  #term-toggle.active { color: var(--rubik-green); border-color: var(--rubik-green); bottom: 268px; }
+
+  /* Footer */
+  footer { padding: 40px; border-top: 1px solid #111; display: flex; justify-content: space-between; align-items: center; }
+  footer p { font-size: 11px; color: #333; }
+
+  /* Color accents on hover */
+  .accent-blue:hover { color: var(--rubik-blue) !important; }
+  .accent-red:hover { color: var(--rubik-red) !important; }
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="nav-logo"><span>Amarsh</span> Pedapati</div>
+  <div class="nav-links">
+    <a href="#work">Work</a>
+    <a href="#beyond">Beyond</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <div class="nav-status"><div class="pulse"></div> Available · 30d notice</div>
+</nav>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-bg"></div>
+  <div style="position:relative; z-index:1;">
+    <div class="hero-eyebrow">Senior AI Engineer · Hyderabad · IIT · 2023</div>
+    <h1 class="hero-headline">
+      Agentic<br><em>Systems</em><br>Engineer
+    </h1>
+    <p class="hero-subline">"My unmatched perspicacity coupled with my sheer indefatigability makes me a feared opponent in any realm of human endeavor."</p>
+    <div class="hero-bottom">
+      <div class="hero-stats">
+        <div class="stat">
+          <div class="stat-num">3<sup>+</sup></div>
+          <div class="stat-lbl">Years Prod AI</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">12<sup>×</sup></div>
+          <div class="stat-lbl">Fastest delivery</div>
+        </div>
+        <div class="stat">
+          <div class="stat-num">42<sup>km</sup></div>
+          <div class="stat-lbl">Marathon</div>
+        </div>
+      </div>
+      <div class="hero-cta">
+        <a href="#contact" class="btn btn-white">Get in touch</a>
+        <a href="#" class="btn btn-outline">Resume ↓</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Work Grid -->
+<section class="grid-section" id="work">
+  <div class="big-grid">
+    <!-- Experience — large -->
+    <div class="cell" style="grid-column: span 8;">
+      <div class="cell-label">Experience</div>
+      <div class="job">
+        <div class="job-co">OpenText</div>
+        <div class="job-title">Senior AI Engineer</div>
+        <div class="job-period">Jan 2026 – Present · Hyderabad</div>
+        <div class="job-desc">
+          <span class="job-highlight">AI Cockpit</span> — Enterprise agent orchestration. Reduced project planning from <span class="job-highlight">2 weeks → 2 days</span>. Master agent routing via A2A protocol, MCP integrations with SAP HANA, full LangSmith observability. Now in beta with enterprise clients.<br><br>
+          <span class="job-highlight">CI/CD Migration Agent</span> — Compressed a 12-month Jenkins→GitLab migration to under 1 month. <span class="job-highlight">12× acceleration</span>. Won company hackathon among ~200 participants.
+        </div>
+      </div>
+      <div class="job">
+        <div class="job-co">Blend360 · Visa & Walmart</div>
+        <div class="job-title">Data Scientist</div>
+        <div class="job-period">Oct 2023 – Dec 2025 · Hyderabad</div>
+        <div class="job-desc">
+          Built GenAI explainability platform for <span class="job-highlight">Visa C-suite</span> with RAG-backed chatbot + RAGAS evaluation pipeline. For Walmart: <span class="job-highlight">45% uplift in top decile</span>, enabling targeting of 13.4M customers. 7× faster Snowflake query performance.
+        </div>
+      </div>
+      <div class="job">
+        <div class="job-co">AIBOD · Japan</div>
+        <div class="job-title">ML Engineer Intern</div>
+        <div class="job-period">Jan – Jun 2022 · Fukuoka</div>
+        <div class="job-desc">
+          PyTorch CV pipeline with OOD detection. <span class="job-highlight">32% misclassification reduction</span>, 18% accuracy improvement. AI-powered unmanned retail system.
+        </div>
+      </div>
+    </div>
+
+    <!-- Stack — smaller -->
+    <div class="cell" style="grid-column: span 4;">
+      <div class="cell-label">Stack</div>
+      <div class="skills-cloud">
+        <span class="skill-tag">LangGraph</span><span class="skill-tag">LangChain</span>
+        <span class="skill-tag">MCP</span><span class="skill-tag">A2A Protocol</span>
+        <span class="skill-tag">RAG</span><span class="skill-tag">RAGAS</span>
+        <span class="skill-tag">LLM-as-Judge</span><span class="skill-tag">Hybrid Retrieval</span>
+        <span class="skill-tag">FastAPI</span><span class="skill-tag">PyTorch</span>
+        <span class="skill-tag">Python</span><span class="skill-tag">C++</span>
+        <span class="skill-tag">AWS Bedrock</span><span class="skill-tag">SageMaker</span>
+        <span class="skill-tag">Docker</span><span class="skill-tag">Kubernetes</span>
+        <span class="skill-tag">PostgreSQL</span><span class="skill-tag">Pinecone</span>
+        <span class="skill-tag">FAISS</span><span class="skill-tag">ChromaDB</span>
+        <span class="skill-tag">LangSmith</span><span class="skill-tag">Snowflake</span>
+      </div>
+    </div>
+
+    <!-- Big stat -->
+    <div class="cell" style="grid-column: span 3; border-top: 1px solid #1a1a1a;">
+      <div class="cell-label">Flagship Result</div>
+      <div class="big-num">12×</div>
+      <div class="big-num-sub">CI/CD migration speed<br>770 jobs · &lt;1 month</div>
+    </div>
+
+    <!-- PersonaRAG -->
+    <div class="cell" style="grid-column: span 5; border-top: 1px solid #1a1a1a;">
+      <div class="cell-label">Open Source · PersonaRAG</div>
+      <div style="font-family: var(--serif); font-size: 20px; color: var(--white); margin-bottom: 12px;">Eval-Driven Hybrid RAG System</div>
+      <div style="font-size:12px; color:#666; line-height:1.7;">
+        4.75M word corpus. Multi-query expansion, cross-encoder reranking, faithfulness guard.<br>
+        <strong style="color:var(--white);">0 false positives</strong> across 30+ adversarial probes. <strong style="color:var(--white);">37/37</strong> eval suite pass rate.
+      </div>
+    </div>
+
+    <!-- Quote -->
+    <div class="cell" style="grid-column: span 4; border-top: 1px solid #1a1a1a;">
+      <div class="cell-label">Education</div>
+      <div class="quote-text">
+        <strong>IIT Hyderabad</strong><br>BTech, Artificial Intelligence<br>
+        <span style="font-size:13px; color:#444; font-style:normal;">Class of 2023</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Beyond -->
+<section class="grid-section" id="beyond" style="margin-top: 1px;">
+  <div class="big-grid">
+    <div class="cell" style="grid-column: span 4;">
+      <div class="cell-label">Beyond Code</div>
+      <div class="beyond-item">
+        <div class="beyond-icon">🏃</div>
+        <div>
+          <div class="beyond-num">42.2 <span class="beyond-unit">km</span></div>
+          <div class="beyond-desc">Marathon Finisher</div>
+        </div>
+      </div>
+      <div class="beyond-item">
+        <div class="beyond-icon">🧊</div>
+        <div>
+          <div class="beyond-num">14.8 <span class="beyond-unit">s</span></div>
+          <div class="beyond-desc">Rubik's Cube PB</div>
+        </div>
+      </div>
+      <div class="beyond-item">
+        <div class="beyond-icon">♔</div>
+        <div>
+          <div class="beyond-num" style="font-size:24px; padding-top:6px;">Chess</div>
+          <div class="beyond-desc">Strategist</div>
+        </div>
+      </div>
+      <div class="beyond-item">
+        <div class="beyond-icon">🎸</div>
+        <div>
+          <div class="beyond-num" style="font-size:24px; padding-top:6px;">Guitar</div>
+          <div class="beyond-desc">Creative outlet</div>
+        </div>
+      </div>
+    </div>
+    <div class="cell" style="grid-column: span 8;" id="contact">
+      <div class="cell-label">Contact</div>
+      <div class="contact-line">Open to opportunities where I can build agentic systems that matter.</div>
+      <div style="margin-bottom: 20px;">
+        <a href="mailto:amarsh.pedapati@gmail.com" class="contact-email">amarsh.pedapati@gmail.com</a>
+      </div>
+      <div style="display:flex; gap:12px; flex-wrap:wrap;">
+        <a href="https://linkedin.com/in/amarshp" target="_blank" class="btn btn-outline" style="font-size:10px; padding:8px 16px;">LinkedIn ↗</a>
+        <a href="https://github.com/amarshp" target="_blank" class="btn btn-outline" style="font-size:10px; padding:8px 16px;">GitHub ↗</a>
+        <a href="https://medium.com/@amarsh.pedapati" target="_blank" class="btn btn-outline" style="font-size:10px; padding:8px 16px;">Medium ↗</a>
+        <a href="#" class="btn btn-white" style="font-size:10px; padding:8px 16px;">↓ Resume</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <p>© 2026 Amarsh Pedapati</p>
+  <p style="font-size:10px; color:#222;">IIT Hyderabad · OpenText · Hyderabad, India</p>
+</footer>
+
+<!-- Terminal Widget -->
+<button id="term-toggle" onclick="toggleTerminal()">⌨ TERMINAL</button>
+<div id="terminal-widget">
+  <div class="tw-bar" onclick="toggleTerminal()">
+    <div class="tw-bar-left">
+      <div class="tw-dots">
+        <div class="tw-dot" style="background:#ff5f57"></div>
+        <div class="tw-dot" style="background:#ffbd2e"></div>
+        <div class="tw-dot" style="background:#28c840"></div>
+      </div>
+      agi@amarsh:~$
+    </div>
+    <span style="font-size:10px; color:#333;">▼</span>
+  </div>
+  <div class="tw-body" id="tw-output">
+    <div class="tw-line"><span style="color:#444">// Type 'help' to explore</span></div>
+  </div>
+  <div class="tw-input-row">
+    <span class="tw-prompt">$&nbsp;</span>
+    <input class="tw-input" id="tw-input" type="text" autocomplete="off" onkeydown="twCmd(event)" placeholder="type a command..." />
+  </div>
+</div>
+
+<script>
+let termOpen = false;
+function toggleTerminal() {
+  termOpen = !termOpen;
+  document.getElementById('terminal-widget').classList.toggle('open', termOpen);
+  document.getElementById('term-toggle').classList.toggle('active', termOpen);
+  if (termOpen) document.getElementById('tw-input').focus();
+}
+
+const twCmds = {
+  help: ['about  · projects · skills · contact · clear'],
+  about: ['Amarsh Pedapati', 'Senior AI Engineer @ OpenText', 'IIT Hyderabad · BTech AI · 2023', '3+ yrs · agentic systems · RAG · LLMs'],
+  contact: ['amarsh.pedapati@gmail.com', 'linkedin.com/in/amarshp', 'github.com/amarshp'],
+  skills: ['LangGraph · LangChain · MCP · A2A', 'RAG · RAGAS · Hybrid Retrieval', 'PyTorch · FastAPI · AWS · Docker'],
+  projects: ['→ AI Cockpit (OpenText, enterprise beta)', '→ CI/CD Agent (12x, hackathon winner)', '→ PersonaRAG (0 false positives)', '→ Visa Explainability Platform'],
+};
+
+function twCmd(e) {
+  if (e.key !== 'Enter') return;
+  const input = document.getElementById('tw-input');
+  const out = document.getElementById('tw-output');
+  const cmd = input.value.trim().toLowerCase();
+  input.value = '';
+  const pl = document.createElement('div');
+  pl.className = 'tw-line';
+  pl.innerHTML = `<span class="tw-prompt">$</span> <span style="color:#ccc">${cmd}</span>`;
+  out.appendChild(pl);
+  if (cmd === 'clear') { out.innerHTML = ''; return; }
+  const lines = twCmds[cmd] || [`not found: ${cmd}`];
+  lines.forEach(l => {
+    const d = document.createElement('div');
+    d.className = 'tw-line';
+    d.style.color = '#555';
+    d.textContent = l;
+    out.appendChild(d);
+  });
+  out.scrollTop = out.scrollHeight;
+}
+
+// Fade in on scroll
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(e => { if (e.isIntersecting) e.target.style.opacity = 1; });
+}, { threshold: 0.1 });
+</script>
+</body>
+</html>

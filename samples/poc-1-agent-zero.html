@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POC 1 — AGENT ZERO</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#03050a;
+  --panel:#070d14;
+  --border:#0e2033;
+  --border-bright:#0d3a5c;
+  --cyan:#00c8ff;
+  --cyan-dim:#003d52;
+  --cyan-glow:rgba(0,200,255,0.15);
+  --green:#00ff9f;
+  --green-dim:#003d28;
+  --amber:#ffb300;
+  --amber-dim:#3a2900;
+  --red:#ff3b3b;
+  --text:#c8dde8;
+  --text-dim:#4a6475;
+  --mono:'JetBrains Mono',monospace;
+}
+html,body{height:100%;overflow:hidden;}
+body{background:var(--bg);color:var(--text);font-family:var(--mono);font-size:12px;}
+
+/* ── BOOT ── */
+#boot{
+  position:fixed;inset:0;background:#000;z-index:999;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  transition:opacity 1s;
+}
+#boot.out{opacity:0;pointer-events:none;}
+.boot-line{color:var(--cyan);font-size:13px;opacity:0;transform:translateY(4px);transition:all 0.3s;}
+.boot-line.on{opacity:1;transform:none;}
+.boot-line.ok{color:var(--green);}
+.boot-line.warn{color:var(--amber);}
+.boot-bar{width:340px;height:2px;background:#111;margin-top:20px;border-radius:1px;}
+.boot-bar-fill{height:100%;width:0;background:linear-gradient(90deg,var(--cyan),var(--green));border-radius:1px;transition:width 0.1s;}
+
+/* ── LAYOUT ── */
+#app{display:flex;flex-direction:column;height:100vh;display:none;}
+
+/* Top bar */
+.topbar{
+  height:36px;border-bottom:1px solid var(--border);background:var(--panel);
+  display:flex;align-items:center;padding:0 16px;gap:16px;flex-shrink:0;
+}
+.tb-logo{color:var(--cyan);font-size:13px;font-weight:600;letter-spacing:0.05em;}
+.tb-logo span{color:var(--text-dim);}
+.tb-sep{width:1px;height:16px;background:var(--border);}
+.tb-status{display:flex;align-items:center;gap:6px;font-size:10px;color:var(--text-dim);}
+.dot{width:5px;height:5px;border-radius:50%;flex-shrink:0;}
+.dot.green{background:var(--green);box-shadow:0 0 6px var(--green);}
+.dot.amber{background:var(--amber);}
+.dot.cyan{background:var(--cyan);}
+.tb-right{margin-left:auto;font-size:10px;color:var(--text-dim);display:flex;gap:16px;align-items:center;}
+.tb-clock{color:var(--cyan);font-size:11px;}
+
+/* Main area */
+.main{display:flex;flex:1;overflow:hidden;}
+
+/* Left sidebar — Agent Registry */
+.sidebar{
+  width:220px;border-right:1px solid var(--border);background:var(--panel);
+  display:flex;flex-direction:column;overflow:hidden;flex-shrink:0;
+}
+.sidebar-header{
+  padding:12px 14px 8px;border-bottom:1px solid var(--border);
+  font-size:9px;color:var(--text-dim);letter-spacing:0.15em;text-transform:uppercase;
+  display:flex;align-items:center;gap:8px;
+}
+.sidebar-header::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--cyan);box-shadow:0 0 6px var(--cyan);}
+.agent-list{flex:1;overflow-y:auto;padding:8px;}
+.agent-item{
+  padding:8px 10px;border-radius:4px;margin-bottom:4px;cursor:pointer;
+  border:1px solid transparent;transition:all 0.2s;
+}
+.agent-item:hover{background:var(--cyan-glow);border-color:var(--border-bright);}
+.agent-item.active{background:var(--cyan-glow);border-color:var(--cyan-dim);}
+.agent-name{font-size:11px;color:var(--text);margin-bottom:2px;}
+.agent-status{font-size:9px;color:var(--text-dim);display:flex;align-items:center;gap:4px;}
+.agent-tag{
+  display:inline-block;font-size:8px;padding:1px 5px;
+  border:1px solid var(--cyan-dim);color:var(--cyan);border-radius:2px;margin-top:4px;margin-right:2px;
+}
+
+/* Center — Chat */
+.center{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.chat-area{flex:1;overflow-y:auto;padding:16px;display:flex;flex-direction:column;gap:12px;}
+.chat-msg{display:flex;flex-direction:column;gap:4px;max-width:560px;}
+.chat-msg.user{align-self:flex-end;align-items:flex-end;}
+.chat-msg.system{align-self:flex-start;}
+.msg-label{font-size:9px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:2px;}
+.msg-bubble{
+  padding:10px 14px;border-radius:4px;font-size:12px;line-height:1.6;
+}
+.chat-msg.user .msg-bubble{
+  background:rgba(0,200,255,0.08);border:1px solid var(--cyan-dim);color:var(--text);
+}
+.chat-msg.system .msg-bubble{
+  background:rgba(7,13,20,0.8);border:1px solid var(--border);color:var(--text);
+}
+/* Tool call block */
+.tool-call{
+  margin:4px 0;padding:8px 12px;
+  background:#04080f;border:1px solid var(--border-bright);border-left:3px solid var(--cyan);
+  border-radius:2px;font-size:10px;animation:slidein 0.3s ease;
+}
+.tool-call-head{color:var(--cyan);margin-bottom:3px;display:flex;align-items:center;gap:6px;}
+.tool-call-head::before{content:'⚡';font-size:10px;}
+.tool-call-args{color:var(--text-dim);}
+.tool-call.done{border-left-color:var(--green);}
+.tool-call.done .tool-call-head{color:var(--green);}
+.tool-call.done .tool-call-head::before{content:'✓';}
+@keyframes slidein{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:none}}
+
+/* Streaming cursor */
+.stream-cursor{display:inline-block;width:7px;height:13px;background:var(--cyan);vertical-align:middle;margin-left:2px;animation:blink 0.8s infinite;}
+@keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+/* Input */
+.chat-input-area{
+  border-top:1px solid var(--border);padding:12px 16px;
+  display:flex;gap:10px;align-items:center;background:var(--panel);
+}
+.prompt-prefix{color:var(--cyan);font-size:11px;white-space:nowrap;}
+.chat-input{
+  flex:1;background:transparent;border:none;outline:none;
+  color:var(--text);font-family:var(--mono);font-size:12px;caret-color:var(--cyan);
+}
+.chat-input::placeholder{color:var(--text-dim);}
+.send-btn{
+  padding:5px 14px;background:transparent;border:1px solid var(--cyan-dim);
+  color:var(--cyan);font-family:var(--mono);font-size:10px;cursor:pointer;border-radius:2px;
+  transition:all 0.2s;letter-spacing:0.05em;
+}
+.send-btn:hover{background:var(--cyan-glow);border-color:var(--cyan);}
+.suggestions{
+  padding:6px 16px 10px;display:flex;gap:6px;flex-wrap:wrap;background:var(--panel);
+}
+.sug{
+  font-size:10px;padding:4px 10px;border:1px solid var(--border-bright);color:var(--text-dim);
+  cursor:pointer;border-radius:2px;transition:all 0.15s;
+}
+.sug:hover{border-color:var(--cyan-dim);color:var(--cyan);}
+
+/* Right panel — slides in */
+.right-panel{
+  width:0;border-left:1px solid transparent;background:var(--panel);
+  overflow:hidden;transition:all 0.4s cubic-bezier(0.16,1,0.3,1);
+  display:flex;flex-direction:column;
+}
+.right-panel.open{width:320px;border-left-color:var(--border);}
+.rp-header{
+  padding:12px 14px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+.rp-title{font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.1em;display:flex;align-items:center;gap:6px;}
+.rp-title::before{content:'';width:4px;height:4px;border-radius:50%;background:var(--green);}
+.rp-close{font-size:16px;color:var(--text-dim);cursor:pointer;background:none;border:none;color:var(--text-dim);}
+.rp-close:hover{color:var(--text);}
+.rp-body{flex:1;overflow-y:auto;padding:14px;}
+
+/* Panel content styles */
+.proj-card{
+  border:1px solid var(--border);border-radius:4px;padding:12px;margin-bottom:10px;
+  background:#04080f;transition:border-color 0.2s;
+}
+.proj-card:hover{border-color:var(--border-bright);}
+.proj-id{font-size:9px;color:var(--text-dim);margin-bottom:4px;}
+.proj-name{font-size:12px;color:var(--text);margin-bottom:4px;}
+.proj-metric{font-size:11px;color:var(--cyan);margin-bottom:6px;}
+.proj-desc{font-size:10px;color:var(--text-dim);line-height:1.6;margin-bottom:8px;}
+.proj-tags{display:flex;flex-wrap:wrap;gap:4px;}
+.proj-tag{font-size:8px;padding:2px 6px;border:1px solid var(--border-bright);color:var(--text-dim);border-radius:2px;}
+
+.skill-row{display:flex;align-items:center;gap:10px;margin-bottom:8px;}
+.skill-name{font-size:10px;color:var(--text);width:120px;flex-shrink:0;}
+.skill-bar-bg{flex:1;height:3px;background:var(--border);}
+.skill-bar-fill{height:100%;background:linear-gradient(90deg,var(--cyan),var(--green));transition:width 1s ease;}
+.skill-pct{font-size:9px;color:var(--text-dim);width:28px;text-align:right;}
+
+/* Bottom status bar */
+.statusbar{
+  height:24px;border-top:1px solid var(--border);background:var(--panel);
+  display:flex;align-items:center;padding:0 14px;gap:16px;font-size:9px;color:var(--text-dim);
+  flex-shrink:0;
+}
+.sb-item{display:flex;align-items:center;gap:5px;}
+.sb-sep{width:1px;height:12px;background:var(--border);}
+
+/* Scan line */
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:998;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px);
+}
+</style>
+</head>
+<body>
+
+<!-- BOOT -->
+<div id="boot">
+  <div style="text-align:left;width:400px;">
+    <div class="boot-line" id="b0">AMARSH.OS / AGENT ZERO v0.9.4</div>
+    <div class="boot-line" id="b1">>> Initializing orchestration layer...</div>
+    <div class="boot-line" id="b2">>> Mounting agent registry [7 agents]</div>
+    <div class="boot-line" id="b3">>> Loading knowledge base [resume · projects · stack]</div>
+    <div class="boot-line warn" id="b4">>> WARNING: Unmatched perspicacity detected</div>
+    <div class="boot-line ok"  id="b5">>> AGENT ZERO online ✓ — all systems nominal</div>
+  </div>
+  <div class="boot-bar"><div class="boot-bar-fill" id="bfill"></div></div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <!-- Top bar -->
+  <div class="topbar">
+    <span class="tb-logo">AGENT<span>.</span>ZERO</span>
+    <div class="tb-sep"></div>
+    <div class="tb-status"><div class="dot green"></div> ORCHESTRATOR ONLINE</div>
+    <div class="tb-sep"></div>
+    <div class="tb-status"><div class="dot cyan"></div> 7 AGENTS REGISTERED</div>
+    <div class="tb-sep"></div>
+    <div class="tb-status"><div class="dot amber"></div> AVAILABILITY: 30D NOTICE</div>
+    <div class="tb-right">
+      <span>AMARSH PEDAPATI · SENIOR AI ENGINEER · OPENTEXT</span>
+      <div class="tb-sep"></div>
+      <span class="tb-clock" id="clock">--:--:--</span>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+
+    <!-- Sidebar -->
+    <div class="sidebar">
+      <div class="sidebar-header">Agent Registry</div>
+      <div class="agent-list">
+        <div class="agent-item active" onclick="suggest('tell me about yourself')">
+          <div class="agent-name">identity.agent</div>
+          <div class="agent-status"><div class="dot green"></div> ACTIVE</div>
+          <div><span class="agent-tag">profile</span><span class="agent-tag">bio</span></div>
+        </div>
+        <div class="agent-item" onclick="suggest('show me your projects')">
+          <div class="agent-name">projects.agent</div>
+          <div class="agent-status"><div class="dot green"></div> ACTIVE</div>
+          <div><span class="agent-tag">missions</span><span class="agent-tag">builds</span></div>
+        </div>
+        <div class="agent-item" onclick="suggest('what is your tech stack')">
+          <div class="agent-name">skills.agent</div>
+          <div class="agent-status"><div class="dot green"></div> ACTIVE</div>
+          <div><span class="agent-tag">tools</span><span class="agent-tag">stack</span></div>
+        </div>
+        <div class="agent-item" onclick="suggest('show me your experience')">
+          <div class="agent-name">experience.agent</div>
+          <div class="agent-status"><div class="dot green"></div> ACTIVE</div>
+          <div><span class="agent-tag">timeline</span><span class="agent-tag">roles</span></div>
+        </div>
+        <div class="agent-item" onclick="suggest('how can I contact you')">
+          <div class="agent-name">contact.agent</div>
+          <div class="agent-status"><div class="dot green"></div> ACTIVE</div>
+          <div><span class="agent-tag">uplink</span></div>
+        </div>
+        <div class="agent-item" onclick="suggest('what are your achievements')">
+          <div class="agent-name">metrics.agent</div>
+          <div class="agent-status"><div class="dot cyan"></div> STANDBY</div>
+          <div><span class="agent-tag">kpis</span><span class="agent-tag">wins</span></div>
+        </div>
+        <div class="agent-item" onclick="suggest('tell me something interesting about you')">
+          <div class="agent-name">persona.agent</div>
+          <div class="agent-status"><div class="dot cyan"></div> STANDBY</div>
+          <div><span class="agent-tag">beyond</span><span class="agent-tag">human</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat center -->
+    <div class="center">
+      <div class="chat-area" id="chat">
+        <div class="chat-msg system">
+          <div class="msg-label">AGENT ZERO · ORCHESTRATOR</div>
+          <div class="msg-bubble">
+            Orchestration layer initialized. I am <strong style="color:var(--cyan)">Amarsh Pedapati</strong> — Senior AI Engineer at OpenText, IIT Hyderabad alumnus, builder of agentic systems.<br><br>
+            Ask me anything. I'll route your request to the appropriate agent and stream back a response. Try a suggestion below, or type freely.
+          </div>
+        </div>
+      </div>
+      <div class="suggestions" id="suggestions">
+        <div class="sug" onclick="sendMsg('tell me about yourself')">tell me about yourself</div>
+        <div class="sug" onclick="sendMsg('show me your projects')">show me your projects</div>
+        <div class="sug" onclick="sendMsg('what is your tech stack')">what is your tech stack</div>
+        <div class="sug" onclick="sendMsg('show me your experience')">show me your experience</div>
+        <div class="sug" onclick="sendMsg('how can I contact you')">contact</div>
+      </div>
+      <div class="chat-input-area">
+        <span class="prompt-prefix">user@portal:~$</span>
+        <input class="chat-input" id="input" type="text" placeholder="query the agent..." autocomplete="off" onkeydown="if(e.key==='Enter'||event.key==='Enter'){sendMsg(this.value);}" />
+        <button class="send-btn" onclick="sendMsg(document.getElementById('input').value)">SEND ↵</button>
+      </div>
+    </div>
+
+    <!-- Right panel -->
+    <div class="right-panel" id="rpanel">
+      <div class="rp-header">
+        <div class="rp-title" id="rp-title">PANEL</div>
+        <button class="rp-close" onclick="closePanel()">×</button>
+      </div>
+      <div class="rp-body" id="rp-body"></div>
+    </div>
+  </div>
+
+  <!-- Status bar -->
+  <div class="statusbar">
+    <div class="sb-item"><div class="dot green"></div> SYSTEM NOMINAL</div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">LOCATION: HYDERABAD, IN</div>
+    <div class="sb-sep"></div>
+    <div class="sb-item">NOTICE PERIOD: 30 DAYS</div>
+    <div class="sb-sep"></div>
+    <div class="sb-item" style="margin-left:auto;">amarsh.pedapati@gmail.com · linkedin.com/in/amarshp</div>
+  </div>
+</div>
+
+<script>
+// Boot
+const bootLines=['b0','b1','b2','b3','b4','b5'];
+let bi=0;
+function nextBoot(){
+  if(bi<bootLines.length){
+    document.getElementById(bootLines[bi]).classList.add('on');
+    const pct=Math.round((bi+1)/bootLines.length*100);
+    document.getElementById('bfill').style.width=pct+'%';
+    bi++;setTimeout(nextBoot,bi===1?100:400);
+  } else {
+    setTimeout(()=>{
+      const b=document.getElementById('boot');
+      b.classList.add('out');
+      setTimeout(()=>{b.style.display='none';document.getElementById('app').style.display='flex';startClock();},1000);
+    },600);
+  }
+}
+setTimeout(nextBoot,200);
+
+function startClock(){
+  setInterval(()=>{
+    document.getElementById('clock').textContent=new Date().toLocaleTimeString('en-GB');
+  },1000);
+}
+
+// Chat responses
+let busy=false;
+const responses={
+  'tell me about yourself':{
+    tool:{name:'identity.agent',action:'query_profile'},
+    text:`I'm <strong style="color:var(--cyan)">Amarsh Pedapati</strong>, Senior AI Engineer at <strong>OpenText</strong>, Hyderabad.<br><br>
+IIT Hyderabad alumni (BTech AI, 2023). 3+ years building production agentic systems, RAG pipelines, and LLM infrastructure end-to-end.<br><br>
+Currently architecting the <strong>AI Cockpit</strong> — an enterprise agent orchestration platform now in beta with Fortune 500 clients. Won the company hackathon among ~200 participants with a CI/CD migration agent that delivered 12× acceleration.<br><br>
+Beyond code: marathon runner (42.2km), speedcuber (14.8s PB), chess strategist, guitar player.`,
+    panel:null
+  },
+  'show me your projects':{
+    tool:{name:'projects.agent',action:'retrieve_missions'},
+    text:`Routing to <strong style="color:var(--cyan)">projects.agent</strong> → querying mission log...<br><br>Returned <strong>4 completed missions</strong>. Opening MISSION LOG panel →`,
+    panel:'projects'
+  },
+  'what is your tech stack':{
+    tool:{name:'skills.agent',action:'fetch_registry'},
+    text:`Querying <strong style="color:var(--cyan)">skills.agent</strong> → fetching tool registry...<br><br>Stack loaded. Primary domain: <strong>Agentic AI & LLM orchestration</strong>. Opening CAPABILITY MATRIX →`,
+    panel:'skills'
+  },
+  'show me your experience':{
+    tool:{name:'experience.agent',action:'load_timeline'},
+    text:`<strong style="color:var(--cyan)">experience.agent</strong> → loading deployment history...<br><br>
+<strong>OpenText</strong> · Senior AI Engineer · Jan 2026–Present<br>
+<strong>Blend360</strong> · Data Scientist · Oct 2023–Dec 2025 [Visa, Walmart]<br>
+<strong>AIBOD Japan</strong> · ML Engineer Intern · Jan–Jun 2022<br><br>
+3 deployments. 3+ years. All in production.`,
+    panel:null
+  },
+  'how can I contact you':{
+    tool:{name:'contact.agent',action:'open_secure_channel'},
+    text:`<strong style="color:var(--green)">contact.agent</strong> → opening secure uplink...<br><br>
+📧 amarsh.pedapati@gmail.com<br>
+📞 +91-9959822444<br>
+🔗 linkedin.com/in/amarshp<br>
+💾 github.com/amarshp<br><br>
+Available with <strong>30 days notice</strong>. Open to senior/lead AI engineer roles. Hyderabad or remote.`,
+    panel:null
+  },
+  'what are your achievements':{
+    tool:{name:'metrics.agent',action:'compile_kpis'},
+    text:`<strong style="color:var(--cyan)">metrics.agent</strong> → compiling performance metrics...<br><br>
+⚡ <strong>12×</strong> — CI/CD migration acceleration (770 jobs, &lt;1 month)<br>
+🎯 <strong>2 days</strong> — from 2 weeks project planning (AI Cockpit)<br>
+📈 <strong>45%</strong> — uplift in Walmart top decile<br>
+👥 <strong>13.4M</strong> — customers targeted from 130M base<br>
+🏆 <strong>#1</strong> — company hackathon, ~200 participants<br>
+🔬 <strong>37/37</strong> — PersonaRAG eval suite pass rate<br>
+🚫 <strong>0</strong> — false positives across 30+ adversarial probes`,
+    panel:null
+  },
+  'tell me something interesting about you':{
+    tool:{name:'persona.agent',action:'query_human_layer'},
+    text:`<strong style="color:var(--cyan)">persona.agent</strong> → accessing non-work memory...<br><br>
+The same cognitive discipline that ships a 12× CI/CD migration:<br><br>
+🏃 Carries it 42.2km through a marathon.<br>
+🧊 Resolves it to a 14.8s Rubik's cube solve.<br>
+♔ Applies it to chess — "My unmatched perspicacity makes me a feared opponent in any realm."<br>
+🎸 Channels it through guitar strings.<br><br>
+I believe discipline in one domain is always transferable. Always.`,
+    panel:null
+  }
+};
+
+const projectsPanel=`
+  <div style="font-size:9px;color:var(--text-dim);margin-bottom:12px;letter-spacing:0.1em;">MISSION LOG // 4 ENTRIES</div>
+  <div class="proj-card">
+    <div class="proj-id">MISSION-001 · OPENTEXT · 2026</div>
+    <div class="proj-name">AI Cockpit — Enterprise Orchestration</div>
+    <div class="proj-metric">2 WEEKS → 2 DAYS ↑ BETA</div>
+    <div class="proj-desc">Master agent routing via A2A protocol to domain Expert Agents. MCP integrations with SAP HANA. Full LangSmith observability.</div>
+    <div class="proj-tags"><span class="proj-tag">LangGraph</span><span class="proj-tag">MCP</span><span class="proj-tag">A2A</span><span class="proj-tag">FastAPI</span></div>
+  </div>
+  <div class="proj-card">
+    <div class="proj-id">MISSION-002 · OPENTEXT · 2025</div>
+    <div class="proj-name">CI/CD Migration Agent</div>
+    <div class="proj-metric">12× ACCELERATION · HACKATHON #1</div>
+    <div class="proj-desc">770-job Jenkins→GitLab migration compressed from 12 months to under 1 month. Self-healing LangGraph multi-agent with HITL checkpoints.</div>
+    <div class="proj-tags"><span class="proj-tag">LangGraph</span><span class="proj-tag">Self-Healing</span><span class="proj-tag">HITL</span></div>
+  </div>
+  <div class="proj-card">
+    <div class="proj-id">MISSION-003 · OPEN SOURCE</div>
+    <div class="proj-name">PersonaRAG</div>
+    <div class="proj-metric">0 FALSE POSITIVES · 37/37 EVALS</div>
+    <div class="proj-desc">Eval-driven hybrid RAG over 4.75M words. Multi-query expansion, cross-encoder reranking, faithfulness guard.</div>
+    <div class="proj-tags"><span class="proj-tag">RAG</span><span class="proj-tag">RAGAS</span><span class="proj-tag">LLM-Judge</span></div>
+  </div>
+  <div class="proj-card">
+    <div class="proj-id">MISSION-004 · BLEND360 · VISA</div>
+    <div class="proj-name">GenAI Explainability Platform</div>
+    <div class="proj-metric">C-SUITE DEPLOYMENT</div>
+    <div class="proj-desc">Full-stack GenAI explainability for Visa. RAG chatbot + RAGAS pipeline measuring Relevancy, Faithfulness, Hallucination risk.</div>
+    <div class="proj-tags"><span class="proj-tag">RAG</span><span class="proj-tag">RAGAS</span><span class="proj-tag">GenAI</span></div>
+  </div>
+`;
+
+const skillsPanel=`
+  <div style="font-size:9px;color:var(--text-dim);margin-bottom:14px;letter-spacing:0.1em;">CAPABILITY MATRIX // TOOL REGISTRY</div>
+  <div style="font-size:9px;color:var(--cyan);margin-bottom:8px;letter-spacing:0.1em;">── AGENTIC AI & LLMs ──</div>
+  ${[['LangGraph',96],['LangChain',94],['MCP / A2A',92],['RAG / Retrieval',95],['RAGAS / Evals',90],['Prompt Eng.',88]].map(([n,v])=>`
+  <div class="skill-row"><span class="skill-name">${n}</span><div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${v}%"></div></div><span class="skill-pct">${v}%</span></div>`).join('')}
+  <div style="font-size:9px;color:var(--cyan);margin:14px 0 8px;letter-spacing:0.1em;">── ML & BACKEND ──</div>
+  ${[['PyTorch',85],['FastAPI',88],['Python',96],['C++',78]].map(([n,v])=>`
+  <div class="skill-row"><span class="skill-name">${n}</span><div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${v}%"></div></div><span class="skill-pct">${v}%</span></div>`).join('')}
+  <div style="font-size:9px;color:var(--cyan);margin:14px 0 8px;letter-spacing:0.1em;">── INFRA & CLOUD ──</div>
+  ${[['AWS Bedrock',82],['Docker/K8s',80],['Pinecone/FAISS',85],['LangSmith',88]].map(([n,v])=>`
+  <div class="skill-row"><span class="skill-name">${n}</span><div class="skill-bar-bg"><div class="skill-bar-fill" style="width:${v}%"></div></div><span class="skill-pct">${v}%</span></div>`).join('')}
+`;
+
+function sendMsg(txt){
+  if(!txt||!txt.trim()||busy)return;
+  document.getElementById('input').value='';
+  busy=true;
+  const chat=document.getElementById('chat');
+
+  // User message
+  const um=document.createElement('div');
+  um.className='chat-msg user';
+  um.innerHTML=`<div class="msg-label">USER</div><div class="msg-bubble">${txt}</div>`;
+  chat.appendChild(um);
+
+  // Find response
+  const key=Object.keys(responses).find(k=>txt.toLowerCase().includes(k.toLowerCase().split(' ')[0]))||txt.toLowerCase();
+  const resp=responses[key]||responses[Object.keys(responses).find(k=>txt.toLowerCase().includes(k.split(' ')[0]))||''];
+
+  const r=resp||{
+    tool:{name:'orchestrator',action:'fallback'},
+    text:`I can help with: <strong>about</strong>, <strong>projects</strong>, <strong>tech stack</strong>, <strong>experience</strong>, <strong>contact</strong>, <strong>achievements</strong>, or <strong>something interesting</strong>.`,
+    panel:null
+  };
+
+  // Tool call
+  setTimeout(()=>{
+    const sm=document.createElement('div');
+    sm.className='chat-msg system';
+    const tc=document.createElement('div');
+    tc.className='tool-call';
+    tc.innerHTML=`<div class="tool-call-head">TOOL CALL → ${r.tool.name}</div><div class="tool-call-args">action: "${r.tool.action}"<br>query: "${txt.slice(0,40)}..."</div>`;
+    sm.appendChild(tc);
+    chat.appendChild(sm);
+    chat.scrollTop=chat.scrollHeight;
+
+    // Tool result
+    setTimeout(()=>{
+      tc.classList.add('done');
+      tc.querySelector('.tool-call-args').innerHTML+=`<br><span style="color:var(--green)">→ result: OK</span>`;
+
+      // Streamed response
+      setTimeout(()=>{
+        const respMsg=document.createElement('div');
+        respMsg.className='chat-msg system';
+        const bubble=document.createElement('div');
+        bubble.className='msg-bubble';
+        bubble.innerHTML=`<span class="stream-cursor"></span>`;
+        respMsg.innerHTML='<div class="msg-label">AGENT ZERO · STREAMING</div>';
+        respMsg.appendChild(bubble);
+        chat.appendChild(respMsg);
+        chat.scrollTop=chat.scrollHeight;
+
+        // Typewriter
+        const full=r.text;
+        const stripped=full.replace(/<[^>]+>/g,'');
+        let i=0;
+        function type(){
+          if(i<stripped.length){
+            bubble.innerHTML=full.substring(0,full.indexOf(stripped[i])+1)+'<span class="stream-cursor"></span>';
+            i++;
+            chat.scrollTop=chat.scrollHeight;
+            setTimeout(type,8);
+          } else {
+            bubble.innerHTML=full;
+            bubble.closest('.chat-msg').querySelector('.msg-label').textContent='AGENT ZERO';
+            busy=false;
+            if(r.panel) openPanel(r.panel);
+          }
+        }
+        // Just set it instantly for demo
+        setTimeout(()=>{
+          bubble.innerHTML=r.text;
+          respMsg.querySelector('.msg-label').textContent='AGENT ZERO';
+          busy=false;
+          if(r.panel) openPanel(r.panel);
+          chat.scrollTop=chat.scrollHeight;
+        },600);
+      },400);
+    },600);
+  },300);
+}
+
+function suggest(txt){document.getElementById('input').value=txt;document.getElementById('input').focus();}
+
+function openPanel(type){
+  const rp=document.getElementById('rpanel');
+  const body=document.getElementById('rp-body');
+  const title=document.getElementById('rp-title');
+  if(type==='projects'){title.textContent='MISSION LOG';body.innerHTML=projectsPanel;}
+  if(type==='skills'){title.textContent='CAPABILITY MATRIX';body.innerHTML=skillsPanel;}
+  rp.classList.add('open');
+}
+function closePanel(){document.getElementById('rpanel').classList.remove('open');}
+</script>
+</body>
+</html>

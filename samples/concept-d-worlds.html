@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concept D — Two Worlds</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *{margin:0;padding:0;box-sizing:border-box;}
+  :root{
+    --black:#060608;
+    --off-white:#f2ede8;
+    --mid:#555;
+    --dim:#2a2a2a;
+    --mono:'JetBrains Mono',monospace;
+    --serif:'Playfair Display',serif;
+    --blue:#0045AD;
+    --green:#009B48;
+    --red:#B90000;
+    --orange:#FF5900;
+    --yellow:#FFD500;
+  }
+  html{scroll-behavior:smooth;}
+  body{background:var(--black);color:var(--off-white);font-family:var(--mono);overflow-x:hidden;}
+
+  /* ─── VISUAL WORLD (scroll) ─── */
+
+  section{padding:100px 80px;max-width:1400px;margin:0 auto;}
+
+  /* Hero */
+  .s-hero{
+    min-height:100vh;display:flex;flex-direction:column;justify-content:center;
+    padding-top:120px;padding-bottom:80px;position:relative;
+  }
+  .s-hero-eyebrow{
+    font-family:var(--mono);font-size:11px;color:var(--mid);
+    letter-spacing:0.25em;text-transform:uppercase;margin-bottom:32px;
+    display:flex;align-items:center;gap:16px;
+  }
+  .s-hero-eyebrow::after{content:'';flex:1;height:1px;background:var(--dim);}
+  .s-hero-h1{
+    font-family:var(--serif);font-size:clamp(56px,8vw,120px);
+    font-weight:900;line-height:0.92;letter-spacing:-0.02em;
+    margin-bottom:48px;
+  }
+  .s-hero-h1 .line-2{
+    -webkit-text-stroke:1px rgba(242,237,232,0.25);
+    color:transparent;font-style:italic;
+  }
+  .s-hero-h1 .accent-word{
+    position:relative;display:inline-block;
+  }
+  .s-hero-h1 .accent-word::after{
+    content:'';position:absolute;bottom:8px;left:0;right:0;height:4px;
+    background:var(--blue);
+  }
+  .s-hero-quote{
+    font-family:var(--serif);font-style:italic;font-size:18px;
+    color:var(--mid);max-width:640px;line-height:1.7;margin-bottom:60px;
+    border-left:2px solid var(--dim);padding-left:24px;
+  }
+  .s-hero-meta{
+    display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:24px;
+  }
+  .s-hero-stats{display:flex;gap:48px;}
+  .s-stat-num{font-family:var(--serif);font-size:48px;font-weight:900;line-height:1;color:var(--off-white);}
+  .s-stat-lbl{font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:0.1em;margin-top:4px;}
+  .s-btns{display:flex;gap:12px;}
+  .s-btn{
+    font-family:var(--mono);font-size:11px;letter-spacing:0.1em;text-transform:uppercase;
+    padding:13px 26px;border:1px solid;cursor:pointer;text-decoration:none;transition:all 0.25s;
+  }
+  .s-btn-fill{background:var(--off-white);color:var(--black);border-color:var(--off-white);}
+  .s-btn-fill:hover{background:transparent;color:var(--off-white);}
+  .s-btn-ghost{background:transparent;color:var(--mid);border-color:var(--dim);}
+  .s-btn-ghost:hover{border-color:var(--mid);color:var(--off-white);}
+
+  /* Scroll indicator */
+  .scroll-hint{position:absolute;bottom:40px;left:80px;display:flex;align-items:center;gap:12px;font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:0.15em;}
+  .scroll-line{width:40px;height:1px;background:var(--dim);}
+
+  /* Divider */
+  .divider{height:1px;background:var(--dim);margin:0 80px;}
+
+  /* Story section */
+  .s-story{display:grid;grid-template-columns:1fr 1fr;gap:80px;align-items:start;}
+  .s-story-label{font-size:10px;color:var(--mid);text-transform:uppercase;letter-spacing:0.15em;margin-bottom:24px;display:flex;align-items:center;gap:12px;}
+  .s-story-label::after{content:'';width:30px;height:1px;background:var(--dim);}
+  .s-story-h2{font-family:var(--serif);font-size:clamp(32px,4vw,52px);font-weight:900;line-height:1.1;margin-bottom:24px;}
+  .s-story-p{font-size:13px;color:#777;line-height:1.9;margin-bottom:16px;}
+  .s-story-p strong{color:#aaa;}
+  .s-timeline{display:flex;flex-direction:column;gap:0;}
+  .s-tl-item{display:flex;gap:20px;padding-bottom:28px;position:relative;}
+  .s-tl-item::before{content:'';position:absolute;left:5px;top:16px;bottom:-4px;width:1px;background:var(--dim);}
+  .s-tl-item:last-child::before{display:none;}
+  .s-tl-dot{width:11px;height:11px;border-radius:50%;border:1px solid var(--dim);background:var(--black);flex-shrink:0;margin-top:3px;}
+  .s-tl-dot.active{border-color:var(--blue);box-shadow:0 0 8px rgba(0,69,173,0.4);background:var(--blue);}
+  .s-tl-body{}
+  .s-tl-co{font-size:14px;color:var(--off-white);font-weight:500;margin-bottom:2px;}
+  .s-tl-role{font-size:10px;color:var(--blue);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;}
+  .s-tl-date{font-size:10px;color:var(--mid);margin-bottom:6px;}
+  .s-tl-desc{font-size:11px;color:#555;line-height:1.7;}
+  .s-tl-stat{font-size:18px;font-family:var(--serif);color:var(--off-white);font-weight:700;margin-top:6px;}
+
+  /* Work section */
+  .s-work-grid{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--dim);border:1px solid var(--dim);}
+  .s-work-card{background:var(--black);padding:36px;transition:background 0.2s;}
+  .s-work-card:hover{background:#0a0a0f;}
+  .s-work-num{font-family:var(--serif);font-size:64px;font-weight:900;line-height:1;margin-bottom:16px;color:#1a1a1a;}
+  .s-work-title{font-size:14px;color:var(--off-white);margin-bottom:8px;font-weight:500;}
+  .s-work-desc{font-size:11px;color:#555;line-height:1.8;}
+  .s-work-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:14px;}
+  .s-work-tag{font-size:9px;padding:3px 7px;border:1px solid var(--dim);color:#444;}
+
+  /* Beyond */
+  .s-beyond{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--dim);border:1px solid var(--dim);}
+  .s-beyond-item{background:var(--black);padding:32px;text-align:center;transition:background 0.2s;}
+  .s-beyond-item:hover{background:#0a0a0f;}
+  .s-beyond-icon{font-size:32px;margin-bottom:16px;}
+  .s-beyond-num{font-family:var(--serif);font-size:36px;font-weight:900;color:var(--off-white);line-height:1;}
+  .s-beyond-unit{font-size:13px;color:var(--mid);}
+  .s-beyond-lbl{font-size:10px;color:#444;text-transform:uppercase;letter-spacing:0.1em;margin-top:6px;}
+
+  /* CTA */
+  .s-cta{text-align:center;padding:120px 80px;}
+  .s-cta-h{font-family:var(--serif);font-size:clamp(32px,5vw,72px);font-style:italic;color:var(--off-white);margin-bottom:16px;line-height:1.1;}
+  .s-cta-sub{font-size:12px;color:var(--mid);margin-bottom:40px;}
+  .s-cta-email{font-family:var(--mono);font-size:14px;color:var(--off-white);text-decoration:none;border-bottom:1px solid var(--dim);padding-bottom:4px;transition:border-color 0.2s;}
+  .s-cta-email:hover{border-color:var(--off-white);}
+
+  footer{padding:40px 80px;border-top:1px solid var(--dim);display:flex;justify-content:space-between;align-items:center;}
+  footer p{font-size:11px;color:#333;}
+
+  /* ─── TERMINAL WORLD ─── */
+  #terminal-overlay{
+    position:fixed;bottom:0;left:0;right:0;height:0;z-index:100;
+    transition:height 0.5s cubic-bezier(0.16,1,0.3,1);
+    overflow:hidden;background:rgba(0,0,0,0.98);
+    border-top:1px solid #1a1a1a;
+    display:flex;flex-direction:column;
+  }
+  #terminal-overlay.open{height:55vh;}
+
+  .t-header{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:14px 24px;border-bottom:1px solid #0f0f0f;flex-shrink:0;
+    background:#050505;
+  }
+  .t-header-left{display:flex;align-items:center;gap:10px;}
+  .t-dot{width:10px;height:10px;border-radius:50%;}
+  .t-title{font-size:11px;color:#333;margin-left:6px;}
+  .t-close{font-size:11px;color:#333;cursor:pointer;border:1px solid #1a1a1a;background:none;color:#444;padding:5px 12px;font-family:var(--mono);transition:all 0.2s;}
+  .t-close:hover{color:#fff;border-color:#333;}
+  .t-body{flex:1;overflow-y:auto;padding:20px 24px;font-size:12px;}
+  .t-line{margin:2px 0;line-height:1.6;}
+  .t-prompt-text{color:#009b48;}
+  .t-cmd-text{color:#fff;}
+  .t-out-text{color:#444;}
+  .t-key{color:#0045ad;}
+  .t-val{color:#888;}
+  .t-input-row{display:flex;align-items:center;padding:12px 24px;border-top:1px solid #0f0f0f;flex-shrink:0;}
+  .t-input{background:transparent;border:none;outline:none;color:#fff;font-family:var(--mono);font-size:12px;flex:1;caret-color:#009b48;}
+  .t-cursor{display:inline-block;width:7px;height:13px;background:#009b48;vertical-align:middle;animation:blink 1s infinite;margin-left:2px;}
+  @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
+
+  /* Toggle button */
+  #t-toggle{
+    position:fixed;bottom:24px;right:32px;z-index:200;
+    font-family:var(--mono);font-size:10px;letter-spacing:0.15em;text-transform:uppercase;
+    padding:10px 18px;border:1px solid #222;color:#333;background:var(--black);
+    cursor:pointer;transition:all 0.25s;display:flex;align-items:center;gap:8px;
+  }
+  #t-toggle:hover{border-color:#444;color:#888;}
+  #t-toggle.active{border-color:var(--green);color:var(--green);bottom:calc(55vh + 24px);}
+  #t-toggle.active .t-dot-btn{background:var(--green);box-shadow:0 0 8px var(--green);}
+  .t-dot-btn{width:6px;height:6px;border-radius:50%;background:#333;transition:all 0.25s;}
+
+  /* Nav */
+  .nav{position:fixed;top:0;left:0;right:0;z-index:50;padding:20px 80px;display:flex;align-items:center;justify-content:space-between;background:linear-gradient(var(--black),transparent);}
+  .nav-logo{font-size:13px;color:#444;letter-spacing:0.15em;}
+  .nav-logo strong{color:var(--off-white);}
+  .nav-links{display:flex;gap:32px;}
+  .nav-links a{font-size:11px;color:#444;text-decoration:none;letter-spacing:0.08em;text-transform:uppercase;transition:color 0.2s;}
+  .nav-links a:hover{color:var(--off-white);}
+  .nav-right{font-size:10px;color:var(--green);display:flex;align-items:center;gap:6px;}
+  .nav-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+  @keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(0,155,72,0.4)}50%{box-shadow:0 0 0 5px rgba(0,155,72,0)}}
+</style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav class="nav">
+  <div class="nav-logo"><strong>Amarsh</strong> Pedapati</div>
+  <div class="nav-links">
+    <a href="#story">Story</a>
+    <a href="#work">Work</a>
+    <a href="#beyond">Beyond</a>
+    <a href="#contact">Contact</a>
+  </div>
+  <div class="nav-right"><div class="nav-dot"></div>Available · 30d</div>
+</nav>
+
+<!-- VISUAL WORLD -->
+
+<!-- Hero -->
+<section class="s-hero">
+  <div class="s-hero-eyebrow">Senior AI Engineer · IIT Hyderabad · Hyderabad, India</div>
+  <h1 class="s-hero-h1">
+    <span class="accent-word">Agentic</span><br>
+    <span class="line-2">Systems</span><br>
+    Engineer
+  </h1>
+  <p class="s-hero-quote">"My unmatched perspicacity coupled with my sheer indefatigability makes me a feared opponent in any realm of human endeavor."</p>
+  <div class="s-hero-meta">
+    <div class="s-hero-stats">
+      <div>
+        <div class="s-stat-num">3<span style="font-size:20px">+</span></div>
+        <div class="s-stat-lbl">Years Production AI</div>
+      </div>
+      <div>
+        <div class="s-stat-num">12<span style="font-size:20px">×</span></div>
+        <div class="s-stat-lbl">Fastest delivery</div>
+      </div>
+      <div>
+        <div class="s-stat-num">Beta</div>
+        <div class="s-stat-lbl">AI Cockpit @ OpenText</div>
+      </div>
+    </div>
+    <div class="s-btns">
+      <a href="#contact" class="s-btn s-btn-fill">Get in touch</a>
+      <a href="#" class="s-btn s-btn-ghost">Resume ↓</a>
+    </div>
+  </div>
+  <div class="scroll-hint"><div class="scroll-line"></div>Scroll to explore</div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Story -->
+<section id="story">
+  <div class="s-story">
+    <div>
+      <div class="s-story-label">The Story</div>
+      <h2 class="s-story-h2">Grandmaster strategy.<br>Engineer precision.</h2>
+      <p class="s-story-p">I'm <strong>Amarsh</strong>, a Senior AI Engineer at <strong>OpenText</strong>, building agentic systems that compress months of enterprise work into days.</p>
+      <p class="s-story-p">Started at <strong>IIT Hyderabad</strong> (BTech AI, 2023) where I first understood that code is the nearest thing we have to magic. Since then: enterprise AI agents, RAG pipelines, LLM infra — end to end.</p>
+      <p class="s-story-p">I believe discipline in one domain fuels excellence in another. The same obsessive precision that gets me to a 14.8s cube solve is what ships a 12× acceleration on a 770-job CI/CD migration.</p>
+    </div>
+    <div>
+      <div class="s-story-label">Career</div>
+      <div class="s-timeline">
+        <div class="s-tl-item">
+          <div class="s-tl-dot active"></div>
+          <div class="s-tl-body">
+            <div class="s-tl-co">OpenText</div>
+            <div class="s-tl-role">Senior AI Engineer</div>
+            <div class="s-tl-date">Jan 2026 – Present · Hyderabad</div>
+            <div class="s-tl-desc">AI Cockpit in enterprise beta. CI/CD agent shipped. Hackathon winner.</div>
+            <div class="s-tl-stat">12× faster → 1 month</div>
+          </div>
+        </div>
+        <div class="s-tl-item">
+          <div class="s-tl-dot"></div>
+          <div class="s-tl-body">
+            <div class="s-tl-co">Blend360 · Visa & Walmart</div>
+            <div class="s-tl-role">Data Scientist</div>
+            <div class="s-tl-date">Oct 2023 – Dec 2025</div>
+            <div class="s-tl-desc">GenAI explainability platform for Visa C-suite. 45% uplift for Walmart.</div>
+            <div class="s-tl-stat">13.4M customers targeted</div>
+          </div>
+        </div>
+        <div class="s-tl-item">
+          <div class="s-tl-dot"></div>
+          <div class="s-tl-body">
+            <div class="s-tl-co">AIBOD · Japan</div>
+            <div class="s-tl-role">ML Engineer Intern</div>
+            <div class="s-tl-date">Jan – Jun 2022 · Fukuoka</div>
+            <div class="s-tl-desc">PyTorch CV pipeline. 32% misclassification reduction.</div>
+          </div>
+        </div>
+        <div class="s-tl-item">
+          <div class="s-tl-dot"></div>
+          <div class="s-tl-body">
+            <div class="s-tl-co">IIT Hyderabad</div>
+            <div class="s-tl-role">BTech, Artificial Intelligence</div>
+            <div class="s-tl-date">Jul 2019 – May 2023</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Work -->
+<section id="work" style="padding-top:100px;padding-bottom:100px;">
+  <div style="margin-bottom:40px;">
+    <div class="s-story-label" style="display:flex;">What I Build</div>
+  </div>
+  <div class="s-work-grid">
+    <div class="s-work-card">
+      <div class="s-work-num">01</div>
+      <div class="s-work-title">AI Cockpit — Enterprise Agent Orchestration</div>
+      <div class="s-work-desc">2 weeks → 2 days. Master agent routing via A2A protocol to domain Expert Agents. MCP integrations with SAP HANA. Full LangSmith observability. In beta with enterprise clients.</div>
+      <div class="s-work-tags"><span class="s-work-tag">LangGraph</span><span class="s-work-tag">MCP</span><span class="s-work-tag">A2A</span><span class="s-work-tag">FastAPI</span></div>
+    </div>
+    <div class="s-work-card">
+      <div class="s-work-num">02</div>
+      <div class="s-work-title">CI/CD Migration Agent — 12× Acceleration</div>
+      <div class="s-work-desc">Compressed 12-month Jenkins→GitLab migration to under 1 month. LangGraph self-healing multi-agent with HITL checkpoints. Won company hackathon among ~200 participants. Adopted by 10+ teams.</div>
+      <div class="s-work-tags"><span class="s-work-tag">LangGraph</span><span class="s-work-tag">Self-Healing</span><span class="s-work-tag">HITL</span></div>
+    </div>
+    <div class="s-work-card">
+      <div class="s-work-num">03</div>
+      <div class="s-work-title">PersonaRAG — Eval-Driven Hybrid RAG</div>
+      <div class="s-work-desc">4.75M word corpus. Multi-query expansion, cross-encoder reranking, faithfulness guard. 0 false positives across 30+ adversarial probes. 37/37 eval suite pass rate.</div>
+      <div class="s-work-tags"><span class="s-work-tag">RAG</span><span class="s-work-tag">RAGAS</span><span class="s-work-tag">LLM-Judge</span><span class="s-work-tag">Open Source</span></div>
+    </div>
+    <div class="s-work-card">
+      <div class="s-work-num">04</div>
+      <div class="s-work-title">Visa GenAI Explainability Platform</div>
+      <div class="s-work-desc">Full-stack GenAI platform for Visa C-suite and department heads. RAG-backed chatbot + RAGAS evaluation pipeline measuring Relevancy, Faithfulness, Hallucination risk.</div>
+      <div class="s-work-tags"><span class="s-work-tag">RAG</span><span class="s-work-tag">RAGAS</span><span class="s-work-tag">Eval Pipeline</span></div>
+    </div>
+  </div>
+</section>
+
+<div class="divider"></div>
+
+<!-- Beyond -->
+<section id="beyond" style="padding-top:100px;padding-bottom:100px;">
+  <div style="margin-bottom:40px;"><div class="s-story-label">Beyond Code</div></div>
+  <div class="s-beyond">
+    <div class="s-beyond-item">
+      <div class="s-beyond-icon">🏃</div>
+      <div class="s-beyond-num">42.2<span class="s-beyond-unit"> km</span></div>
+      <div class="s-beyond-lbl">Marathon Finisher</div>
+    </div>
+    <div class="s-beyond-item">
+      <div class="s-beyond-icon">🧊</div>
+      <div class="s-beyond-num">14.8<span class="s-beyond-unit"> s</span></div>
+      <div class="s-beyond-lbl">Rubik's Cube PB</div>
+    </div>
+    <div class="s-beyond-item">
+      <div class="s-beyond-icon">♔</div>
+      <div class="s-beyond-num" style="font-size:28px;padding-top:4px;">Chess</div>
+      <div class="s-beyond-lbl">Grandmaster Mindset</div>
+    </div>
+    <div class="s-beyond-item">
+      <div class="s-beyond-icon">🎸</div>
+      <div class="s-beyond-num" style="font-size:28px;padding-top:4px;">Guitar</div>
+      <div class="s-beyond-lbl">Creative Outlet</div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<div class="s-cta" id="contact">
+  <div class="s-cta-h">Let's build<br>something that matters.</div>
+  <div class="s-cta-sub">Open to senior/lead AI engineer roles. 30 days notice. Hyderabad or remote.</div>
+  <a href="mailto:amarsh.pedapati@gmail.com" class="s-cta-email">amarsh.pedapati@gmail.com</a>
+  <div style="margin-top:32px;display:flex;gap:12px;justify-content:center;flex-wrap:wrap;">
+    <a href="https://linkedin.com/in/amarshp" target="_blank" class="s-btn s-btn-ghost" style="font-size:10px;padding:10px 20px;">LinkedIn ↗</a>
+    <a href="https://github.com/amarshp" target="_blank" class="s-btn s-btn-ghost" style="font-size:10px;padding:10px 20px;">GitHub ↗</a>
+    <a href="https://medium.com/@amarsh.pedapati" target="_blank" class="s-btn s-btn-ghost" style="font-size:10px;padding:10px 20px;">Medium ↗</a>
+    <a href="#" class="s-btn s-btn-fill" style="font-size:10px;padding:10px 20px;">↓ Resume</a>
+  </div>
+</div>
+
+<footer>
+  <p>© 2026 Amarsh Pedapati</p>
+  <p style="color:#222;">IIT Hyderabad · Senior AI Engineer · Hyderabad</p>
+</footer>
+
+<!-- ─── TERMINAL WORLD ─── -->
+<div id="terminal-overlay">
+  <div class="t-header">
+    <div class="t-header-left">
+      <div class="t-dot" style="background:#ff5f57"></div>
+      <div class="t-dot" style="background:#ffbd2e"></div>
+      <div class="t-dot" style="background:#28c840"></div>
+      <span class="t-title">agi@amarsh:~$ — the engineer's layer</span>
+    </div>
+    <button class="t-close" onclick="closeTerminal()">ESC / close</button>
+  </div>
+  <div class="t-body" id="t-output">
+    <div class="t-line"><span class="t-prompt-text">agi@amarsh:~$</span> <span class="t-out-text">echo "welcome to the other layer"</span></div>
+    <div class="t-line"><span class="t-out-text">welcome to the other layer</span></div>
+    <div class="t-line"></div>
+    <div class="t-line"><span class="t-out-text">This is where the real Amarsh lives. Type <span class="t-key">help</span> to explore.</span></div>
+    <div class="t-line"></div>
+  </div>
+  <div class="t-input-row">
+    <span class="t-prompt-text">agi@amarsh:~$&nbsp;</span>
+    <input class="t-input" id="t-input" type="text" autocomplete="off" spellcheck="false" onkeydown="tCmd(event)" />
+    <span class="t-cursor"></span>
+  </div>
+</div>
+
+<!-- Terminal toggle -->
+<button id="t-toggle" onclick="toggleTerminal()">
+  <div class="t-dot-btn"></div>
+  TERMINAL
+</button>
+
+<script>
+let termOpen = false;
+
+function toggleTerminal() {
+  termOpen ? closeTerminal() : openTerminal();
+}
+function openTerminal() {
+  termOpen = true;
+  document.getElementById('terminal-overlay').classList.add('open');
+  document.getElementById('t-toggle').classList.add('active');
+  setTimeout(() => document.getElementById('t-input').focus(), 500);
+}
+function closeTerminal() {
+  termOpen = false;
+  document.getElementById('terminal-overlay').classList.remove('open');
+  document.getElementById('t-toggle').classList.remove('active');
+}
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && termOpen) closeTerminal();
+  if (e.key === '`' && !termOpen) openTerminal();
+});
+
+const tCmds = {
+  help: [
+    '┌─ available commands ──────────────────────┐',
+    '│  about      who I am                      │',
+    '│  projects   what I shipped                │',
+    '│  skills     full tech stack               │',
+    '│  stats      numbers that matter           │',
+    '│  contact    reach me                      │',
+    '│  clear      clear terminal                │',
+    '└───────────────────────────────────────────┘',
+  ],
+  about: [
+    'NAME       Amarsh Pedapati',
+    'TITLE      Senior AI Engineer',
+    'COMPANY    OpenText · Hyderabad',
+    'EDUCATION  IIT Hyderabad · BTech AI · 2023',
+    'FOCUS      Agentic systems · RAG · LLM infra',
+    'STATUS     3+ years prod AI · available · 30d notice',
+  ],
+  projects: [
+    '01  AI Cockpit              [OpenText, enterprise beta]',
+    '    LangGraph + MCP + A2A · 2 weeks → 2 days planning',
+    '',
+    '02  CI/CD Migration Agent   [12× acceleration]',
+    '    770 jobs · 12 months → 1 month · hackathon winner',
+    '',
+    '03  PersonaRAG              [open source]',
+    '    4.75M words · 0 false positives · 37/37 eval pass',
+    '',
+    '04  Visa Explainability     [Fortune 500 client]',
+    '    RAG + RAGAS · C-suite stakeholders · full-stack',
+  ],
+  skills: [
+    '── Agentic AI & LLMs ──────────────────────',
+    '   LangGraph  LangChain  MCP  A2A Protocol',
+    '   RAG  Hybrid Retrieval  Multi-query  Reranking',
+    '   RAGAS  LLM-as-Judge  Guardrails  LangSmith',
+    '',
+    '── ML & Frameworks ────────────────────────',
+    '   PyTorch  Scikit-learn  HuggingFace  OpenAI SDK',
+    '   PydanticAI  Computer Vision  OOD Detection',
+    '',
+    '── Backend & Infra ─────────────────────────',
+    '   FastAPI  Docker  Kubernetes  Redis  PostgreSQL',
+    '   AWS Bedrock  SageMaker  Pinecone  FAISS  ChromaDB',
+    '   Snowflake  Python  SQL  C++  AWS AI Practitioner',
+  ],
+  stats: [
+    '12×    CI/CD migration acceleration',
+    '2d     project planning (was 2 weeks)',
+    '770    Jenkins jobs migrated',
+    '45%    Walmart top-decile uplift',
+    '13.4M  customers targeted',
+    '7×     Snowflake query speedup',
+    '37/37  PersonaRAG eval pass rate',
+    '0      false positives (30+ adversarial probes)',
+    '42.2   km marathon finished',
+    '14.8   s Rubik\'s cube personal best',
+  ],
+  contact: [
+    'EMAIL    amarsh.pedapati@gmail.com',
+    'PHONE    +91-9959822444',
+    'LINKEDIN linkedin.com/in/amarshp',
+    'GITHUB   github.com/amarshp',
+    'MEDIUM   medium.com/@amarsh.pedapati',
+    '',
+    'NOTICE   30 days',
+    'LOCATION Hyderabad, India (open to remote)',
+  ],
+};
+
+function tCmd(e) {
+  if (e.key !== 'Enter') return;
+  const input = document.getElementById('t-input');
+  const out = document.getElementById('t-output');
+  const raw = input.value;
+  const cmd = raw.trim().toLowerCase();
+  input.value = '';
+
+  const pl = document.createElement('div');
+  pl.className = 't-line';
+  pl.innerHTML = `<span class="t-prompt-text">agi@amarsh:~$</span> <span class="t-cmd-text">${raw}</span>`;
+  out.appendChild(pl);
+
+  if (cmd === 'clear') { out.innerHTML = ''; return; }
+
+  const lines = tCmds[cmd] || [`bash: ${cmd}: command not found. Try 'help'`];
+  lines.forEach(l => {
+    const d = document.createElement('div');
+    d.className = 't-line';
+    d.innerHTML = `<span class="t-out-text">${l || '&nbsp;'}</span>`;
+    out.appendChild(d);
+  });
+  const br = document.createElement('div');
+  br.className = 't-line';
+  out.appendChild(br);
+  out.scrollTop = out.scrollHeight;
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POC 3 — CLASSIFIED DOSSIER</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#06080a;
+  --paper:#080c10;
+  --border:#141c24;
+  --border2:#1e2e3e;
+  --red:#cc1111;
+  --red-dim:rgba(204,17,17,0.15);
+  --amber:#d4860a;
+  --green:#0a8a3c;
+  --cyan:#006fa8;
+  --white:#dde8f0;
+  --mid:#607080;
+  --dim:#1a2530;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Playfair Display',serif;
+}
+html{scroll-behavior:smooth;}
+body{
+  background:var(--bg);color:var(--white);font-family:var(--mono);font-size:12px;
+  overflow-x:hidden;
+}
+
+/* Scan line texture */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:99;
+  background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.05) 3px,rgba(0,0,0,0.05) 4px);
+}
+
+/* ── TOP CLASSIFICATION BANNER ── */
+.cls-banner-top,.cls-banner-bot{
+  position:fixed;left:0;right:0;z-index:100;
+  background:var(--red);color:#fff;
+  font-family:var(--mono);font-size:11px;font-weight:600;
+  letter-spacing:0.3em;text-align:center;padding:5px 0;
+  text-transform:uppercase;
+}
+.cls-banner-top{top:0;}
+.cls-banner-bot{bottom:0;}
+
+/* ── NAV ── */
+nav{
+  position:fixed;top:28px;left:0;right:0;z-index:90;
+  border-bottom:1px solid var(--border2);background:rgba(6,8,10,0.95);
+  backdrop-filter:blur(10px);
+  display:flex;align-items:center;padding:0 48px;height:44px;gap:24px;
+}
+.nav-cls{
+  font-size:8px;padding:2px 8px;border:1px solid var(--red);color:var(--red);
+  letter-spacing:0.15em;text-transform:uppercase;
+}
+.nav-id{font-size:10px;color:var(--mid);letter-spacing:0.05em;}
+.nav-id strong{color:var(--white);}
+.nav-links{margin-left:auto;display:flex;gap:24px;}
+.nav-links a{font-size:10px;color:var(--mid);text-decoration:none;letter-spacing:0.1em;text-transform:uppercase;transition:color 0.2s;}
+.nav-links a:hover{color:var(--white);}
+.nav-status{font-size:10px;color:var(--green);display:flex;align-items:center;gap:6px;border:1px solid rgba(10,138,60,0.3);padding:3px 10px;}
+.ndot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(10,138,60,0.4)}50%{box-shadow:0 0 0 4px rgba(10,138,60,0)}}
+
+/* ── MAIN WRAPPER ── */
+main{padding:120px 0 60px;}
+
+/* ── DOSSIER DOCUMENT ── */
+.doc{
+  max-width:900px;margin:0 auto;
+  background:var(--paper);border:1px solid var(--border2);
+  box-shadow:0 0 80px rgba(0,0,0,0.8);
+}
+
+/* Document header */
+.doc-header{
+  border-bottom:3px solid var(--red);padding:32px 48px;
+  background:rgba(204,17,17,0.04);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:24px;
+}
+.doc-seal{
+  width:72px;height:72px;border-radius:50%;border:2px solid var(--red);
+  display:flex;align-items:center;justify-content:center;flex-direction:column;
+  flex-shrink:0;color:var(--red);font-size:8px;text-align:center;letter-spacing:0.05em;line-height:1.4;
+}
+.doc-seal-icon{font-size:22px;margin-bottom:2px;}
+.doc-meta{flex:1;}
+.doc-cls-stamp{
+  font-size:9px;letter-spacing:0.25em;color:var(--red);border:1px solid var(--red);
+  display:inline-block;padding:2px 10px;margin-bottom:12px;
+}
+.doc-title{font-family:var(--serif);font-size:32px;font-weight:700;color:var(--white);margin-bottom:6px;line-height:1.1;}
+.doc-subtitle{font-size:11px;color:var(--mid);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:16px;}
+.doc-fields{display:grid;grid-template-columns:1fr 1fr;gap:6px 32px;}
+.doc-field{font-size:10px;}
+.doc-field-key{color:var(--mid);}
+.doc-field-val{color:var(--white);}
+.doc-field-val.green{color:var(--green);}
+.doc-num{
+  font-family:var(--serif);font-size:11px;color:var(--mid);text-align:right;line-height:1.8;
+}
+
+/* Sections */
+.section{border-top:1px solid var(--border);padding:36px 48px;}
+.section-header{
+  display:flex;align-items:center;gap:16px;margin-bottom:28px;
+}
+.sec-num{
+  font-size:9px;color:var(--red);border:1px solid rgba(204,17,17,0.3);
+  padding:3px 8px;letter-spacing:0.1em;flex-shrink:0;
+}
+.sec-title{
+  font-size:13px;color:var(--white);letter-spacing:0.15em;text-transform:uppercase;
+}
+.sec-line{flex:1;height:1px;background:var(--border2);}
+
+/* Redacted text */
+.redacted{
+  background:var(--white);color:transparent;
+  border-radius:2px;cursor:pointer;transition:all 0.3s;display:inline;
+  user-select:none;
+}
+.redacted:hover,.redacted.revealed{background:transparent;color:var(--amber);}
+.redacted-hint{font-size:9px;color:var(--mid);margin-left:4px;}
+
+/* Identity section */
+.identity-grid{display:grid;grid-template-columns:1fr 1fr;gap:32px;}
+.id-bio{font-size:12px;color:#8a9eac;line-height:1.9;}
+.id-bio strong{color:var(--white);}
+.id-vitals{display:flex;flex-direction:column;gap:10px;}
+.vital-row{display:flex;gap:0;border:1px solid var(--border2);}
+.vital-key{
+  width:130px;padding:8px 12px;background:rgba(255,255,255,0.02);
+  font-size:9px;color:var(--mid);text-transform:uppercase;letter-spacing:0.08em;
+  border-right:1px solid var(--border2);flex-shrink:0;display:flex;align-items:center;
+}
+.vital-val{padding:8px 12px;font-size:11px;color:var(--white);}
+
+/* Capability matrix */
+.cap-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+.cap-cat{background:rgba(255,255,255,0.01);border:1px solid var(--border2);padding:16px;}
+.cap-cat-title{font-size:9px;color:var(--cyan);text-transform:uppercase;letter-spacing:0.12em;margin-bottom:12px;border-bottom:1px solid var(--border);padding-bottom:6px;}
+.cap-item{display:flex;align-items:center;gap:10px;margin-bottom:7px;}
+.cap-bar-bg{flex:1;height:2px;background:var(--border);}
+.cap-bar-fill{height:100%;background:var(--cyan);transition:width 1.2s ease;}
+.cap-name{font-size:10px;color:#8a9eac;width:110px;flex-shrink:0;}
+.cap-pct{font-size:9px;color:var(--mid);width:28px;text-align:right;}
+
+/* Operation logs */
+.op-log{margin-bottom:16px;border:1px solid var(--border2);background:rgba(255,255,255,0.01);}
+.op-header{
+  padding:10px 16px;border-bottom:1px solid var(--border);
+  display:flex;align-items:center;gap:12px;
+}
+.op-id{font-size:9px;color:var(--red);letter-spacing:0.08em;}
+.op-status{font-size:8px;padding:2px 6px;border:1px solid rgba(10,138,60,0.5);color:var(--green);letter-spacing:0.08em;}
+.op-title{font-size:12px;color:var(--white);margin-left:auto;}
+.op-body{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.op-field{font-size:10px;color:#607080;line-height:1.7;}
+.op-field strong{color:var(--white);}
+.op-metric{font-size:20px;font-family:var(--serif);font-weight:700;color:var(--cyan);}
+.op-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px;}
+.op-tag{font-size:8px;padding:2px 6px;border:1px solid var(--border2);color:var(--mid);}
+
+/* Contact */
+.contact-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.contact-card{border:1px solid var(--border2);padding:16px;background:rgba(255,255,255,0.01);}
+.cc-label{font-size:9px;color:var(--mid);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:6px;}
+.cc-val{font-size:13px;color:var(--white);}
+.cc-val a{color:var(--white);text-decoration:none;border-bottom:1px solid var(--border2);padding-bottom:2px;transition:border-color 0.2s;}
+.cc-val a:hover{border-color:var(--white);}
+
+/* Stamp */
+.stamp{
+  position:absolute;right:48px;top:-20px;
+  border:3px solid var(--red);color:var(--red);
+  font-size:18px;letter-spacing:0.2em;text-transform:uppercase;
+  padding:6px 14px;font-weight:600;opacity:0.7;
+  transform:rotate(-8deg);pointer-events:none;
+}
+
+/* Quotes */
+.epigraph{
+  border-left:2px solid var(--border2);padding:12px 20px;margin:20px 0;
+  font-family:var(--serif);font-style:italic;font-size:14px;color:var(--mid);line-height:1.7;
+}
+
+/* Animate in */
+.reveal{opacity:0;transform:translateY(20px);transition:opacity 0.6s ease,transform 0.6s ease;}
+.reveal.on{opacity:1;transform:none;}
+</style>
+</head>
+<body>
+
+<div class="cls-banner-top">⬛ TOP SECRET // OMEGA — AUTHORIZED VIEWING ONLY — DO NOT DISTRIBUTE ⬛</div>
+<div class="cls-banner-bot">⬛ TOP SECRET // OMEGA — AUTHORIZED VIEWING ONLY — DO NOT DISTRIBUTE ⬛</div>
+
+<nav>
+  <span class="nav-cls">TS // OMEGA</span>
+  <span class="nav-id">DOSSIER ID: <strong>AP-2026-AGENTIC</strong></span>
+  <div class="nav-links">
+    <a href="#identity">Identity</a>
+    <a href="#capabilities">Capabilities</a>
+    <a href="#ops">Operations</a>
+    <a href="#contact">Uplink</a>
+  </div>
+  <div class="nav-status"><div class="ndot"></div>SUBJECT: ACTIVE DEPLOYMENT</div>
+</nav>
+
+<main>
+<div class="doc">
+
+  <!-- DOC HEADER -->
+  <div class="doc-header">
+    <div class="doc-seal">
+      <div class="doc-seal-icon">⬛</div>
+      <div>OMEGA<br>CLEARED</div>
+    </div>
+    <div class="doc-meta">
+      <div class="doc-cls-stamp">// TOP SECRET — OMEGA CLEARANCE REQUIRED //</div>
+      <div class="doc-title">AMARSH PEDAPATI</div>
+      <div class="doc-subtitle">Senior AI Engineer · Agentic Systems & LLM Orchestration</div>
+      <div class="doc-fields">
+        <div class="doc-field"><span class="doc-field-key">STATUS: </span><span class="doc-field-val green">● ACTIVE · AVAILABLE</span></div>
+        <div class="doc-field"><span class="doc-field-key">LOCATION: </span><span class="doc-field-val">HYDERABAD, INDIA</span></div>
+        <div class="doc-field"><span class="doc-field-key">CURRENT OP: </span><span class="doc-field-val">OPENTEXT — ENTERPRISE AI COCKPIT</span></div>
+        <div class="doc-field"><span class="doc-field-key">NOTICE PERIOD: </span><span class="doc-field-val">30 DAYS</span></div>
+        <div class="doc-field"><span class="doc-field-key">CLEARANCE: </span><span class="doc-field-val">IIT HYDERABAD · BTEC AI · 2023</span></div>
+        <div class="doc-field"><span class="doc-field-key">CONTACT: </span><span class="doc-field-val">amarsh.pedapati@gmail.com</span></div>
+      </div>
+    </div>
+    <div class="doc-num">
+      DOC #AP-2026-0001<br>
+      REV 3.1<br>
+      DATE: 2026.06.14<br>
+      PAGES: CLASSIFIED
+    </div>
+  </div>
+
+  <!-- SECTION 1: IDENTITY VERIFICATION -->
+  <div class="section reveal" id="identity">
+    <div class="section-header">
+      <div class="sec-num">// SECTION 01 //</div>
+      <div class="sec-title">Identity Verification</div>
+      <div class="sec-line"></div>
+    </div>
+    <div class="identity-grid">
+      <div>
+        <div class="epigraph">
+          "My unmatched perspicacity coupled with my sheer indefatigability makes me a feared opponent in any realm of human endeavor."
+          <br><br><span style="font-size:11px;font-style:normal;">— Subject's self-assessment. Verified accurate.</span>
+        </div>
+        <div class="id-bio">
+          Senior AI Engineer with <strong>3+ years</strong> building and maintaining production agentic systems, RAG pipelines, and LLM infrastructure end-to-end.<br><br>
+          Shipped an enterprise <strong>AI Cockpit</strong> to beta. Delivered a <strong>12×-faster CI/CD</strong> migration agent. Built evaluation-driven RAG systems with full observability.<br><br>
+          Works <strong>autonomously</strong> across the full stack — LLM design to FastAPI backend to stakeholder-facing UI.
+          <br><br>
+          <span style="font-size:10px;color:var(--mid);">Additional intel: <span class="redacted" onclick="this.classList.toggle('revealed')">marathon finisher (42.2km), speedcuber (14.8s PB), chess strategist</span> <span class="redacted-hint">[hover to reveal]</span></span>
+        </div>
+      </div>
+      <div class="id-vitals">
+        <div class="vital-row"><div class="vital-key">Codename</div><div class="vital-val">AGENT ZERO</div></div>
+        <div class="vital-row"><div class="vital-key">Designation</div><div class="vital-val">Senior AI Engineer</div></div>
+        <div class="vital-row"><div class="vital-key">Active Base</div><div class="vital-val">OpenText, Hyderabad IN</div></div>
+        <div class="vital-row"><div class="vital-key">Prior Base</div><div class="vital-val">Blend360 [Visa, Walmart]</div></div>
+        <div class="vital-row"><div class="vital-key">Field Op</div><div class="vital-val">AIBOD — Fukuoka, Japan</div></div>
+        <div class="vital-row"><div class="vital-key">Academy</div><div class="vital-val">IIT Hyderabad · BTech AI</div></div>
+        <div class="vital-row"><div class="vital-key">Cert. Level</div><div class="vital-val">AWS AI Practitioner</div></div>
+        <div class="vital-row"><div class="vital-key">Deployment</div><div class="vital-val" style="color:var(--green);">AVAILABLE · 30D NOTICE</div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 2: CAPABILITY MATRIX -->
+  <div class="section reveal" id="capabilities">
+    <div class="section-header">
+      <div class="sec-num">// SECTION 02 //</div>
+      <div class="sec-title">Capability Matrix</div>
+      <div class="sec-line"></div>
+    </div>
+    <p style="font-size:10px;color:var(--mid);margin-bottom:20px;font-style:italic;">Classified capability assessment. Proficiency levels derived from production deployment history.</p>
+    <div class="cap-grid">
+      <div class="cap-cat">
+        <div class="cap-cat-title">// Agentic AI & Orchestration</div>
+        ${[['LangGraph',96],['LangChain',94],['MCP Protocol',92],['A2A Protocol',90],['Multi-Agent',95],['Guardrails',88]].map(([n,v])=>`
+        <div class="cap-item"><span class="cap-name">${n}</span><div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${v}%"></div></div><span class="cap-pct">${v}%</span></div>`).join('')}
+      </div>
+      <div class="cap-cat">
+        <div class="cap-cat-title">// RAG & Retrieval Systems</div>
+        ${[['RAG Architecture',95],['Hybrid Retrieval',92],['RAGAS / Evals',90],['LLM-as-Judge',88],['FAISS / Pinecone',85],['Hallucination Det.',90]].map(([n,v])=>`
+        <div class="cap-item"><span class="cap-name">${n}</span><div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${v}%"></div></div><span class="cap-pct">${v}%</span></div>`).join('')}
+      </div>
+      <div class="cap-cat">
+        <div class="cap-cat-title">// ML & Frameworks</div>
+        ${[['PyTorch',85],['Scikit-learn',88],['HuggingFace',84],['OpenAI SDK',92],['PydanticAI',82],['Computer Vision',78]].map(([n,v])=>`
+        <div class="cap-item"><span class="cap-name">${n}</span><div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${v}%"></div></div><span class="cap-pct">${v}%</span></div>`).join('')}
+      </div>
+      <div class="cap-cat">
+        <div class="cap-cat-title">// Backend & Infra</div>
+        ${[['FastAPI',88],['Python',96],['Docker / K8s',80],['AWS Bedrock',82],['LangSmith',88],['Snowflake',82]].map(([n,v])=>`
+        <div class="cap-item"><span class="cap-name">${n}</span><div class="cap-bar-bg"><div class="cap-bar-fill" style="width:${v}%"></div></div><span class="cap-pct">${v}%</span></div>`).join('')}
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 3: OPERATION LOGS -->
+  <div class="section reveal" id="ops" style="position:relative;">
+    <div class="stamp">COMPLETED</div>
+    <div class="section-header">
+      <div class="sec-num">// SECTION 03 //</div>
+      <div class="sec-title">Operation Logs</div>
+      <div class="sec-line"></div>
+    </div>
+
+    <div class="op-log">
+      <div class="op-header">
+        <span class="op-id">OP-2026-001</span>
+        <span class="op-status">IN FIELD</span>
+        <span class="op-title">AI COCKPIT — ENTERPRISE AGENT ORCHESTRATION</span>
+      </div>
+      <div class="op-body">
+        <div class="op-field">
+          <strong>Base:</strong> OpenText · Jan 2026–Present<br>
+          <strong>Outcome:</strong> 2 weeks → 2 days project planning. Enterprise beta.<br>
+          <strong>Method:</strong> Master agent + A2A protocol + dynamic Expert Agent registry. MCP integrations with SAP HANA. Full LangSmith observability. Role-based guardrails.
+          <div class="op-tags"><span class="op-tag">LangGraph</span><span class="op-tag">MCP</span><span class="op-tag">A2A</span><span class="op-tag">FastAPI</span><span class="op-tag">SAP HANA</span></div>
+        </div>
+        <div class="op-field" style="text-align:right;">
+          <div class="op-metric">2d</div>
+          from 2 weeks<br><br>
+          <span style="font-size:9px;color:var(--mid);">STATUS: BETA · ENTERPRISE CLIENTS</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="op-log">
+      <div class="op-header">
+        <span class="op-id">OP-2025-002</span>
+        <span class="op-status">CLASSIFIED</span>
+        <span class="op-title">CI/CD MIGRATION AGENT — 12× ACCELERATION</span>
+      </div>
+      <div class="op-body">
+        <div class="op-field">
+          <strong>Base:</strong> OpenText · 2025<br>
+          <strong>Outcome:</strong> 770-job Jenkins→GitLab migration. 12 months → &lt;1 month.<br>
+          <strong>Method:</strong> LangGraph self-healing multi-agent. Persistent state. Hard HITL checkpoints. Won company hackathon of ~200 participants. Adopted by 10+ teams.
+          <div class="op-tags"><span class="op-tag">LangGraph</span><span class="op-tag">HITL</span><span class="op-tag">Self-Healing</span><span class="op-tag">GitLab CI</span></div>
+        </div>
+        <div class="op-field" style="text-align:right;">
+          <div class="op-metric">12×</div>
+          acceleration<br><br>
+          <span style="font-size:9px;color:var(--green);">HACKATHON: #1 / ~200</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="op-log">
+      <div class="op-header">
+        <span class="op-id">OP-2024-003</span>
+        <span class="op-status">COMPLETED</span>
+        <span class="op-title">PERSONARAG — EVAL-DRIVEN HYBRID RAG</span>
+      </div>
+      <div class="op-body">
+        <div class="op-field">
+          <strong>Base:</strong> Open Source · Independent Research<br>
+          <strong>Outcome:</strong> 0 false positives across 30+ adversarial probes. 37/37 eval pass rate.<br>
+          <strong>Method:</strong> 4.75M word corpus. Multi-query expansion, cross-encoder reranking, custom faithfulness guard. LLM-as-Judge framework.
+          <div class="op-tags"><span class="op-tag">RAG</span><span class="op-tag">RAGAS</span><span class="op-tag">LLM-Judge</span><span class="op-tag">Hybrid Retrieval</span></div>
+        </div>
+        <div class="op-field" style="text-align:right;">
+          <div class="op-metric">37/37</div>
+          eval pass rate<br><br>
+          <span style="font-size:9px;color:var(--green);">FALSE POSITIVES: ZERO</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="op-log">
+      <div class="op-header">
+        <span class="op-id">OP-2024-004</span>
+        <span class="op-status">COMPLETED</span>
+        <span class="op-title">WALMART HOLIDAY CAMPAIGN — 45% UPLIFT</span>
+      </div>
+      <div class="op-body">
+        <div class="op-field">
+          <strong>Base:</strong> Blend360 for Walmart · 2024<br>
+          <strong>Outcome:</strong> 45% uplift in top decile. 13.4M customers targeted from 130M base.<br>
+          <strong>Method:</strong> Scikit-learn uplift modeling + probability calibration. Spark datamart on Snowflake. 7× query performance, 1000× ETL runtime improvement.
+          <div class="op-tags"><span class="op-tag">Scikit-learn</span><span class="op-tag">Snowflake</span><span class="op-tag">Spark</span><span class="op-tag">Uplift Modeling</span></div>
+        </div>
+        <div class="op-field" style="text-align:right;">
+          <div class="op-metric">45%</div>
+          top decile uplift<br><br>
+          <span style="font-size:9px;color:var(--mid);">13.4M / 130M CUSTOMERS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- SECTION 4: SECURE UPLINK / CONTACT -->
+  <div class="section reveal" id="contact">
+    <div class="section-header">
+      <div class="sec-num">// SECTION 04 //</div>
+      <div class="sec-title">Secure Uplink</div>
+      <div class="sec-line"></div>
+    </div>
+    <p style="font-size:11px;color:var(--mid);margin-bottom:20px;max-width:560px;line-height:1.8;">
+      Subject is <strong style="color:var(--white)">open to new deployment</strong>. Seeking senior or lead AI engineer roles where agentic systems that matter can be built. Available with 30 days notice.
+    </p>
+    <div class="contact-grid">
+      <div class="contact-card"><div class="cc-label">Primary Channel</div><div class="cc-val"><a href="mailto:amarsh.pedapati@gmail.com">amarsh.pedapati@gmail.com</a></div></div>
+      <div class="contact-card"><div class="cc-label">Voice</div><div class="cc-val">+91-9959822444</div></div>
+      <div class="contact-card"><div class="cc-label">Intel File</div><div class="cc-val"><a href="https://linkedin.com/in/amarshp" target="_blank">linkedin.com/in/amarshp</a></div></div>
+      <div class="contact-card"><div class="cc-label">Code Repository</div><div class="cc-val"><a href="https://github.com/amarshp" target="_blank">github.com/amarshp</a></div></div>
+      <div class="contact-card" style="grid-column:span 2;">
+        <div class="cc-label">Classified Document</div>
+        <div class="cc-val" style="display:flex;align-items:center;gap:16px;">
+          <a href="#" style="font-size:12px;">↓ Amarsh_Pedapati_Senior_AIEngineer.pdf</a>
+          <span class="doc-cls-stamp" style="font-size:8px;margin-bottom:0;">RESUME · CLASSIFIED</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- DOC FOOTER -->
+  <div style="padding:16px 48px;border-top:1px solid var(--border);display:flex;justify-content:space-between;font-size:9px;color:var(--mid);">
+    <span>DOC #AP-2026-0001 // TOP SECRET</span>
+    <span>ALL INTEL VERIFIED · FIELD TESTED · PRODUCTION GRADE</span>
+    <span>© 2026 AMARSH PEDAPATI</span>
+  </div>
+
+</div>
+</main>
+
+<script>
+// Reveal on scroll
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting){
+      e.target.classList.add('on');
+      // Animate skill bars
+      e.target.querySelectorAll('.cap-bar-fill,.skill-bar-fill').forEach(b=>{
+        const w=b.style.width;
+        b.style.width='0';
+        setTimeout(()=>b.style.width=w,100);
+      });
+    }
+  });
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>observer.observe(el));
+
+// Click redacted
+document.querySelectorAll('.redacted').forEach(el=>{
+  el.addEventListener('click',()=>el.classList.toggle('revealed'));
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --color-rubik-red: #B90000;
+  --color-rubik-blue: #0045AD;
+  --color-rubik-orange: #FF5900;
+  --color-rubik-green: #009B48;
+  --color-rubik-yellow: #FFD500;
+  --color-rubik-white: #FFFFFF;
+}
+
+:root {
+  --background: #000000;
+  --foreground: #ffffff;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
+}
+
+::selection {
+  background: var(--color-rubik-blue);
+  color: white;
+}

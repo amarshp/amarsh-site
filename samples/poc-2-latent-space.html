@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POC 2 — LATENT SPACE</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:#04060d;
+  --cyan:#00c8ff;
+  --cyan2:#0066ff;
+  --green:#00ff9f;
+  --white:#eef2f8;
+  --mid:#6a8ca8;
+  --dim:#1a2535;
+  --mono:'JetBrains Mono',monospace;
+  --serif:'Playfair Display',serif;
+}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--white);font-family:var(--mono);overflow-x:hidden;}
+
+/* Canvas fixed bg */
+#canvas{position:fixed;inset:0;z-index:0;}
+
+/* Sections */
+section{
+  position:relative;z-index:10;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  padding:80px 60px;
+}
+
+/* Glass panel */
+.glass{
+  background:rgba(4,6,13,0.75);
+  backdrop-filter:blur(24px);
+  border:1px solid rgba(0,200,255,0.12);
+  border-radius:8px;
+  box-shadow:0 0 80px rgba(0,200,255,0.04), 0 32px 80px rgba(0,0,0,0.6);
+  padding:48px 56px;
+  max-width:760px;
+  width:100%;
+  opacity:0;
+  transform:translateY(30px);
+  transition:opacity 0.8s ease, transform 0.8s ease;
+}
+.glass.visible{opacity:1;transform:none;}
+
+/* Section 1 — Hero */
+.s1-content{text-align:center;}
+.s1-eyebrow{
+  font-size:10px;color:var(--cyan);letter-spacing:0.3em;text-transform:uppercase;
+  margin-bottom:24px;display:flex;align-items:center;justify-content:center;gap:12px;
+}
+.s1-eyebrow::before,.s1-eyebrow::after{content:'';flex:1;max-width:60px;height:1px;background:var(--dim);}
+.s1-h1{
+  font-family:var(--serif);font-size:clamp(48px,6vw,80px);
+  font-weight:900;line-height:0.95;letter-spacing:-0.02em;margin-bottom:24px;
+}
+.s1-h1 em{font-style:italic;color:transparent;-webkit-text-stroke:1px rgba(255,255,255,0.2);}
+.s1-sub{
+  font-family:var(--serif);font-style:italic;font-size:17px;color:var(--mid);
+  max-width:520px;margin:0 auto 40px;line-height:1.7;
+}
+.s1-stats{display:flex;justify-content:center;gap:40px;margin-bottom:36px;}
+.s1-stat-n{font-family:var(--serif);font-size:40px;font-weight:900;color:var(--white);line-height:1;}
+.s1-stat-l{font-size:9px;color:var(--mid);text-transform:uppercase;letter-spacing:0.1em;margin-top:3px;}
+.btn-glow{
+  display:inline-block;padding:12px 32px;font-size:11px;letter-spacing:0.15em;text-transform:uppercase;
+  border:1px solid var(--cyan);color:var(--cyan);background:rgba(0,200,255,0.05);
+  cursor:pointer;transition:all 0.25s;text-decoration:none;
+  box-shadow:0 0 20px rgba(0,200,255,0.1);
+}
+.btn-glow:hover{background:rgba(0,200,255,0.12);box-shadow:0 0 30px rgba(0,200,255,0.2);}
+
+/* Section 2 — Organizing (the "chaos → structure" visual moment) */
+.s2-label{
+  position:absolute;top:60px;left:60px;
+  font-size:9px;color:rgba(0,200,255,0.4);text-transform:uppercase;letter-spacing:0.2em;
+}
+.pipeline{
+  display:flex;align-items:center;gap:0;width:100%;max-width:800px;
+}
+.pipe-stage{
+  flex:1;text-align:center;padding:24px 16px;
+  border:1px solid var(--dim);background:rgba(4,6,13,0.7);
+  backdrop-filter:blur(16px);
+  position:relative;
+  opacity:0;transform:scale(0.9);transition:all 0.5s ease;
+}
+.pipe-stage.visible{opacity:1;transform:none;}
+.pipe-stage::after{
+  content:'→';position:absolute;right:-14px;top:50%;transform:translateY(-50%);
+  font-size:16px;color:var(--cyan);z-index:1;
+}
+.pipe-stage:last-child::after{display:none;}
+.pipe-icon{font-size:28px;margin-bottom:8px;}
+.pipe-name{font-size:10px;color:var(--cyan);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:4px;}
+.pipe-desc{font-size:9px;color:var(--mid);line-height:1.5;}
+.pipe-flow{
+  position:absolute;bottom:-3px;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--cyan),transparent);
+  animation:flow 2s infinite linear;opacity:0;
+}
+.pipe-stage.visible .pipe-flow{opacity:1;}
+@keyframes flow{from{background-position:-200px 0}to{background-position:200px 0}}
+
+/* Section 3 — Work */
+.s3-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:24px;}
+.work-card{
+  padding:20px;border:1px solid var(--dim);background:rgba(0,200,255,0.03);border-radius:4px;
+  transition:border-color 0.2s;
+}
+.work-card:hover{border-color:rgba(0,200,255,0.25);}
+.wc-metric{font-family:var(--serif);font-size:32px;font-weight:900;color:var(--cyan);line-height:1;margin-bottom:6px;}
+.wc-title{font-size:12px;color:var(--white);margin-bottom:6px;}
+.wc-desc{font-size:10px;color:var(--mid);line-height:1.6;}
+.wc-tags{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px;}
+.wc-tag{font-size:8px;padding:2px 6px;border:1px solid var(--dim);color:#445;}
+
+/* Section 4 — Beyond */
+.beyond-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:24px;}
+.bg-item{
+  padding:20px;border:1px solid var(--dim);text-align:center;background:rgba(0,200,255,0.02);
+  border-radius:4px;
+}
+.bg-icon{font-size:28px;margin-bottom:10px;}
+.bg-num{font-family:var(--serif);font-size:28px;font-weight:900;color:var(--white);}
+.bg-lbl{font-size:9px;color:var(--mid);text-transform:uppercase;letter-spacing:0.08em;margin-top:3px;}
+
+/* Section 5 — Contact */
+.s5-big{font-family:var(--serif);font-size:clamp(32px,5vw,56px);font-style:italic;line-height:1.1;margin-bottom:20px;}
+.s5-email{font-size:14px;color:var(--white);text-decoration:none;border-bottom:1px solid var(--dim);padding-bottom:3px;transition:border-color 0.2s;}
+.s5-email:hover{border-color:var(--white);}
+
+/* Section label */
+.sec-label{font-size:9px;color:var(--cyan);text-transform:uppercase;letter-spacing:0.2em;margin-bottom:20px;display:flex;align-items:center;gap:10px;}
+.sec-label::after{content:'';flex:1;height:1px;background:var(--dim);}
+
+/* Scroll hint */
+.scroll-hint{
+  position:fixed;bottom:32px;left:50%;transform:translateX(-50%);
+  font-size:9px;color:var(--mid);text-transform:uppercase;letter-spacing:0.2em;
+  display:flex;flex-direction:column;align-items:center;gap:8px;z-index:20;
+  animation:bounce 2s ease infinite;
+}
+@keyframes bounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}
+.scroll-line{width:1px;height:32px;background:linear-gradient(var(--mid),transparent);}
+
+/* Progress dots */
+.nav-dots{
+  position:fixed;right:24px;top:50%;transform:translateY(-50%);
+  display:flex;flex-direction:column;gap:10px;z-index:20;
+}
+.nav-dot{
+  width:6px;height:6px;border-radius:50%;background:var(--dim);
+  border:1px solid var(--mid);cursor:pointer;transition:all 0.3s;
+}
+.nav-dot.active{background:var(--cyan);border-color:var(--cyan);box-shadow:0 0 8px var(--cyan);}
+</style>
+</head>
+<body>
+
+<canvas id="canvas"></canvas>
+
+<!-- NAV DOTS -->
+<div class="nav-dots">
+  <div class="nav-dot active" onclick="scrollTo({top:0,behavior:'smooth'})"></div>
+  <div class="nav-dot" onclick="document.getElementById('s2').scrollIntoView({behavior:'smooth'})"></div>
+  <div class="nav-dot" onclick="document.getElementById('s3').scrollIntoView({behavior:'smooth'})"></div>
+  <div class="nav-dot" onclick="document.getElementById('s4').scrollIntoView({behavior:'smooth'})"></div>
+  <div class="nav-dot" onclick="document.getElementById('s5').scrollIntoView({behavior:'smooth'})"></div>
+</div>
+
+<!-- S1: HERO -->
+<section id="s1">
+  <div class="glass s1-content" id="g1">
+    <div class="s1-eyebrow">Senior AI Engineer · IIT Hyderabad · OpenText</div>
+    <h1 class="s1-h1">
+      Agentic<br>
+      <em>Systems</em><br>
+      Engineer
+    </h1>
+    <p class="s1-sub">"My unmatched perspicacity coupled with my sheer indefatigability makes me a feared opponent in any realm of human endeavor."</p>
+    <div class="s1-stats">
+      <div><div class="s1-stat-n">12×</div><div class="s1-stat-l">Delivery speed</div></div>
+      <div><div class="s1-stat-n">3+</div><div class="s1-stat-l">Years prod AI</div></div>
+      <div><div class="s1-stat-n">42km</div><div class="s1-stat-l">Marathon</div></div>
+    </div>
+    <a class="btn-glow" href="#s5">Open Uplink →</a>
+  </div>
+  <div class="scroll-hint" id="sh"><div class="scroll-line"></div>scroll</div>
+</section>
+
+<!-- S2: ORGANIZING (particles visually organize here) -->
+<section id="s2" style="flex-direction:column;gap:48px;">
+  <div class="s2-label">// from chaos to structure — what agentic systems do</div>
+  <div class="pipeline" id="pipe">
+    <div class="pipe-stage" style="transition-delay:0s">
+      <div class="pipe-flow"></div>
+      <div class="pipe-icon">⚡</div>
+      <div class="pipe-name">Raw Intent</div>
+      <div class="pipe-desc">Unstructured natural language from human or system</div>
+    </div>
+    <div class="pipe-stage" style="transition-delay:0.15s">
+      <div class="pipe-flow"></div>
+      <div class="pipe-icon">🧠</div>
+      <div class="pipe-name">Orchestrator</div>
+      <div class="pipe-desc">Master agent routes via A2A protocol</div>
+    </div>
+    <div class="pipe-stage" style="transition-delay:0.3s">
+      <div class="pipe-flow"></div>
+      <div class="pipe-icon">🔍</div>
+      <div class="pipe-name">RAG Retrieval</div>
+      <div class="pipe-desc">Hybrid retrieval with cross-encoder reranking</div>
+    </div>
+    <div class="pipe-stage" style="transition-delay:0.45s">
+      <div class="pipe-flow"></div>
+      <div class="pipe-icon">🛡️</div>
+      <div class="pipe-name">Guardrails</div>
+      <div class="pipe-desc">Faithfulness guard, hallucination detection</div>
+    </div>
+    <div class="pipe-stage" style="transition-delay:0.6s">
+      <div class="pipe-icon">✅</div>
+      <div class="pipe-name">Deployment</div>
+      <div class="pipe-desc">FastAPI + LangSmith observability in prod</div>
+    </div>
+  </div>
+  <div class="glass" id="g2" style="max-width:760px;text-align:center;">
+    <div class="sec-label">The builder</div>
+    <p style="font-family:var(--serif);font-size:18px;color:var(--mid);font-style:italic;line-height:1.7;">
+      I'm <strong style="color:var(--white)">Amarsh Pedapati</strong>. I design systems that take raw, unstructured intent — from humans, from data, from chaos — and impose structure. Production-grade. Measurable. Shipped.
+    </p>
+  </div>
+</section>
+
+<!-- S3: WORK -->
+<section id="s3">
+  <div class="glass" id="g3" style="max-width:900px;">
+    <div class="sec-label">Mission Log</div>
+    <div class="s3-grid">
+      <div class="work-card">
+        <div class="wc-metric">12×</div>
+        <div class="wc-title">CI/CD Migration Agent · OpenText</div>
+        <div class="wc-desc">770-job Jenkins→GitLab. 12 months → &lt;1 month. LangGraph self-healing, HITL. Hackathon #1 of ~200.</div>
+        <div class="wc-tags"><span class="wc-tag">LangGraph</span><span class="wc-tag">HITL</span><span class="wc-tag">Self-Healing</span></div>
+      </div>
+      <div class="work-card">
+        <div class="wc-metric">2d</div>
+        <div class="wc-title">AI Cockpit · Enterprise Orchestration</div>
+        <div class="wc-desc">2 weeks → 2 days planning. A2A + MCP + SAP HANA. Master agent registry. Enterprise beta.</div>
+        <div class="wc-tags"><span class="wc-tag">MCP</span><span class="wc-tag">A2A</span><span class="wc-tag">FastAPI</span></div>
+      </div>
+      <div class="work-card">
+        <div class="wc-metric">0</div>
+        <div class="wc-title">PersonaRAG · Open Source</div>
+        <div class="wc-desc">0 false positives. 37/37 eval pass. 4.75M words. Adversarial-tested hallucination control.</div>
+        <div class="wc-tags"><span class="wc-tag">RAG</span><span class="wc-tag">RAGAS</span><span class="wc-tag">LLM-Judge</span></div>
+      </div>
+      <div class="work-card">
+        <div class="wc-metric">45%</div>
+        <div class="wc-title">Walmart Campaign · Blend360</div>
+        <div class="wc-desc">45% top-decile uplift. 13.4M customers targeted. Uplift modeling + Snowflake 7× query speedup.</div>
+        <div class="wc-tags"><span class="wc-tag">Scikit-learn</span><span class="wc-tag">Snowflake</span><span class="wc-tag">Spark</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S4: BEYOND -->
+<section id="s4">
+  <div class="glass" id="g4" style="max-width:700px;">
+    <div class="sec-label">Beyond the Terminal</div>
+    <p style="font-family:var(--serif);font-size:15px;font-style:italic;color:var(--mid);margin-bottom:24px;line-height:1.7;">
+      Discipline in one domain fuels excellence in another.
+    </p>
+    <div class="beyond-grid">
+      <div class="bg-item"><div class="bg-icon">🏃</div><div class="bg-num">42.2</div><div class="bg-lbl">km Marathon</div></div>
+      <div class="bg-item"><div class="bg-icon">🧊</div><div class="bg-num">14.8s</div><div class="bg-lbl">Cube PB</div></div>
+      <div class="bg-item"><div class="bg-icon">♔</div><div class="bg-num" style="font-size:22px;padding-top:4px;">Chess</div><div class="bg-lbl">Strategist</div></div>
+      <div class="bg-item"><div class="bg-icon">🎸</div><div class="bg-num" style="font-size:22px;padding-top:4px;">Guitar</div><div class="bg-lbl">Creative</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- S5: CONTACT -->
+<section id="s5">
+  <div class="glass" id="g5" style="max-width:640px;">
+    <div class="sec-label">Secure Uplink</div>
+    <div class="s5-big">Let's build<br>something that matters.</div>
+    <p style="font-size:12px;color:var(--mid);margin-bottom:28px;">Senior/lead AI roles. 30d notice. Hyderabad or remote.</p>
+    <a href="mailto:amarsh.pedapati@gmail.com" class="s5-email">amarsh.pedapati@gmail.com</a>
+    <div style="display:flex;gap:12px;margin-top:24px;flex-wrap:wrap;">
+      <a href="https://linkedin.com/in/amarshp" target="_blank" class="btn-glow" style="font-size:10px;padding:8px 18px;">LinkedIn ↗</a>
+      <a href="https://github.com/amarshp" target="_blank" class="btn-glow" style="font-size:10px;padding:8px 18px;">GitHub ↗</a>
+      <a href="#" class="btn-glow" style="font-size:10px;padding:8px 18px;border-color:#eef2f8;color:#eef2f8;">↓ Resume</a>
+    </div>
+  </div>
+</section>
+
+<script>
+// Canvas particle system
+const canvas=document.getElementById('canvas');
+const ctx=canvas.getContext('2d');
+let W,H,particles=[],animId;
+let scrollProgress=0;
+
+function resize(){
+  W=canvas.width=window.innerWidth;
+  H=canvas.height=window.innerHeight;
+}
+resize();
+window.addEventListener('resize',()=>{resize();initParticles();});
+
+function initParticles(){
+  particles=[];
+  const N=200;
+  for(let i=0;i<N;i++){
+    particles.push({
+      x:Math.random()*W,
+      y:Math.random()*H,
+      ox:Math.random()*W, // original chaotic pos
+      ty:H*0.5+((i/N)-0.5)*H*0.3, // target organized Y
+      tx:(i/N)*W*1.1-W*0.05, // target organized X
+      vx:(Math.random()-0.5)*0.5,
+      vy:(Math.random()-0.5)*0.5,
+      r:Math.random()*1.8+0.4,
+      hue:Math.random()*40+190, // cyan-blue
+      alpha:Math.random()*0.6+0.3,
+    });
+  }
+}
+initParticles();
+
+function lerp(a,b,t){return a+(b-a)*t;}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const sp=Math.min(scrollProgress,1);
+
+  particles.forEach((p,i)=>{
+    // Interpolate between chaos and order
+    if(sp>0.05){
+      p.x=lerp(p.x,lerp(p.ox,p.tx,sp),0.04);
+      p.y=lerp(p.y,lerp(p.y,p.ty,sp),0.04);
+    } else {
+      p.x+=p.vx;p.y+=p.vy;
+      if(p.x<0||p.x>W)p.vx*=-1;
+      if(p.y<0||p.y>H)p.vy*=-1;
+    }
+
+    // Color shifts with scroll
+    const hue=lerp(p.hue,160,sp); // cyan to green
+    ctx.fillStyle=`hsla(${hue},100%,${60+sp*10}%,${p.alpha*(0.4+sp*0.6)})`;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r,0,Math.PI*2);ctx.fill();
+
+    // Draw connections when organized
+    if(sp>0.3){
+      for(let j=i+1;j<particles.length;j++){
+        const dx=p.x-particles[j].x,dy=p.y-particles[j].y;
+        const d=Math.sqrt(dx*dx+dy*dy);
+        const maxD=60+sp*60;
+        if(d<maxD){
+          ctx.strokeStyle=`hsla(${hue},100%,60%,${(1-d/maxD)*0.12*sp})`;
+          ctx.lineWidth=0.5;
+          ctx.beginPath();ctx.moveTo(p.x,p.y);ctx.lineTo(particles[j].x,particles[j].y);ctx.stroke();
+        }
+      }
+    }
+  });
+  animId=requestAnimationFrame(draw);
+}
+draw();
+
+// Scroll drive
+window.addEventListener('scroll',()=>{
+  const maxScroll=document.body.scrollHeight-window.innerHeight;
+  scrollProgress=window.scrollY/maxScroll;
+
+  // Update nav dots
+  const sections=['s1','s2','s3','s4','s5'];
+  const dots=document.querySelectorAll('.nav-dot');
+  sections.forEach((id,i)=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const r=el.getBoundingClientRect();
+    dots[i].classList.toggle('active',r.top<=H/2&&r.bottom>H/2);
+  });
+
+  // Hide scroll hint
+  document.getElementById('sh').style.opacity=scrollProgress>0.05?0:1;
+
+  // Reveal glass panels
+  document.querySelectorAll('.glass').forEach(g=>{
+    const r=g.getBoundingClientRect();
+    if(r.top<H*0.85)g.classList.add('visible');
+  });
+
+  // Reveal pipeline
+  if(scrollProgress>0.12){
+    document.querySelectorAll('.pipe-stage').forEach(p=>p.classList.add('visible'));
+  }
+});
+
+// Initial reveal
+setTimeout(()=>document.getElementById('g1').classList.add('visible'),300);
+</script>
+</body>
+</html>
