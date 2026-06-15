@@ -886,6 +886,7 @@ function updateCreature(t, agit) {
   cGeom.attributes.position.needsUpdate = true;
   cGeom.attributes.color.needsUpdate = true;
   glassGeom.attributes.position.needsUpdate = true;   // glass shares the web's animated nodes
+  glassGeom.computeBoundingSphere();                  // keep bounds current so raycasts hit the real (deforming) shape
 }
 
 // ── RED CORE ──────────────────────────────────────────────────
@@ -1251,8 +1252,8 @@ function fireBolt(){
     if(d < c.rad && d < bestD){ bestD=d; target={kind:'fly',c}; impact=_tmpV.clone(); } }
   for(const p of planets){ p.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     if(d < Math.max(p.rad*1.5, 0.6) && d < bestD){ bestD=d; target={kind:'planet',p}; impact=_tmpV.clone(); } }
-  if(!target){ creatureMesh.getWorldPosition(_cw); const dC=_ray.ray.distanceToPoint(_cw);
-    if(dC < 1.5*creatureMesh.scale.x){ target={kind:'entity'}; impact=_ray.ray.closestPointToPoint(_cw,new THREE.Vector3()); } }
+  if(!target){ const eh=_ray.intersectObject(membrane, false);   // real geometry hit — only the actual glass shape takes damage
+    if(eh.length && eh[0].distance < bestD){ target={kind:'entity'}; impact=eh[0].point.clone(); } }
   const dest = impact || _ray.ray.at(40, new THREE.Vector3());
   window.__lastShot = target ? target.kind : 'miss';   // debug: what the last bolt locked onto
   spawnBolt(_ray.ray.at(1.6, new THREE.Vector3()), dest, target);   // muzzle just in front of the feed
