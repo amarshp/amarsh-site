@@ -182,6 +182,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
       <div>SAT · NaN-WATCH 01</div>
       <div>ALT <b id="ss-alt">540.1</b> km</div>
       <div>VEL <b id="ss-vel">7.59</b> km/s</div>
+      <div>INC <b>28.5</b>° · LEO</div>
       <div>PWR <b id="ss-pwr">98</b>% · SIG <b id="ss-sig">-81</b> dBm</div>
     </div>
   </div>
@@ -747,7 +748,9 @@ galaxy.add(mwBand);
 // (no interior chords, nothing to crumble or overlap). Each vertex is then pushed outward along its own
 // direction by a spike field, turning the sphere into a spiky urchin while the edges stay a tidy surface.
 // The glass body reuses the SAME vertices and faces, so lines, edges and faces are one shape.
-const _ico = mergeVertices(new THREE.IcosahedronGeometry(1, 3));   // ~642 unique verts, indexed grid
+const _icoBase = new THREE.IcosahedronGeometry(1, 3);
+_icoBase.deleteAttribute('uv'); _icoBase.deleteAttribute('normal');   // weld by POSITION only — no UV-seam dupes
+const _ico = mergeVertices(_icoBase);   // ~642 unique verts, indexed grid (fully closed, no seam cracks)
 const _icoPos = _ico.attributes.position, _icoIdx = _ico.index.array;
 const NUM_PTS = _icoPos.count;
 const NUM_SPIKE = 20;        // number of spike directions
@@ -769,6 +772,7 @@ for (let n=0;n<NUM_PTS;n++){
     sx:0.5+Math.random()*0.7, sy:0.4+Math.random()*0.6,
     amp:0.02+Math.random()*0.03 });            // gentle radial breathing
 }
+const _maxRest = cN.reduce((m,p)=>Math.max(m,p.r0), 0);   // longest spike at rest → used to keep tips inside the disc
 // Faces (glass) and unique edges (wireframe) straight from the icosphere index — one clean surface topology.
 const glassTris = Array.from(_icoIdx);
 const cEdges = [];
@@ -1136,7 +1140,7 @@ function _fbm(x,y){ let v=0,a=0.5,fx=x,fy=y; for(let o=0;o<5;o++){ v+=a*(Math.si
 const TEX_BODY={gas:'jupiter',rocky:'mars',ice:'neptune',lava:'io',ocean:'earth_daymap'};
 const _texLoader=new THREE.TextureLoader();
 function planetTexture(type){
-  const tx=_texLoader.load('/textures/2k_'+TEX_BODY[type]+'.jpg', undefined, undefined,
+  const tx=_texLoader.load(new URL('textures/2k_'+TEX_BODY[type]+'.jpg', document.baseURI).href, undefined, undefined,
     ()=>{ tx.image=proceduralPlanetCanvas(type); tx.needsUpdate=true; });  // fallback: procedural canvas if asset missing
   tx.colorSpace=THREE.SRGBColorSpace; tx.wrapS=THREE.RepeatWrapping;       // sRGB so the maps aren't dark/desaturated
   return tx;
@@ -1611,7 +1615,9 @@ function animate(){
     creRecoilY + Math.cos(t*8.3)*creAgit*0.03,
     Math.sin(t*0.4)*0.06
   );
-  creatureMesh.scale.setScalar(ENTITY_SCALE * Math.min(1.5, breathe * creReach * (1 + creAgit*0.05))); // clamp so no mood blows it off-screen
+  // breathing/reach scale, then HARD-clamp so even at full reach the longest spike stays inside the disc
+  const _entS = Math.min(ENTITY_SCALE * Math.min(1.5, breathe * creReach * (1 + creAgit*0.05)), DISC_R*0.96/_maxRest);
+  creatureMesh.scale.setScalar(_entS);
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
   membrane.scale.copy(creatureMesh.scale);
   membrane.rotation.copy(creatureMesh.rotation);
