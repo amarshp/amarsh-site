@@ -1083,33 +1083,51 @@ const projCards=[]; let projActive=false;
 function _wrap(g,text,x,y,maxW,lh){ const words=text.split(' '); let line='',yy=y;
   for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ g.fillText(line.trim(),x,yy); line=w+' '; yy+=lh; } else line=t; }
   g.fillText(line.trim(),x,yy); return yy; }
+// Chromatic-aberration (RGB-split) text — the glitch-entity signature, NOT the clean sat HUD look.
+function _rgb(g, text, x, y, font, main){
+  g.font=font; g.save(); g.globalCompositeOperation='lighter';
+  g.fillStyle='rgba(0,234,255,0.85)'; g.fillText(text, x-2, y);        // cyan ghost
+  g.fillStyle='rgba(255,42,109,0.8)'; g.fillText(text, x+2, y+1);      // magenta ghost
+  g.restore(); g.fillStyle=main; g.fillText(text, x, y);              // crisp face
+}
+function _rgbWrap(g,text,x,y,maxW,lh,font,main){ g.font=font; const words=text.split(' '); let line='',yy=y;
+  for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ _rgb(g,line.trim(),x,yy,font,main); line=w+' '; yy+=lh; } else line=t; }
+  _rgb(g,line.trim(),x,yy,font,main); return yy; }
+function _glitchDeco(g,W,H,sc){
+  for(let k=0;k<7;k++){ const y=(Math.random()*H)|0, h=1+(Math.random()*9|0), off=(Math.random()*22-11)|0;   // datamosh slices
+    g.globalAlpha=0.05+Math.random()*0.13; g.fillStyle=['#00eaff','#ff2a6d','#aaff00',sc][k%4]; g.fillRect(off,y,W,h); }
+  g.globalAlpha=1;
+  g.fillStyle='rgba(190,240,255,0.05)'; for(let k=0;k<70;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // static noise
+  g.lineWidth=2;                                                       // torn RGB-split frame (offset, not clean)
+  g.strokeStyle='rgba(0,234,255,0.5)'; g.strokeRect(8,8,W-16,H-16);
+  g.strokeStyle='rgba(255,42,109,0.4)'; g.strokeRect(11,6,W-16,H-16);
+  g.fillStyle='rgba(8,6,16,0.92)'; for(let k=0;k<5;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*46|0);   // chew gaps in the frame
+    if(e===0) g.fillRect(14+Math.random()*(W-90),6,len,5); else if(e===1) g.fillRect(14+Math.random()*(W-90),H-11,len,5);
+    else if(e===2) g.fillRect(6,14+Math.random()*(H-70),5,len); else g.fillRect(W-11,14+Math.random()*(H-70),5,len); }
+}
 function makeCardCanvas(p, expanded){
   const W=512, H=expanded?384:208, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
-  g.fillStyle='rgba(6,22,34,0.62)'; g.fillRect(0,0,W,H);
-  g.strokeStyle='rgba(120,230,255,0.55)'; g.lineWidth=2; g.strokeRect(7,7,W-14,H-14);
-  g.strokeStyle=p.sc; g.lineWidth=3;                                  // accent corner ticks
-  [[10,10,1,1],[W-10,10,-1,1],[10,H-10,1,-1],[W-10,H-10,-1,-1]].forEach(([x,y,dx,dy])=>{ g.beginPath(); g.moveTo(x+dx*26,y); g.lineTo(x,y); g.lineTo(x,y+dy*26); g.stroke(); });
-  g.font='700 22px Orbitron, monospace'; g.fillStyle=p.sc; g.fillText(p.code+'   ● '+p.status, 28, 46);
-  g.font='900 29px Orbitron, sans-serif'; g.fillStyle='#e3fbff'; const ty=_wrap(g,p.title,28,86,W-56,33);
+  g.fillStyle='rgba(8,6,16,0.66)'; g.fillRect(0,0,W,H);                // dark, not sat-cyan
+  _glitchDeco(g,W,H,p.sc);
+  _rgb(g, p.code+'  '+p.status, 26, 44, '700 21px Orbitron, monospace', p.sc);
+  const ty=_rgbWrap(g, p.title, 26, 84, W-52, 32, '900 28px Orbitron, sans-serif', '#eaf7ff');
   if(expanded){
-    g.font='400 17px monospace'; g.fillStyle='rgba(205,240,255,0.82)'; _wrap(g,p.desc, 28, ty+38, W-56, 23);
-    g.font='700 18px Orbitron, monospace'; g.fillStyle=p.sc; g.fillText('▸ '+p.metric, 28, H-64);
-    g.font='600 13px Orbitron, monospace'; let tx=28; g.fillStyle='rgba(160,235,255,0.92)';
-    p.tags.forEach(t=>{ const w=g.measureText(t).width+18; g.strokeStyle='rgba(120,230,255,0.38)'; g.lineWidth=1; g.strokeRect(tx,H-40,w,24); g.fillText(t, tx+9, H-23); tx+=w+8; });
-    g.font='400 13px monospace'; g.fillStyle='rgba(140,210,240,0.5)'; g.fillText('◣ FIRE TO CLOSE', W-156, 46);
+    g.fillStyle='rgba(210,240,255,0.85)'; g.font='400 16px monospace'; _wrap(g, p.desc, 26, ty+36, W-52, 22);
+    _rgb(g, '▸ '+p.metric, 26, H-62, '700 17px Orbitron, monospace', '#eaf7ff');
+    g.font='600 12px Orbitron, monospace'; let tx=26;
+    p.tags.forEach(t=>{ const w=g.measureText(t).width+16; g.strokeStyle='rgba(0,234,255,0.4)'; g.lineWidth=1; g.strokeRect(tx,H-38,w,22); g.fillStyle='rgba(185,240,255,0.9)'; g.fillText(t, tx+8, H-22); tx+=w+7; });
+    g.fillStyle='rgba(255,42,109,0.65)'; g.font='400 12px monospace'; g.fillText('◣ FIRE//CLOSE', W-150, 44);
   } else {
-    g.font='400 15px monospace'; g.fillStyle='rgba(150,215,245,0.6)'; g.fillText('◣ FIRE TO EXPAND', 28, H-22);
+    g.fillStyle='rgba(0,234,255,0.62)'; g.font='400 14px monospace'; g.fillText('◣ FIRE//EXPAND', 26, H-20);
   }
-  g.fillStyle='rgba(0,0,0,0.10)'; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,2);   // holographic scanlines
+  g.fillStyle='rgba(0,0,0,0.17)'; for(let y=0;y<H;y+=3) g.fillRect(0,y,W,1);   // heavy CRT scanlines
   return c;
 }
 function _cardGeo(expanded){ const w=1.55, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
-function redrawCard(card){
-  if(card.tex) card.tex.dispose();
+function _applyCanvas(card){ if(card.tex) card.tex.dispose();
   const tex=new THREE.CanvasTexture(makeCardCanvas(card.p, card.expanded)); tex.colorSpace=THREE.SRGBColorSpace;
-  card.mesh.material.map=tex; card.mesh.material.needsUpdate=true; card.tex=tex;
-  card.mesh.geometry.dispose(); card.mesh.geometry=_cardGeo(card.expanded);
-}
+  card.mesh.material.map=tex; card.mesh.material.needsUpdate=true; card.tex=tex; }
+function redrawCard(card){ _applyCanvas(card); card.mesh.geometry.dispose(); card.mesh.geometry=_cardGeo(card.expanded); }
 function clearProjHolo(){
   for(const c of projCards){ projGroup.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); if(c.tex) c.tex.dispose();
     projRays.remove(c.ray); c.ray.geometry.dispose(); c.ray.material.dispose(); }
@@ -1125,7 +1143,7 @@ function buildProjHolo(){
     const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), pos.clone()]),
       new THREE.LineBasicMaterial({color:new THREE.Color(p.sc), transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
     projRays.add(ray);
-    const card={p, mesh, tex:null, ray, expanded:false, baseY:pos.y, bob:Math.random()*6, appear:0};
+    const card={p, mesh, tex:null, ray, expanded:false, baseX:pos.x, baseY:pos.y, baseZ:pos.z, bob:Math.random()*6, appear:0, glitch:0, jx:0};
     projCards.push(card); redrawCard(card);
   });
   projGroup.visible=true; projActive=true;
@@ -1137,12 +1155,17 @@ function updateProjHolo(dt, t){
   if(!projActive) return;
   for(const c of projCards){ c.appear=Math.min(1, c.appear+dt*1.6);
     c.mesh.quaternion.copy(camera.quaternion);                         // billboard to camera
-    const yb=c.baseY + Math.sin(t*1.1 + c.bob)*0.05;                   // gentle float
-    c.mesh.position.y=yb;
-    c.mesh.material.opacity=c.appear*(0.84 + Math.sin(t*7 + c.bob*3)*0.06);   // materialize + flicker
+    // GLITCH: occasional horizontal tear (jx) + periodic datamosh re-render; constant micro-shake
+    c.glitch-=dt;
+    if(c.glitch<=0){ c.glitch=0.18+Math.random()*0.7; c.jx=Math.random()<0.45 ? (Math.random()*0.16-0.08) : 0;
+      if(Math.random()<0.45) _applyCanvas(c); }                        // re-glitch the datamosh slices
+    const yb=c.baseY + Math.sin(t*1.1 + c.bob)*0.05;
+    c.mesh.position.set(c.baseX + c.jx + Math.sin(t*47 + c.bob)*0.006, yb, c.baseZ);   // tear + jitter
+    const stut = (Math.sin(t*23 + c.bob*5) > 0.93) ? 0.35 : 1;         // sudden signal dropouts
+    c.mesh.material.opacity = c.appear * (0.8 + Math.sin(t*7 + c.bob*3)*0.08) * stut;
     const rp=c.ray.geometry.attributes.position.array; rp[3]=c.mesh.position.x; rp[4]=yb; rp[5]=c.mesh.position.z;
     c.ray.geometry.attributes.position.needsUpdate=true;
-    c.ray.material.opacity=c.appear*(0.16 + Math.sin(t*9 + c.bob)*0.05);     // projection beam flicker
+    c.ray.material.opacity = c.appear * (0.16 + Math.sin(t*31 + c.bob)*0.1) * stut;    // unstable beam
   }
 }
 let _lastEventSec=null;
