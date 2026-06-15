@@ -39,3 +39,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# dev screenshots & scratch artifacts (design refs kept locally, not committed)
+/*.png
+/*.jpg
+/*.webm
+/*.log
+/.playwright-mcp/
+/.codex-review.md
+/samples/*-backup-*.html
