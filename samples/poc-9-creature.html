@@ -1453,7 +1453,11 @@ hud.width = W; hud.height = H;
 let mx=W/2, my=H/2, crx=W/2, cry=H/2;
 let tRX=0, tRY=0, lagRX=0, lagRY=0, autoRY=0;
 let manualRX=0, manualRY=0, isDragging=false, dragX=0, dragY=0, dRX=0, dRY=0;
-let worldYaw=0, worldPitch=0;
+let worldYaw=0, worldPitch=0;            // derived from worldQuat each frame, only for background parallax
+const worldQuat=new THREE.Quaternion();  // free-orbit trackball rotation (no axis clamp)
+const _qDx=new THREE.Quaternion(), _qDy=new THREE.Quaternion(), _qLean=new THREE.Quaternion();
+const _AXX=new THREE.Vector3(1,0,0), _AXY=new THREE.Vector3(0,1,0), _wEul=new THREE.Euler(0,0,0,'YXZ');
+let lastDragX=0, lastDragY=0;
 let hovNav=-1, hovCore=false, activeSec=null;
 let panelOffset=0, targetPOffset=0;
 let ripples=[];
@@ -1546,7 +1550,9 @@ document.addEventListener('mousemove',e=>{
   mx=e.clientX; my=e.clientY;
   curEl.style.left=mx+'px'; curEl.style.top=my+'px';
   if(!isDragging){tRX=(my-H/2)/(H/2)*.18; tRY=(mx-W/2)/(W/2)*.18;}
-  else{manualRX=dRX+(e.clientY-dragY)*.006; manualRY=dRY+(e.clientX-dragX)*.009;}
+  else{ const dx=e.clientX-lastDragX, dy=e.clientY-lastDragY; lastDragX=e.clientX; lastDragY=e.clientY;
+    _qDy.setFromAxisAngle(_AXY, dx*0.008); _qDx.setFromAxisAngle(_AXX, dy*0.008);
+    worldQuat.premultiply(_qDx).premultiply(_qDy); }   // free trackball — drag rotates in ALL directions, no axis limit
 });
 (function animRing(){crx+=(mx-crx)*.1;cry+=(my-cry)*.1;ringEl.style.left=crx+'px';ringEl.style.top=cry+'px';requestAnimationFrame(animRing);})();
 
@@ -1558,7 +1564,7 @@ renderer.domElement.addEventListener('mousedown',e=>{
     return;
   }
   if(hovNav>=0||hovCore)return;
-  isDragging=true; dragX=e.clientX; dragY=e.clientY; dRX=manualRX; dRY=manualRY;
+  isDragging=true; dragX=e.clientX; dragY=e.clientY; lastDragX=e.clientX; lastDragY=e.clientY;
   document.body.classList.add('drag-mode');
 });
 renderer.domElement.addEventListener('mousemove',e=>{ if(gesturing) gPts.push({x:e.clientX,y:e.clientY}); });
@@ -1832,16 +1838,17 @@ function animate(){
     lagRX+=(tRX-lagRX)*.035;
     lagRY+=(tRY-lagRY)*.035;
   }
-  const rX=lagRX+manualRX, rY=autoRY+lagRY+manualRY;
-
   const dt = Math.min(t - prevT, 0.1); prevT = t;
 
   if(novaActive){ updateNova(dt, t); return; } // easter egg owns the frame — skip normal updates
 
-  // Empty-space drag orbits your view around the entity (+ slow idle drift). HUD stays centered.
-  worldYaw   += ((manualRY + autoRY) - worldYaw) * 0.12;
-  worldPitch += (Math.max(-1.1, Math.min(1.1, manualRX)) - worldPitch) * 0.12;
-  world.rotation.set(worldPitch, worldYaw, 0);
+  // Free-orbit trackball — drag rotates the world in ANY direction (no axis clamp). Plus slow idle drift
+  // and a subtle cursor-lean on top. HUD stays centered.
+  if(!isDragging){ _qDy.setFromAxisAngle(_AXY, 0.0016); worldQuat.premultiply(_qDy); }   // idle yaw drift
+  world.quaternion.copy(worldQuat);
+  _qLean.setFromAxisAngle(_AXX, lagRX*0.5); world.quaternion.multiply(_qLean);            // gentle lean toward the cursor
+  _qLean.setFromAxisAngle(_AXY, lagRY*0.5); world.quaternion.multiply(_qLean);
+  _wEul.setFromQuaternion(worldQuat, 'YXZ'); worldYaw=_wEul.y; worldPitch=_wEul.x;        // feed background parallax
 
   // comets / asteroids drift past now and then
   flyClock += dt; if(flyClock > flyNext){ flyClock=0; flyNext=14+Math.random()*16; spawnFlyby(); }
