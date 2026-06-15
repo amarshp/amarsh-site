@@ -923,6 +923,37 @@ const coreRings = [];
   coreRings.push(torus);
 });
 
+// ── BLACK HOLE — shown during the nova. Astrophysical (Interstellar/EHT): black shadow sphere + a hot
+// accretion disk (orange→white inward, Doppler-bright on the approaching side, swirling lanes), a
+// gravitational-lensed halo ring arcing over/under the shadow, and a thin photon ring at the shadow edge.
+const bhGroup = new THREE.Group(); scene.add(bhGroup); bhGroup.visible=false;   // un-rotated so the halo/photon billboard correctly
+function _bhDiskMat(inR,outR){ return new THREE.ShaderMaterial({
+  transparent:true, blending:THREE.AdditiveBlending, side:THREE.DoubleSide, depthWrite:false,
+  uniforms:{ uTime:{value:0}, uIn:{value:inR}, uOut:{value:outR} },
+  vertexShader:`varying vec2 vP; void main(){ vP=position.xy; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader:`precision highp float; uniform float uTime,uIn,uOut; varying vec2 vP;
+    void main(){ float r=length(vP), ang=atan(vP.y,vP.x);
+      float t=clamp((r-uIn)/(uOut-uIn),0.0,1.0); float heat=pow(1.0-t,1.7);
+      float dopp=0.22+0.78*pow(0.5+0.5*cos(ang-1.1),1.6);                       // approaching side hotter/brighter
+      float knot=0.6+0.4*sin(ang*7.0 - uTime*2.6 + r*4.5)*sin(ang*3.0 + uTime*1.3);  // swirling lanes
+      vec3 col=mix(vec3(1.0,0.5,0.12), vec3(1.0,0.97,0.86), heat);             // orange → white-hot inner
+      gl_FragColor=vec4(col*(0.5+heat*0.9), clamp(heat*knot*dopp*1.3,0.0,1.0)); }`,
+}); }
+const bhShadow=new THREE.Mesh(new THREE.SphereGeometry(0.6,48,32), new THREE.MeshBasicMaterial({color:0x000000}));
+const bhDisk=new THREE.Mesh(new THREE.RingGeometry(0.64,2.3,168,1), _bhDiskMat(0.64,2.3));
+bhDisk.rotation.x=Math.PI*0.43; bhDisk.renderOrder=1;                           // near edge-on (3/4 view) through the shadow
+const bhHalo=new THREE.Mesh(new THREE.RingGeometry(0.62,1.3,168,1), _bhDiskMat(0.62,1.3));
+bhHalo.renderOrder=2;                                                           // lensed far-disk wrapping the shadow (camera-facing)
+const bhPhoton=new THREE.Mesh(new THREE.RingGeometry(0.605,0.66,168,1), new THREE.MeshBasicMaterial({color:0xfff2d6,transparent:true,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));
+bhPhoton.renderOrder=3;
+bhGroup.add(bhShadow, bhDisk, bhHalo, bhPhoton);
+function updateBlackHole(dt, t){
+  if(!bhGroup.visible) return;
+  bhDisk.material.uniforms.uTime.value=t; bhHalo.material.uniforms.uTime.value=t;
+  bhDisk.rotation.z += dt*0.55;                                                 // disk swirl
+  bhHalo.quaternion.copy(camera.quaternion); bhPhoton.quaternion.copy(camera.quaternion); // lensed ring faces the camera
+}
+
 // ── TIME DISC — orbiting satellites (spring-bound) ───────────
 // Particles orbit the core in the XZ plane. Radius is a damped
 // spring around DISC_R, out-of-plane (y) springs to 0. On core
@@ -1298,7 +1329,7 @@ function onEntityShot(){
       : ["Keep firing and you'll tear the fold wide open—!","Okay—OKAY. You want a reaction? You'll get a singularity.","You really want to watch me come apart, don't you."];
     try{ nanReply(lines[(Math.random()*lines.length)|0], attackDmg>=3?'fight':'scared', 4); }catch(e){}
   }
-  if(attackDmg>=6 && !novaActive){ triggerNova(); attackDmg=0; }
+  if(attackDmg>=12 && !novaActive){ triggerNova(); attackDmg=0; }   // takes more hits now before it collapses
 }
 window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); fireBolt(); } });
 window.__fire=fireBolt; // debug hook (time-based behaviour can't be seen in a single screenshot)
@@ -1572,6 +1603,7 @@ function novaVignette(holePct){ novaFlash.style.background='radial-gradient(circ
 function triggerNova(){
   if(novaActive) return;
   novaActive=true; novaPhase=1; novaT=0;
+  bhGroup.visible=false; bhGroup.scale.setScalar(0.15);   // black-hole rig ready, hidden until the collapse
   membrane.visible=false;            // frozen during the sequence (animate returns early) → hide it
   novaOrig={ disc:disc.scale.x, disc2:disc2.scale.x, stars:stars.scale.x, galaxy:galaxy.scale.x };
   try{ playSound('core_expand'); }catch(e){}
@@ -1579,6 +1611,10 @@ function triggerNova(){
   discEject(3);
 }
 window.__triggerNova=triggerNova; // debug hook (also fires on 7 rapid core taps)
+window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).project(camera);
+  return {active:novaActive, phase:novaPhase, t:+novaT.toFixed(2), bhVis:bhGroup.visible, bhScale:+bhGroup.scale.x.toFixed(2),
+    creScale:+creatureMesh.scale.x.toFixed(3), bhSX:Math.round((v.x*0.5+0.5)*W), bhSY:Math.round((-v.y*0.5+0.5)*H), bhInFront:v.z<1,
+    flashOp:novaFlash.style.opacity, camZ:+camera.position.z.toFixed(2)}; };
 
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
@@ -1680,12 +1716,13 @@ function updateAffect(t, dt){
 }
 
 // ── SUPERNOVA → BLACK HOLE sequence (owns the frame while active) ──
-function updateNova(dt){
+function updateNova(dt, t){
   novaT += dt;
-  // screen shake (strong during the blast + bang, easing elsewhere)
-  const shk = novaPhase===1 ? 0.05*(1-Math.min(1,novaT/1.3)) : novaPhase===2 ? 0.03 : novaPhase===4 ? 0.06 : 0;
+  // screen shake (strong during the blast + bang, steady during the black-hole hold)
+  const shk = novaPhase===1 ? 0.05*(1-Math.min(1,novaT/1.3)) : novaPhase===6 ? 0.06 : (novaPhase===2?0.02:0);
   camera.position.x = (Math.random()-0.5)*shk;
   camera.position.y = (Math.random()-0.5)*shk;
+  updateBlackHole(dt, t);
 
   if(novaPhase===1){                 // SUPERNOVA — core balloons, white-out
     const k=Math.min(1, novaT/1.3);
@@ -1697,34 +1734,47 @@ function updateNova(dt){
     novaFlash.style.opacity = (k>0.6 ? (k-0.6)/0.4*0.95 : 0).toFixed(3);
     if(novaT>=1.3){ novaPhase=2; novaT=0; try{ playSound('eject'); }catch(e){} }
   }
-  else if(novaPhase===2){            // BLACK HOLE — sucked to a point; vignette closes inward
-    const k=Math.min(1, novaT/2.2), pull=1 - Math.min(0.55, dt*(0.8+k*4));
-    coreGroup.scale.setScalar(Math.max(0.03, 17*(1-k)*(1-k)));
-    coreMat.color.setRGB(0,0,0); glowMat.color.setRGB(0.06,0,0.10);       // black core, faint violet rim
-    bloomPass.strength = Math.max(0.3, 4.5*(1-k)) + 1.0;
+  else if(novaPhase===2){            // COLLAPSE — matter sucked into a point; the black hole forms
+    const k=Math.min(1, novaT/1.6), pull=1 - Math.min(0.6, dt*(1.0+k*5));
+    coreGroup.scale.setScalar(Math.max(0.02, 17*(1-k)*(1-k)));
+    coreMat.color.setRGB(0,0,0); glowMat.color.setRGB(0.05,0,0.09);
+    bloomPass.strength = Math.max(0.5, 3.2*(1-k)) + 1.0;
     [creatureMesh, disc, disc2, stars, galaxy, planetGroup, flybys].forEach(o=>o.scale.multiplyScalar(pull));
-    creatureMesh.rotation.z += dt*(2+k*10);                              // accretion swirl
-    stars.rotation.z += dt*(1+k*8); galaxy.rotation.z += dt*(1+k*6);
-    // uniform darken (the spherical implosion reads from the 3D mass collapsing to a point)
-    novaFlash.style.background='#000000'; novaFlash.style.opacity=(0.12+k*0.74).toFixed(3);
-    if(novaT>=2.2){ novaPhase=3; novaT=0; }
+    creatureMesh.rotation.z += dt*(2+k*10); stars.rotation.z += dt*(1+k*8); galaxy.rotation.z += dt*(1+k*6);
+    novaFlash.style.background='#000000'; novaFlash.style.opacity=(0.08+k*0.40).toFixed(3);   // darken, but we SEE the BH form
+    if(k>0.35){ bhGroup.visible=true; bhGroup.scale.setScalar(0.15 + ((k-0.35)/0.65)*1.0); }  // the hole grows in
+    if(novaT>=1.6){ novaPhase=3; novaT=0; bhGroup.visible=true; bhGroup.scale.setScalar(1.15); }
   }
-  else if(novaPhase===3){            // SILENCE — a black, still void
-    coreGroup.scale.setScalar(0.001);
+  else if(novaPhase===3){            // BLACK HOLE — held, cinematic (the movie moment, ~7s)
+    if(window.__novaFreeze){ novaT=2.0; }   // debug: hold the black-hole view
     [creatureMesh, disc, disc2, stars, galaxy, planetGroup, flybys].forEach(o=>o.scale.setScalar(0.0001));
+    coreGroup.scale.setScalar(0.0001);
+    bhGroup.visible=true; bhGroup.scale.setScalar(1.15 + Math.sin(novaT*0.5)*0.03);
+    bloomPass.strength = 1.5;
+    camera.position.z = camDist - Math.min(1.5, novaT*0.22);                    // slow cinematic dolly-in
+    const vig=(0.16 + Math.min(0.30, novaT*0.035)).toFixed(2);
+    novaFlash.style.background='radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 30%, rgba(0,0,0,'+vig+') 80%)';
+    novaFlash.style.opacity='1';
+    if(novaT>=7.0){ novaPhase=4; novaT=0; }
+  }
+  else if(novaPhase===4){            // SILENCE — the hole collapses to a point and winks out
+    const k=Math.min(1, novaT/1.3);
+    bhGroup.scale.setScalar(Math.max(0.0001, 1.15*(1-k)*(1-k)));
+    if(k>=0.98) bhGroup.visible=false;
+    camera.position.z = camDist;
     bloomPass.strength=0.5;
     novaFlash.style.background='#000000'; novaFlash.style.opacity='1';
-    if(novaT>=1.7){ novaPhase=4; novaT=0; try{ playSound('core_expand'); }catch(e){} }
+    if(novaT>=1.3){ novaPhase=5; novaT=0; bhGroup.visible=false; try{ playSound('core_expand'); }catch(e){} }
   }
-  else if(novaPhase===4){            // BIG BANG — a singularity ignites and flashes
+  else if(novaPhase===5){            // BIG BANG — a singularity ignites and flashes
     const k=Math.min(1, novaT/0.45);
     coreGroup.scale.setScalar(0.05 + k*0.6);
     coreMat.color.setRGB(1,1,1); glowMat.color.setRGB(1,1,1);
     bloomPass.strength = 1 + k*5;
     novaFlash.style.background='#ffffff'; novaFlash.style.opacity = (1-k).toFixed(3);
-    if(novaT>=0.45){ novaPhase=5; novaT=0; }
+    if(novaT>=0.45){ novaPhase=6; novaT=0; }
   }
-  else if(novaPhase===5){            // EXPANSION — matter flies out and settles, reborn
+  else if(novaPhase===6){            // EXPANSION — matter flies out and settles, reborn
     const k=Math.min(1, novaT/2.4), e=1-Math.pow(1-k,3);                  // ease-out
     creatureMesh.scale.setScalar(0.05 + e*0.95);
     coreGroup.scale.setScalar(0.05 + e*0.95);
@@ -1739,11 +1789,12 @@ function updateNova(dt){
       disc.scale.setScalar(novaOrig.disc); disc2.scale.setScalar(novaOrig.disc2);
       stars.scale.setScalar(novaOrig.stars); galaxy.scale.setScalar(novaOrig.galaxy);
       planetGroup.scale.setScalar(1); flybys.scale.setScalar(1);
-      camera.position.x=0; bloomPass.strength=0.8;
+      camera.position.x=0; camera.position.z=camDist; bloomPass.strength=0.8;
+      bhGroup.visible=false;
       novaFlash.style.opacity='0'; novaFlash.style.background='#ffffff';
       novaActive=false; novaPhase=0; coreHits=0; coreExpanded=false; coreTargetScale=1; membrane.visible=true;
       mode='shock'; shockHold=0.4; modeTime=0;       // reborn — a startled gasp
-      try{ nanReply("…oh. You collapsed me to a singularity — and I came back. Felt every microsecond of it. Reborn. Hello again.", 'shock', 5, null, ['What happened?','Who are you?','Tell me a story']); }catch(e){}
+      try{ nanReply("…oh. You collapsed me into a black hole — I watched my own accretion disk burn, and I still came back. Reborn. Hello again.", 'shock', 5, null, ['What happened?','Who are you?','Tell me a story']); }catch(e){}
       return;
     }
   }
@@ -1766,7 +1817,7 @@ function animate(){
 
   const dt = Math.min(t - prevT, 0.1); prevT = t;
 
-  if(novaActive){ updateNova(dt); return; } // easter egg owns the frame — skip normal updates
+  if(novaActive){ updateNova(dt, t); return; } // easter egg owns the frame — skip normal updates
 
   // Empty-space drag orbits your view around the entity (+ slow idle drift). HUD stays centered.
   worldYaw   += ((manualRY + autoRY) - worldYaw) * 0.12;
