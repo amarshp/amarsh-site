@@ -961,21 +961,45 @@ function _bhDiskMat(inR,outR){ return new THREE.ShaderMaterial({
   uniforms:{ uTime:{value:0}, uIn:{value:inR}, uOut:{value:outR} },
   vertexShader:`varying vec2 vP; void main(){ vP=position.xy; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
   fragmentShader:`precision highp float; uniform float uTime,uIn,uOut; varying vec2 vP;
+    // hash/value-noise for fine turbulent detail in the gas lanes (kills the flat low-detail look)
+    float hash(vec2 p){ return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453); }
+    float vnoise(vec2 p){ vec2 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
+      float a=hash(i), b=hash(i+vec2(1,0)), c=hash(i+vec2(0,1)), d=hash(i+vec2(1,1));
+      return mix(mix(a,b,f.x),mix(c,d,f.x),f.y); }
     void main(){ float r=length(vP), ang=atan(vP.y,vP.x);
-      float t=clamp((r-uIn)/(uOut-uIn),0.0,1.0); float heat=pow(1.0-t,1.7);
-      float dopp=0.22+0.78*pow(0.5+0.5*cos(ang-1.1),1.6);                       // approaching side hotter/brighter
-      float knot=0.6+0.4*sin(ang*7.0 - uTime*2.6 + r*4.5)*sin(ang*3.0 + uTime*1.3);  // swirling lanes
-      vec3 col=mix(vec3(1.0,0.5,0.12), vec3(1.0,0.97,0.86), heat);             // orange → white-hot inner
-      gl_FragColor=vec4(col*(0.5+heat*0.9), clamp(heat*knot*dopp*1.3,0.0,1.0)); }`,
+      float t=clamp((r-uIn)/(uOut-uIn),0.0,1.0);
+      float heat=pow(1.0-t,1.8);
+      // anti-aliased inner & outer edges (smooth, not a hard polygon rim)
+      float edge=smoothstep(0.0,0.05,t)*smoothstep(0.0,0.10,1.0-t);
+      float dopp=0.20+0.80*pow(0.5+0.5*cos(ang-1.1),1.8);                        // relativistic beaming: approaching side brighter
+      // multi-octave swirling gas lanes (spiral coords) — finer detail = higher apparent resolution
+      float sw=ang*4.0 + log(r+0.3)*7.0;
+      float lanes=0.55 + 0.45*sin(sw - uTime*2.6);
+      float turb=0.55*vnoise(vec2(sw*1.4, r*9.0 - uTime*1.4)) + 0.30*vnoise(vec2(sw*3.1, r*20.0 + uTime*0.9)) + 0.18*vnoise(vec2(sw*6.0, r*40.0));
+      float gas=mix(lanes, turb, 0.6);
+      vec3 col=mix(vec3(1.0,0.45,0.10), vec3(1.0,0.98,0.92), heat);              // orange → white-hot inner
+      col=mix(col, vec3(0.75,0.85,1.0), smoothstep(0.7,1.0,dopp)*0.35);          // faint blueshift on the beamed edge
+      float a=clamp(heat*(0.35+gas*0.95)*dopp*edge*1.5, 0.0, 1.0);
+      gl_FragColor=vec4(col*(0.55+heat*1.0), a); }`,
 }); }
-const bhShadow=new THREE.Mesh(new THREE.SphereGeometry(0.6,48,32), new THREE.MeshBasicMaterial({color:0x000000}));
-const bhDisk=new THREE.Mesh(new THREE.RingGeometry(0.64,2.3,168,1), _bhDiskMat(0.64,2.3));
+const bhShadow=new THREE.Mesh(new THREE.SphereGeometry(0.6,96,64), new THREE.MeshBasicMaterial({color:0x000000}));
+const bhDisk=new THREE.Mesh(new THREE.RingGeometry(0.64,2.3,360,2), _bhDiskMat(0.64,2.3));
 bhDisk.rotation.x=Math.PI*0.43; bhDisk.renderOrder=1;                           // near edge-on (3/4 view) through the shadow
-const bhHalo=new THREE.Mesh(new THREE.RingGeometry(0.62,1.3,168,1), _bhDiskMat(0.62,1.3));
+const bhHalo=new THREE.Mesh(new THREE.RingGeometry(0.62,1.3,360,2), _bhDiskMat(0.62,1.3));
 bhHalo.renderOrder=2;                                                           // lensed far-disk wrapping the shadow (camera-facing)
-const bhPhoton=new THREE.Mesh(new THREE.RingGeometry(0.605,0.66,168,1), new THREE.MeshBasicMaterial({color:0xfff2d6,transparent:true,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));
+const bhPhoton=new THREE.Mesh(new THREE.RingGeometry(0.602,0.652,360,1), new THREE.MeshBasicMaterial({color:0xfff2d6,transparent:true,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));
 bhPhoton.renderOrder=3;
 bhGroup.add(bhShadow, bhDisk, bhHalo, bhPhoton);
+// expanding supernova ejecta shell (the Type-II blast that blows the outer layers off before the core falls back).
+// Fresnel-shaded so only the LIMB glows → reads as a thin expanding shock bubble, not a solid bloomed ball.
+const snMat=new THREE.ShaderMaterial({ transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide,
+  uniforms:{ uColor:{value:new THREE.Color(0xffffff)}, uOpacity:{value:0} },
+  vertexShader:`varying vec3 vN; varying vec3 vV; void main(){ vN=normalize(normalMatrix*normal); vec4 mv=modelViewMatrix*vec4(position,1.0); vV=normalize(-mv.xyz); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader:`uniform vec3 uColor; uniform float uOpacity; varying vec3 vN; varying vec3 vV;
+    void main(){ float f=pow(1.0-abs(dot(normalize(vN),normalize(vV))),2.4); gl_FragColor=vec4(uColor*(0.5+f), f*uOpacity); }` });
+const snShell=new THREE.Mesh(new THREE.SphereGeometry(1,64,40), snMat);
+snShell.visible=false; scene.add(snShell);
+const _snCol=new THREE.Color();
 function updateBlackHole(dt, t){
   if(!bhGroup.visible) return;
   bhDisk.material.uniforms.uTime.value=t; bhHalo.material.uniforms.uTime.value=t;
@@ -1725,6 +1749,7 @@ function triggerNova(){
   membrane.visible=false;            // frozen during the sequence (animate returns early) → hide it
   fracture.visible=false;            // hide the fission lattice too, else its edges linger inside the black hole
   shieldOrbs.forEach(o=>o.mesh.visible=false);   // and the shield orbs — they don't survive the collapse
+  snShell.visible=false; snShell.scale.setScalar(1);
   novaOrig={ disc:disc.scale.x, disc2:disc2.scale.x, stars:stars.scale.x, galaxy:galaxy.scale.x };
   try{ playSound('core_expand'); }catch(e){}
   try{ nanSpeakEnd(); }catch(e){}   // cut the voice so the silence beat lands
@@ -1840,36 +1865,70 @@ function updateAffect(t, dt){
 // ── SUPERNOVA → BLACK HOLE sequence (owns the frame while active) ──
 function updateNova(dt, t){
   novaT += dt;
-  // screen shake (strong during the blast + bang, steady during the black-hole hold)
-  const shk = novaPhase===1 ? 0.05*(1-Math.min(1,novaT/1.3)) : novaPhase===6 ? 0.06 : (novaPhase===2?0.02:0);
+  // debug: park a chosen phase at a chosen novaT (so each 0.5–1.4s death-phase can be screenshotted)
+  if(typeof window.__novaFreeze==='number' && window.__novaFreeze===novaPhase && window.__novaFreezeT!==undefined) novaT=window.__novaFreezeT;
+  // screen shake (violent through the implosion/bounce/shock + the big bang; steady tremor during the BH hold)
+  const shk = (novaPhase===1)?0.015 : (novaPhase===2||novaPhase===3)?0.05 : (novaPhase===7)?0.06 : (novaPhase===8)?0.04 : (novaPhase===5?0.012:0);
   camera.position.x = (Math.random()-0.5)*shk;
   camera.position.y = (Math.random()-0.5)*shk;
   updateBlackHole(dt, t);
+  updateExplosions(dt);              // 3D ejecta sparks animate during the sequence (animate() is bypassed)
 
-  if(novaPhase===1){                 // SUPERNOVA — core balloons, white-out
-    const k=Math.min(1, novaT/1.3);
-    coreGroup.scale.setScalar(1 + k*k*16);
-    coreMat.color.setRGB(1,1,1); glowMat.color.setRGB(1,1,1);
-    bloomPass.strength = 0.8 + k*4.5;
-    creatureMesh.scale.multiplyScalar(1 + dt*0.7);              // blown outward
-    novaFlash.style.background='#ffffff';
-    novaFlash.style.opacity = (k>0.6 ? (k-0.6)/0.4*0.95 : 0).toFixed(3);
-    if(novaT>=1.3){ novaPhase=2; novaT=0; try{ playSound('eject'); }catch(e){} }
+  // ── REAL CORE-COLLAPSE SEQUENCE: red supergiant (the aggravated build-up) → implosion → bounce/neutrino burst
+  //    → shockwave supernova → proto-neutron star + fallback → collapse to black hole. (order: collapse BEFORE blast.)
+  if(novaPhase===1){                 // 1. CORE COLLAPSE — the swollen red supergiant's iron core implodes (e⁻ capture / neutronization)
+    const k=Math.min(1, novaT/0.95);
+    creatureMesh.scale.multiplyScalar(1 - Math.min(0.55, dt*(2.2+k*6)));      // the whole body is sucked inward, fast
+    coreGroup.scale.setScalar(Math.max(0.05, 1.1 - k*0.95));                  // core contracts to a dense point
+    coreMat.color.setRGB(1-k*0.7, 0.1+k*0.35, k*0.95); glowMat.color.setRGB(0.3*(1-k), 0.15+k*0.45, 0.4+k*0.6);  // red → electric-blue neutronisation
+    bloomPass.strength = 0.8 + k*1.8;
+    creatureMesh.rotation.z += dt*(3+k*14); stars.rotation.z += dt*k*0.8;     // infall spins up
+    novaFlash.style.background='#04000a'; novaFlash.style.opacity=(k*0.3).toFixed(3);
+    if(novaT>=0.95){ novaPhase=2; novaT=0; try{ playSound('eject'); }catch(e){} }
   }
-  else if(novaPhase===2){            // COLLAPSE — matter sucked into a point; the black hole forms
-    const k=Math.min(1, novaT/1.6), pull=1 - Math.min(0.6, dt*(1.0+k*5));
-    coreGroup.scale.setScalar(Math.max(0.02, 17*(1-k)*(1-k)));
-    coreMat.color.setRGB(0,0,0); glowMat.color.setRGB(0.05,0,0.09);
-    bloomPass.strength = Math.max(0.5, 3.2*(1-k)) + 1.0;
-    [creatureMesh, disc, disc2, planetGroup, flybys].forEach(o=>o.scale.multiplyScalar(pull));  // matter collapses; the star-field/galaxy survive to be fallen-through
-    creatureMesh.rotation.z += dt*(2+k*10); stars.rotation.z += dt*(1+k*8); galaxy.rotation.z += dt*(1+k*6);
-    novaFlash.style.background='#000000'; novaFlash.style.opacity=(0.08+k*0.40).toFixed(3);   // darken, but we SEE the BH form
-    if(k>0.35){ bhGroup.visible=true; bhGroup.scale.setScalar(0.15 + ((k-0.35)/0.65)*1.0); }  // the hole grows in
-    if(novaT>=1.6){ novaPhase=3; novaT=0; bhGroup.visible=true; bhGroup.scale.setScalar(1.15); }
+  else if(novaPhase===2){            // 2. BOUNCE — core hits nuclear density, becomes incompressible, REBOUNDS; neutrino burst flashes
+    const k=Math.min(1, novaT/0.5);
+    creatureMesh.scale.setScalar(0.0001);
+    coreGroup.scale.setScalar(0.08 + k*0.7);                                  // proto-neutron star flares brilliant
+    coreMat.color.setRGB(0.7+k*0.3, 0.82+k*0.18, 1); glowMat.color.setRGB(0.6+k*0.4, 0.85, 1);
+    bloomPass.strength = 2.2 + k*4.0;
+    novaFlash.style.background='#bfe0ff'; novaFlash.style.opacity=(k*0.85).toFixed(3);   // blue-white neutrino white-out
+    if(novaT>=0.5){ novaPhase=3; novaT=0;
+      snShell.visible=true; snShell.scale.setScalar(0.4);                     // launch the shock shell
+      for(let i=0;i<5;i++){ try{ spawnExplosion(new THREE.Vector3((Math.random()-0.5)*0.6,(Math.random()-0.5)*0.6,(Math.random()-0.5)*0.6), 0xdfeaff, 2.6); }catch(e){} }
+      try{ playSound('core_expand'); }catch(e){}
+    }
   }
-  else if(novaPhase===3){            // FALL-IN — the satellite is dragged across the photon sphere toward the horizon (~7s)
-    if(window.__novaFreeze!==undefined && window.__novaFreeze!==false){       // debug: park at a target novaT (number) or 3.5
-      novaT = (typeof window.__novaFreeze==='number') ? window.__novaFreeze : 3.5; }
+  else if(novaPhase===3){            // 3. SHOCKWAVE SUPERNOVA — the revived shock blasts the outer layers off (Type-II explosion)
+    const k=Math.min(1, novaT/1.5), e=1-Math.pow(1-k,2.4);
+    snShell.visible=true; snShell.scale.setScalar(0.4 + e*4.2);               // ejecta shell expands outward (stays in front of us)
+    _snCol.setRGB(1, 0.55+0.4*(1-k), 0.2+0.7*(1-k));                          // white-hot → orange as it cools
+    snMat.uniforms.uColor.value.copy(_snCol);
+    snMat.uniforms.uOpacity.value = (k<0.2 ? k/0.2*0.9 : 0.9*Math.pow(1-(k-0.2)/0.8,1.2));  // flare then thin out
+    coreGroup.scale.setScalar(0.55*(1-k*0.5));                                // proto-NS still glowing at the centre
+    coreMat.color.setRGB(0.8,0.88,1); glowMat.color.setRGB(0.6,0.8,1);
+    bloomPass.strength = 2.6*(1-k) + 1.0;
+    novaFlash.style.background='#ffffff'; novaFlash.style.opacity=(0.55*Math.max(0,1-k*2.8)).toFixed(3);  // flash fades fast
+    if(novaT>=1.5){ novaPhase=4; novaT=0; }
+  }
+  else if(novaPhase===4){            // 4. PROTO-NS + FALLBACK → BLACK HOLE — ejecta rains back, the remnant exceeds the limit & collapses
+    const k=Math.min(1, novaT/1.6);
+    // fallback: the shell reverses and is dragged back inward (the bit that tips the remnant over the edge)
+    snShell.visible = k<0.9;
+    snShell.scale.setScalar(Math.max(0.2, 4.5*(1-k)));                        // contract inward
+    snMat.uniforms.uOpacity.value = 0.6*(1-k);
+    snMat.uniforms.uColor.value.setRGB(1, 0.4, 0.2);
+    // the proto-neutron star survives a beat, then collapses; the accretion disk ignites and the hole grows in
+    const coreK=Math.max(0, (k-0.25)/0.75);
+    coreGroup.scale.setScalar(Math.max(0.0001, 0.55*(1-coreK)*(1-coreK)));
+    bloomPass.strength = 1.6 + (1-k)*2.0;
+    novaFlash.style.background='#000000'; novaFlash.style.opacity=(0.05+k*0.18).toFixed(3);
+    if(k>0.3){ bhGroup.visible=true; bhGroup.scale.setScalar(0.12 + ((k-0.3)/0.7)*1.03); }   // hole + disk form
+    stars.rotation.z += dt*1.2;
+    if(novaT>=1.6){ novaPhase=5; novaT=0; bhGroup.visible=true; bhGroup.scale.setScalar(1.15); snShell.visible=false; coreGroup.scale.setScalar(0.0001); }
+  }
+  else if(novaPhase===5){            // 5. FALL-IN — the satellite is dragged across the photon sphere toward the horizon (~7s)
+    if(window.__novaFreeze===true){ novaT=3.5; }   // (numeric phase-park handled generically at the top)
     const k=Math.min(1, novaT/7.0);
     const grav=Math.pow(k, 2.3);                          // gravitational accel — a slow drift, then a rush at the end
     [creatureMesh, disc, disc2].forEach(o=>o.scale.setScalar(0.0001));        // consumed matter stays gone
@@ -1892,26 +1951,26 @@ function updateNova(dt, t){
     novaFlash.style.background='radial-gradient(circle at 50% 50%, rgba('+rs+',0,0,'+coreA+') '+hole+'%, rgba('+Math.floor(rs*0.6)+',0,0,'+midA+') 72%, #000 100%)';
     novaFlash.style.opacity='1';
     __novaRedshift=grav;
-    if(novaT>=7.0){ novaPhase=4; novaT=0; }
+    if(novaT>=7.0){ novaPhase=6; novaT=0; }
   }
-  else if(novaPhase===4){            // SILENCE — the hole collapses to a point and winks out
+  else if(novaPhase===6){            // 6. SILENCE — the hole collapses to a point and winks out
     const k=Math.min(1, novaT/1.3);
     bhGroup.scale.setScalar(Math.max(0.0001, 1.15*(1-k)*(1-k)));
     if(k>=0.98) bhGroup.visible=false;
     camera.position.z = camDist;
     bloomPass.strength=0.5;
     novaFlash.style.background='#000000'; novaFlash.style.opacity='1';
-    if(novaT>=1.3){ novaPhase=5; novaT=0; bhGroup.visible=false; try{ playSound('core_expand'); }catch(e){} }
+    if(novaT>=1.3){ novaPhase=7; novaT=0; bhGroup.visible=false; try{ playSound('core_expand'); }catch(e){} }
   }
-  else if(novaPhase===5){            // BIG BANG — a singularity ignites and flashes
+  else if(novaPhase===7){            // 7. BIG BANG — a singularity ignites and flashes
     const k=Math.min(1, novaT/0.45);
     coreGroup.scale.setScalar(0.05 + k*0.6);
     coreMat.color.setRGB(1,1,1); glowMat.color.setRGB(1,1,1);
     bloomPass.strength = 1 + k*5;
     novaFlash.style.background='#ffffff'; novaFlash.style.opacity = (1-k).toFixed(3);
-    if(novaT>=0.45){ novaPhase=6; novaT=0; }
+    if(novaT>=0.45){ novaPhase=8; novaT=0; }
   }
-  else if(novaPhase===6){            // EXPANSION — matter flies out and settles, reborn
+  else if(novaPhase===8){            // 8. EXPANSION — matter flies out and settles, reborn
     const k=Math.min(1, novaT/2.4), e=1-Math.pow(1-k,3);                  // ease-out
     creatureMesh.scale.setScalar(0.05 + e*0.95);
     coreGroup.scale.setScalar(0.05 + e*0.95);
@@ -1932,7 +1991,7 @@ function updateNova(dt, t){
       novaActive=false; novaPhase=0; coreHits=0; coreExpanded=false; coreTargetScale=1; membrane.visible=true;
       fracture.visible=true; fissionT=0; fractureGeom.setDrawRange(0,0);   // reborn calm — lattice cleared
       shieldOrbs.forEach(o=>{ o.mesh.visible=true; o.alive=true; o.state='orbit'; o.grow=0; }); lastAttackT=-1e9;  // shield fully back
-      novaCharge=0; spikeBoost=0;
+      novaCharge=0; spikeBoost=0; attackDmg=0; snShell.visible=false;
       mode='shock'; shockHold=0.4; modeTime=0;       // reborn — a startled gasp
       try{ nanReply("…oh. You collapsed me into a black hole — I watched my own accretion disk burn, and I still came back. Reborn. Hello again.", 'shock', 5, null, ['What happened?','Who are you?','Tell me a story']); }catch(e){}
       return;
