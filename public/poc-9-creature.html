@@ -1191,6 +1191,43 @@ function resetShield(){
 const flybys = new THREE.Group(); world.add(flybys);   // in world → drag-orbit lets you view them from any angle
 const fly = [];
 const _tOut=new THREE.Vector3(), _tSwp=new THREE.Vector3(), _t2=new THREE.Vector3(), _acc=new THREE.Vector3();   // scratch for comet tails (no per-frame alloc)
+const _dir=new THREE.Vector3(), _perp=new THREE.Vector3(), _camL=new THREE.Vector3(), _viewP=new THREE.Vector3();
+// ── continuous comet-tail RIBBON — a tapered camera-facing strip (not discrete sprites), soft-edged via a shader.
+// Built as 2 verts per path-point; a cross-gradient (bright spine → soft edges) + length fade give a smooth gas tail.
+function makeTailRibbon(N, hex, headW, step){
+  const geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(N*2*3), side=new Float32Array(N*2), along=new Float32Array(N*2), idx=[];
+  for(let i=0;i<N;i++){ side[i*2]=1; side[i*2+1]=-1; along[i*2]=along[i*2+1]=i/(N-1); }
+  for(let i=0;i<N-1;i++){ const a=i*2; idx.push(a,a+1,a+2, a+1,a+3,a+2); }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('aSide', new THREE.BufferAttribute(side,1));
+  geo.setAttribute('aAlong', new THREE.BufferAttribute(along,1));
+  geo.setIndex(idx);
+  const mat=new THREE.ShaderMaterial({ transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide,
+    uniforms:{ uColor:{value:new THREE.Color(hex)}, uOpacity:{value:0} },
+    vertexShader:`attribute float aSide; attribute float aAlong; varying float vS; varying float vA;
+      void main(){ vS=aSide; vA=aAlong; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:`uniform vec3 uColor; uniform float uOpacity; varying float vS; varying float vA;
+      void main(){ float edge=1.0-vS*vS; float len=pow(1.0-vA,1.35); gl_FragColor=vec4(uColor*(0.45+edge*0.75), edge*len*uOpacity); }` });
+  const mesh=new THREE.Mesh(geo, mat); mesh.frustumCulled=false;
+  return {mesh, geo, pos, N, headW, step};
+}
+// rebuild a ribbon's vertices: walk a path from headPos along dir(t) (curveAmt bends it from anti-sun toward anti-vel),
+// expanding each point to camera-facing width (tapering). camLocal = camera position in the flybys-local frame.
+function updateTailRibbon(tail, headPos, sunDir, velDir, curveAmt, camLocal){
+  const N=tail.N, pos=tail.pos; _acc.copy(headPos);
+  for(let i=0;i<N;i++){ const t=i/(N-1);
+    _dir.copy(sunDir).multiplyScalar(1-t*curveAmt*0.5).addScaledVector(velDir, -t*curveAmt).normalize();
+    if(i>0) _acc.addScaledVector(_dir, tail.step);
+    _viewP.copy(_acc).sub(camLocal);
+    _perp.crossVectors(_dir, _viewP);
+    if(_perp.lengthSq()<1e-9) _perp.set(0,1,0); else _perp.normalize();
+    const w=tail.headW*(1-t*0.82) + 0.01;
+    pos[i*6]  =_acc.x+_perp.x*w; pos[i*6+1]=_acc.y+_perp.y*w; pos[i*6+2]=_acc.z+_perp.z*w;
+    pos[i*6+3]=_acc.x-_perp.x*w; pos[i*6+4]=_acc.y-_perp.y*w; pos[i*6+5]=_acc.z-_perp.z*w;
+  }
+  tail.geo.attributes.position.needsUpdate=true;
+}
 // procedural rocky asteroid — displaced/faceted icosphere, lit (no external asset, looks like real rock)
 function makeAsteroid(rad){
   const geo=new THREE.IcosahedronGeometry(rad, 2), p=geo.attributes.position, v=new THREE.Vector3();
@@ -1217,18 +1254,18 @@ function spawnFlyby(){
   // COMET — modelled on real comets (e.g. NEOWISE/Hale-Bopp): a glowing COMA around a tiny NUCLEUS, with TWO tails —
   // a straight bluish ION tail blown directly anti-sunward by the solar wind, and a broader CURVED yellow-white DUST
   // tail that lags along the orbit (radiation pressure + inertia). Brightens near perihelion (closest to NaN = the sun).
-  const ION_N=11, DUST_N=13;
-  const mkSprite=(hex,op)=>{ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:hex,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false})); s.position.copy(start); flybys.add(s); return s; };
-  const coma=mkSprite(0xaaffdd,0.0);   coma.scale.setScalar(0.5);     // green-white gas/dust envelope
-  const nucleus=mkSprite(0xffffff,0.0); nucleus.scale.setScalar(0.12); // bright solid core
-  const ion=[], dust=[];
-  for(let j=0;j<ION_N;j++)  ion.push(mkSprite(0x88bbff,0.0));          // straight blue plasma tail
-  for(let j=0;j<DUST_N;j++) dust.push(mkSprite(0xffe8b0,0.0));         // curved pale-yellow dust tail
-  fly.push({type:'comet', obj:coma, coma, nucleus, ion, dust, rad:0.5, p:start.clone(), v, life:0, maxLife:15});
+  const mkSprite=(hex,op,sc)=>{ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:hex,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false})); s.position.copy(start); s.scale.setScalar(sc); flybys.add(s); return s; };
+  const coma=mkSprite(0xc6ffe2,0.0,0.42);    // soft white-green gas/dust envelope (comae fluoresce green from C2/CN)
+  const nucleus=mkSprite(0xffffff,0.0,0.10); // bright solid core
+  const ionTail=makeTailRibbon(16, 0x7fb0ff, 0.07, 0.40);   // straight, narrow, blue plasma tail
+  const dustTail=makeTailRibbon(18, 0xffe2a0, 0.22, 0.34);  // broad, curved, pale-yellow dust tail
+  flybys.add(ionTail.mesh); flybys.add(dustTail.mesh);
+  fly.push({type:'comet', obj:coma, coma, nucleus, ionTail, dustTail, rad:0.45, p:start.clone(), v, life:0, maxLife:16});
 }
 function removeFlyby(c){
   if(c.type==='rock'){ flybys.remove(c.obj); c.obj.geometry.dispose(); c.obj.material.dispose(); }
-  else { for(const s of [c.coma, c.nucleus, ...c.ion, ...c.dust]){ flybys.remove(s); s.material.dispose(); } }
+  else { for(const s of [c.coma, c.nucleus]){ flybys.remove(s); s.material.dispose(); }
+    for(const tl of [c.ionTail, c.dustTail]){ flybys.remove(tl.mesh); tl.geo.dispose(); tl.mesh.material.dispose(); } }
 }
 function updateFlybys(dt){
   for(let i=fly.length-1;i>=0;i--){
@@ -1240,27 +1277,18 @@ function updateFlybys(dt){
     } else {
       // perihelion brightening — a comet is faint far out and flares as it nears the sun (= NaN at the origin)
       const dist=c.p.length();
-      const peri=Math.max(0.3, Math.min(1.7, 1.7 - dist*0.11));
+      const peri=Math.max(0.3, Math.min(1.4, 1.5 - dist*0.10));
       const headF=fade*peri;
       const sun=_tOut.copy(c.p).normalize();              // anti-sunward unit (directly away from the origin)
       const vel=_tSwp.copy(c.v).normalize();              // direction of motion
-      c.coma.position.copy(c.p);    c.coma.material.opacity=Math.min(1,0.95*headF); c.coma.scale.setScalar(0.55*(0.7+0.6*peri));
+      c.coma.position.copy(c.p);    c.coma.material.opacity=Math.min(0.85,0.7*headF); c.coma.scale.setScalar(0.40*(0.65+0.5*peri));
       c.nucleus.position.copy(c.p); c.nucleus.material.opacity=Math.min(1,headF);
-      // ION tail — straight, narrow, blue, pointing dead anti-sunward (solar wind)
-      for(let j=0;j<c.ion.length;j++){ const t=(j+1)/c.ion.length, s=c.ion[j];
-        s.position.copy(c.p).addScaledVector(sun,(j+1)*0.42);
-        s.scale.setScalar(0.26*(1-t*0.6));
-        s.material.opacity=headF*0.75*(1-t*0.9);
-      }
-      // DUST tail — broad, CURVED: steps from anti-sunward and bends toward anti-velocity (lags the orbit)
-      _acc.copy(c.p);
-      for(let j=0;j<c.dust.length;j++){ const t=j/(c.dust.length-1), s=c.dust[j];
-        _t2.copy(sun).multiplyScalar(1-t*0.55).addScaledVector(vel, -t*1.0).normalize();
-        _acc.addScaledVector(_t2, 0.34);
-        s.position.copy(_acc);
-        s.scale.setScalar(0.42*(1-t*0.5));
-        s.material.opacity=headF*0.6*(1-t*0.8);
-      }
+      // continuous ribbon tails — camera-facing in the flybys-local frame
+      flybys.worldToLocal(_camL.copy(camera.position));
+      updateTailRibbon(c.ionTail, c.p, sun, vel, 0.0, _camL);     // ION — straight, dead anti-sunward
+      updateTailRibbon(c.dustTail, c.p, sun, vel, 1.0, _camL);    // DUST — curved, lagging the orbit
+      c.ionTail.mesh.material.uniforms.uOpacity.value = headF*0.85;
+      c.dustTail.mesh.material.uniforms.uOpacity.value = headF*0.7;
     }
     if(c.life>c.maxLife){ removeFlyby(c); fly.splice(i,1); }
   }
