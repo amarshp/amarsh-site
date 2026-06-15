@@ -1139,7 +1139,7 @@ function resetShield(){ for(let i=0;i<DISC_N;i++) discState[i]=0; discLive=DISC_
 // ── FLYBYS — comets (with tails) + real tumbling asteroids drift past now and then ──
 const flybys = new THREE.Group(); world.add(flybys);   // in world → drag-orbit lets you view them from any angle
 const fly = [];
-const _tOut=new THREE.Vector3(), _tSwp=new THREE.Vector3();   // scratch for comet-tail direction (no per-frame alloc)
+const _tOut=new THREE.Vector3(), _tSwp=new THREE.Vector3(), _t2=new THREE.Vector3(), _acc=new THREE.Vector3();   // scratch for comet tails (no per-frame alloc)
 // procedural rocky asteroid — displaced/faceted icosphere, lit (no external asset, looks like real rock)
 function makeAsteroid(rad){
   const geo=new THREE.IcosahedronGeometry(rad, 2), p=geo.attributes.position, v=new THREE.Vector3();
@@ -1154,26 +1154,30 @@ function spawnFlyby(){
   const start=new THREE.Vector3(Math.cos(a)*Math.cos(el), Math.sin(el), Math.sin(a)*Math.cos(el)).multiplyScalar(R);
   const target=new THREE.Vector3((Math.random()-0.5)*7,(Math.random()-0.5)*7,(Math.random()-0.5)*7);
   const v=target.sub(start).normalize().multiplyScalar(1.3+Math.random()*1.1);
-  if(Math.random()<0.45){ // ASTEROID — real lit rock, tumbling, shootable
-    const m=makeAsteroid(0.20+Math.random()*0.16);
+  if(Math.random()<0.45){ // ASTEROID — real lit rock, tumbling, shootable (small bodies → modest size vs the planets)
+    const m=makeAsteroid(0.12+Math.random()*0.11);
     m.position.copy(start); flybys.add(m);
-    fly.push({type:'rock', obj:m, rad:0.42, p:start.clone(), v, spin:new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(1.1), life:0, maxLife:14});
+    fly.push({type:'rock', obj:m, rad:0.30, p:start.clone(), v, spin:new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(1.1), life:0, maxLife:14});
     return;
   }
-  // COMET — bright head + a soft anti-sunward dust plume (stacked additive sprites that taper out), shootable
-  const TAILN=9, col=new THREE.Color().setHSL(0.5+Math.random()*0.12, 0.85, 0.7);
-  const head=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:col,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
-  head.scale.setScalar(0.46); head.position.copy(start); flybys.add(head);
-  const tailSprites=[];
-  for(let j=0;j<TAILN;j++){
-    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:col,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-    s.position.copy(start); flybys.add(s); tailSprites.push(s);
-  }
-  fly.push({type:'comet', obj:head, tailSprites, col, rad:0.5, p:start.clone(), v, life:0, maxLife:13});
+  // comets ride an eccentric path that swings close past NaN (perihelion) so the brightening + tails read
+  { const periT=new THREE.Vector3((Math.random()-0.5)*3.0,(Math.random()-0.5)*3.0,(Math.random()-0.5)*3.0);
+    v.copy(periT.sub(start).normalize().multiplyScalar(0.9+Math.random()*0.7)); }
+  // COMET — modelled on real comets (e.g. NEOWISE/Hale-Bopp): a glowing COMA around a tiny NUCLEUS, with TWO tails —
+  // a straight bluish ION tail blown directly anti-sunward by the solar wind, and a broader CURVED yellow-white DUST
+  // tail that lags along the orbit (radiation pressure + inertia). Brightens near perihelion (closest to NaN = the sun).
+  const ION_N=11, DUST_N=13;
+  const mkSprite=(hex,op)=>{ const s=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:hex,transparent:true,opacity:op,blending:THREE.AdditiveBlending,depthWrite:false})); s.position.copy(start); flybys.add(s); return s; };
+  const coma=mkSprite(0xaaffdd,0.0);   coma.scale.setScalar(0.5);     // green-white gas/dust envelope
+  const nucleus=mkSprite(0xffffff,0.0); nucleus.scale.setScalar(0.12); // bright solid core
+  const ion=[], dust=[];
+  for(let j=0;j<ION_N;j++)  ion.push(mkSprite(0x88bbff,0.0));          // straight blue plasma tail
+  for(let j=0;j<DUST_N;j++) dust.push(mkSprite(0xffe8b0,0.0));         // curved pale-yellow dust tail
+  fly.push({type:'comet', obj:coma, coma, nucleus, ion, dust, rad:0.5, p:start.clone(), v, life:0, maxLife:15});
 }
 function removeFlyby(c){
   if(c.type==='rock'){ flybys.remove(c.obj); c.obj.geometry.dispose(); c.obj.material.dispose(); }
-  else { flybys.remove(c.obj); c.obj.material.dispose(); c.tailSprites.forEach(s=>{ flybys.remove(s); s.material.dispose(); }); }
+  else { for(const s of [c.coma, c.nucleus, ...c.ion, ...c.dust]){ flybys.remove(s); s.material.dispose(); } }
 }
 function updateFlybys(dt){
   for(let i=fly.length-1;i>=0;i--){
@@ -1183,16 +1187,28 @@ function updateFlybys(dt){
       c.obj.position.copy(c.p); c.obj.rotation.x+=c.spin.x*dt; c.obj.rotation.y+=c.spin.y*dt;
       c.obj.material.opacity=fade; c.obj.material.transparent=fade<1;
     } else {
-      c.obj.position.copy(c.p); c.obj.material.opacity=fade;
-      // tail streams ANTI-SUNWARD (away from the core at origin), swept slightly by motion
-      _tOut.copy(c.p).normalize();
-      _tSwp.copy(c.v).normalize().multiplyScalar(-0.4);
-      _tOut.multiplyScalar(0.7).add(_tSwp).normalize();
-      for(let j=0;j<c.tailSprites.length;j++){
-        const t=(j+1)/c.tailSprites.length, s=c.tailSprites[j];
-        s.position.copy(c.p).addScaledVector(_tOut, (j+1)*0.42);
-        s.scale.setScalar(0.5*(1-t*0.78));
-        s.material.opacity=fade*0.7*(1-t*0.92);
+      // perihelion brightening — a comet is faint far out and flares as it nears the sun (= NaN at the origin)
+      const dist=c.p.length();
+      const peri=Math.max(0.3, Math.min(1.7, 1.7 - dist*0.11));
+      const headF=fade*peri;
+      const sun=_tOut.copy(c.p).normalize();              // anti-sunward unit (directly away from the origin)
+      const vel=_tSwp.copy(c.v).normalize();              // direction of motion
+      c.coma.position.copy(c.p);    c.coma.material.opacity=Math.min(1,0.95*headF); c.coma.scale.setScalar(0.55*(0.7+0.6*peri));
+      c.nucleus.position.copy(c.p); c.nucleus.material.opacity=Math.min(1,headF);
+      // ION tail — straight, narrow, blue, pointing dead anti-sunward (solar wind)
+      for(let j=0;j<c.ion.length;j++){ const t=(j+1)/c.ion.length, s=c.ion[j];
+        s.position.copy(c.p).addScaledVector(sun,(j+1)*0.42);
+        s.scale.setScalar(0.26*(1-t*0.6));
+        s.material.opacity=headF*0.75*(1-t*0.9);
+      }
+      // DUST tail — broad, CURVED: steps from anti-sunward and bends toward anti-velocity (lags the orbit)
+      _acc.copy(c.p);
+      for(let j=0;j<c.dust.length;j++){ const t=j/(c.dust.length-1), s=c.dust[j];
+        _t2.copy(sun).multiplyScalar(1-t*0.55).addScaledVector(vel, -t*1.0).normalize();
+        _acc.addScaledVector(_t2, 0.34);
+        s.position.copy(_acc);
+        s.scale.setScalar(0.42*(1-t*0.5));
+        s.material.opacity=headF*0.6*(1-t*0.8);
       }
     }
     if(c.life>c.maxLife){ removeFlyby(c); fly.splice(i,1); }
