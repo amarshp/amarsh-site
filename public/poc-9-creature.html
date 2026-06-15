@@ -30,7 +30,7 @@ body.core-hover #cur{background:#ccff00;}
 #sat-feed{text-align:right;}
 #sat-feed .rdot{color:#ff4466;text-shadow:0 0 8px #ff4466;animation:recblink 1.4s steps(1) infinite;}
 #sat-traj{position:fixed;bottom:26px;left:26px;z-index:50;pointer-events:none;opacity:1;}
-#sat-blueprint{position:fixed;bottom:22px;right:26px;z-index:50;pointer-events:none;opacity:.9;overflow:hidden;}
+#sat-blueprint{position:fixed;bottom:12px;right:24px;z-index:50;pointer-events:none;opacity:.9;overflow:hidden;}
 #weapon{position:fixed;right:26px;bottom:160px;z-index:56;width:196px;font-family:'Orbitron',sans-serif;pointer-events:none;text-align:right;}
 #weapon .wlbl{font-size:8px;letter-spacing:1.5px;color:#7fe0ff;opacity:.9;margin-bottom:5px;}
 #weapon .wkey{color:#9ff6ff;opacity:.6;margin-left:6px;}
@@ -115,9 +115,12 @@ body.core-hover #cur{background:#ccff00;}
 #drag-hint{position:fixed;bottom:20px;right:24px;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.1);z-index:50;pointer-events:none;transition:opacity .4s;}
 #gesture-hint{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:3px;color:rgba(204,255,0,.85);z-index:51;pointer-events:none;opacity:0;transition:opacity .3s;text-shadow:0 0 8px rgba(204,255,0,.6);white-space:nowrap;}
 /* ── FLIGHT MANUAL — discoverable, dismissible controls tutorial (never forced) ── */
-#manual-tab{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:62;font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;color:rgba(127,224,255,.72);border:1px solid rgba(127,224,255,.3);background:rgba(4,12,18,.7);backdrop-filter:blur(3px);padding:6px 14px;border-radius:4px;cursor:pointer;user-select:none;transition:all .2s;box-shadow:0 0 14px rgba(0,238,255,.12);}
-#manual-tab:hover,#manual-tab.active{color:#9ff6ff;border-color:rgba(127,224,255,.7);box-shadow:0 0 22px rgba(0,238,255,.32);}
-#manual-tab b{color:#ccff00;font-weight:700;margin-left:7px;}
+#manual-strip{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:62;display:flex;align-items:center;gap:10px;font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;border:1px solid rgba(127,224,255,.28);background:rgba(4,12,18,.72);backdrop-filter:blur(3px);padding:6px 14px;border-radius:4px;cursor:pointer;user-select:none;transition:border-color .2s,box-shadow .2s;box-shadow:0 0 14px rgba(0,238,255,.1);max-width:90vw;}
+#manual-strip:hover,#manual-strip.active{border-color:rgba(127,224,255,.6);box-shadow:0 0 22px rgba(0,238,255,.28);}
+#manual-strip .ms-key{font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#ccff00;white-space:nowrap;transition:opacity .3s;}
+#manual-strip .ms-d{color:rgba(220,245,255,.66);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;transition:opacity .3s;}
+#manual-strip.cyc .ms-key,#manual-strip.cyc .ms-d{opacity:0;}
+#manual-strip .ms-more{margin-left:4px;color:rgba(127,224,255,.78);font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1px;border:1px solid rgba(127,224,255,.32);padding:2px 7px;border-radius:3px;white-space:nowrap;}
 #manual{position:fixed;bottom:52px;left:50%;transform:translateX(-50%) translateY(12px);z-index:62;width:min(560px,92vw);background:rgba(4,12,20,.93);border:1px solid rgba(127,224,255,.35);border-radius:6px;padding:15px 20px 16px;backdrop-filter:blur(6px);box-shadow:0 0 40px rgba(0,238,255,.13),inset 0 0 30px rgba(0,238,255,.04);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;}
 #manual.open{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
 #manual .m-h{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:4px;color:#9ff6ff;margin-bottom:11px;text-shadow:0 0 8px rgba(0,238,255,.5);}
@@ -199,7 +202,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
   </div>
 </div>
 <div id="sat-traj">
-  <svg viewBox="0 0 212 108" width="212" height="108">
+  <svg viewBox="0 0 212 108" width="288" height="147">
     <text x="6" y="11" fill="rgba(127,224,255,.85)" font-size="7" font-family="Orbitron,monospace" letter-spacing="1">GROUND TRACK · INC 28.5° · LEO</text>
     <!-- equirectangular world map: graticule + a simplified continent silhouette -->
     <rect x="10" y="20" width="192" height="78" fill="rgba(8,20,32,.4)" stroke="rgba(127,224,255,.35)" stroke-width=".8"/>
@@ -222,7 +225,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 <div id="sat-blueprint">
   <!-- Accurate Hubble Space Telescope side schematic: 13.2 m optical tube (≈3:1), twin 12.2 m solar wings on the
        forward shell, open aperture door, 2.4 m primary mirror, twin high-gain antennas. Proportions from NASA HST data. -->
-  <svg viewBox="0 0 200 132" width="150" height="99">
+  <svg viewBox="0 0 200 132" width="216" height="143">
     <text x="100" y="11" text-anchor="middle" class="bp-lbl" style="font-size:8px">▦ NaN-WATCH 01 · HUBBLE-CLASS</text>
     <!-- twin solar-array wings (mast + retractable multi-cell panel), mounted on the forward shell -->
     <g fill="rgba(20,40,58,.35)" stroke="rgba(127,224,255,.5)" stroke-width=".7">
@@ -266,7 +269,9 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 <div id="drag-hint">DRAG ROTATE · SHIFT+DRAW</div>
 <div id="gesture-hint">↻ ABOUT &nbsp; <b>→</b> PROJECTS &nbsp; <b>↑</b> SKILLS &nbsp; <b>↓</b> CONTACT &nbsp; <b>←</b> BACK</div>
 
-<div id="manual-tab">❔ CONTROLS <b>H</b></div>
+<div id="manual-strip" title="open the full flight manual">
+  <span class="ms-key">DRAG</span><span class="ms-d">orbit your view around NaN</span><b class="ms-more">▤ ALL · H</b>
+</div>
 <div id="manual">
   <div class="m-h">▦ FLIGHT MANUAL</div>
   <div class="m-row"><span class="m-k">DRAG</span><span>orbit your view around NaN</span></div>
@@ -1086,24 +1091,30 @@ function _wrap(g,text,x,y,maxW,lh){ const words=text.split(' '); let line='',yy=
 // Chromatic-aberration (RGB-split) text — the glitch-entity signature, NOT the clean sat HUD look.
 function _rgb(g, text, x, y, font, main){
   g.font=font; g.save(); g.globalCompositeOperation='lighter';
-  g.fillStyle='rgba(0,234,255,0.85)'; g.fillText(text, x-2, y);        // cyan ghost
-  g.fillStyle='rgba(255,42,109,0.8)'; g.fillText(text, x+2, y+1);      // magenta ghost
+  g.fillStyle='rgba(0,240,255,0.95)'; g.fillText(text, x-3, y-1);      // cyan ghost (wider split)
+  g.fillStyle='rgba(255,42,140,0.9)'; g.fillText(text, x+3, y+1);      // magenta ghost
+  g.fillStyle='rgba(170,255,0,0.4)'; g.fillText(text, x+1, y-2);       // lime fringe
   g.restore(); g.fillStyle=main; g.fillText(text, x, y);              // crisp face
 }
 function _rgbWrap(g,text,x,y,maxW,lh,font,main){ g.font=font; const words=text.split(' '); let line='',yy=y;
   for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ _rgb(g,line.trim(),x,yy,font,main); line=w+' '; yy+=lh; } else line=t; }
   _rgb(g,line.trim(),x,yy,font,main); return yy; }
 function _glitchDeco(g,W,H,sc){
-  for(let k=0;k<7;k++){ const y=(Math.random()*H)|0, h=1+(Math.random()*9|0), off=(Math.random()*22-11)|0;   // datamosh slices
-    g.globalAlpha=0.05+Math.random()*0.13; g.fillStyle=['#00eaff','#ff2a6d','#aaff00',sc][k%4]; g.fillRect(off,y,W,h); }
+  const GC=['#00eaff','#ff2a8c','#aaff00'];                            // the entity glitch palette: cyan/magenta/lime
+  for(let k=0;k<10;k++){ const y=(Math.random()*H)|0, h=1+(Math.random()*12|0), off=(Math.random()*30-15)|0;   // datamosh slices
+    g.globalAlpha=0.07+Math.random()*0.2; g.fillStyle=GC[k%3]; g.fillRect(off,y,W,h); }
+  for(let k=0;k<7;k++){ g.globalAlpha=0.10+Math.random()*0.22; g.fillStyle=GC[(Math.random()*3)|0];   // corruption blocks
+    g.fillRect((Math.random()*W)|0,(Math.random()*H)|0, 8+(Math.random()*60|0), 4+(Math.random()*16|0)); }
   g.globalAlpha=1;
-  g.fillStyle='rgba(190,240,255,0.05)'; for(let k=0;k<70;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // static noise
+  g.fillStyle='rgba(190,240,255,0.06)'; for(let k=0;k<90;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // static noise
+  g.globalAlpha=0.28; g.fillStyle=sc; g.fillRect(7,20,W-14,26); g.globalAlpha=1;   // corrupt header band behind the code line
   g.lineWidth=2;                                                       // torn RGB-split frame (offset, not clean)
-  g.strokeStyle='rgba(0,234,255,0.5)'; g.strokeRect(8,8,W-16,H-16);
-  g.strokeStyle='rgba(255,42,109,0.4)'; g.strokeRect(11,6,W-16,H-16);
-  g.fillStyle='rgba(8,6,16,0.92)'; for(let k=0;k<5;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*46|0);   // chew gaps in the frame
-    if(e===0) g.fillRect(14+Math.random()*(W-90),6,len,5); else if(e===1) g.fillRect(14+Math.random()*(W-90),H-11,len,5);
-    else if(e===2) g.fillRect(6,14+Math.random()*(H-70),5,len); else g.fillRect(W-11,14+Math.random()*(H-70),5,len); }
+  g.strokeStyle='rgba(0,240,255,0.6)'; g.strokeRect(8,8,W-16,H-16);
+  g.strokeStyle='rgba(255,42,140,0.5)'; g.strokeRect(12,5,W-16,H-16);
+  g.strokeStyle='rgba(170,255,0,0.25)'; g.strokeRect(6,11,W-16,H-16);
+  g.fillStyle='rgba(8,6,16,0.92)'; for(let k=0;k<6;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*50|0);   // chew gaps in the frame
+    if(e===0) g.fillRect(14+Math.random()*(W-90),5,len,6); else if(e===1) g.fillRect(14+Math.random()*(W-90),H-11,len,6);
+    else if(e===2) g.fillRect(5,14+Math.random()*(H-70),6,len); else g.fillRect(W-11,14+Math.random()*(H-70),6,len); }
 }
 function makeCardCanvas(p, expanded){
   const W=512, H=expanded?384:208, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
@@ -1123,7 +1134,7 @@ function makeCardCanvas(p, expanded){
   g.fillStyle='rgba(0,0,0,0.17)'; for(let y=0;y<H;y+=3) g.fillRect(0,y,W,1);   // heavy CRT scanlines
   return c;
 }
-function _cardGeo(expanded){ const w=1.55, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
+function _cardGeo(expanded){ const w=1.0, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
 function _applyCanvas(card){ if(card.tex) card.tex.dispose();
   const tex=new THREE.CanvasTexture(makeCardCanvas(card.p, card.expanded)); tex.colorSpace=THREE.SRGBColorSpace;
   card.mesh.material.map=tex; card.mesh.material.needsUpdate=true; card.tex=tex; }
@@ -1136,8 +1147,8 @@ function clearProjHolo(){
 function buildProjHolo(){
   clearProjHolo();
   PROJECTS.forEach((p,i)=>{
-    const frac=(i/(PROJECTS.length-1))-0.5;                            // -0.5..0.5
-    const pos=new THREE.Vector3(2.3 + (1-Math.abs(frac))*0.55, -frac*2.55, 0.5 - frac*0.25);  // right-side vertical arc
+    const mid=(PROJECTS.length-1)/2;                                   // evenly spaced column on the right, centred in view
+    const pos=new THREE.Vector3(2.0 - Math.abs(i-mid)*0.1, 1.2 - i*0.72, 0.45);  // fits all 5 on-screen, no overlap, uses full height
     const mesh=new THREE.Mesh(_cardGeo(false), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide}));
     mesh.position.copy(pos); projGroup.add(mesh);
     const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), pos.clone()]),
@@ -2714,22 +2725,36 @@ setTimeout(()=>{
   }catch(e){ console.warn('[orbit] ground-track unavailable', e); }
 })();
 
-// ── FLIGHT MANUAL — controls tutorial: toggle via the tab, H/?, Esc; peeks once on load (never forced) ──
+// ── FLIGHT MANUAL — a strip that cycles a new command every 10s; click / H expands the full manual ──
 (function flightManual(){
-  const panel=document.getElementById('manual'), tab=document.getElementById('manual-tab');
-  if(!panel||!tab) return;
-  let userTouched=false;
+  const strip=document.getElementById('manual-strip'), panel=document.getElementById('manual');
+  if(!strip||!panel) return;
+  const keyEl=strip.querySelector('.ms-key'), dEl=strip.querySelector('.ms-d');
+  const CMDS=[
+    ['DRAG','orbit your view around NaN'],
+    ['SHIFT + DRAW','draw a gesture to jump between sections'],
+    ['SPACE / CLICK','fire a dark-matter bolt at your cursor'],
+    ['SHOOT bodies','blast the drifting comets & planets apart'],
+    ['SHOOT the core','provoke NaN — keep firing for a nova'],
+    ['OPEN PROJECTS','NaN projects holograms — shoot a card to expand'],
+    ['▲ OPEN UPLINK','talk to NaN out loud (voice)'],
+    ['PRESS H','open the full flight manual'],
+  ];
+  let i=0, timer=null;
+  function show(idx){ strip.classList.add('cyc');
+    setTimeout(()=>{ keyEl.textContent=CMDS[idx][0]; dEl.textContent=CMDS[idx][1]; strip.classList.remove('cyc'); }, 300); }
+  function start(){ stop(); timer=setInterval(()=>{ i=(i+1)%CMDS.length; show(i); }, 10000); }   // new command every 10s
+  function stop(){ if(timer){ clearInterval(timer); timer=null; } }
   function toggle(force){ const open = force!==undefined ? force : !panel.classList.contains('open');
-    panel.classList.toggle('open', open); tab.classList.toggle('active', open); }
-  tab.addEventListener('click', ()=>{ userTouched=true; toggle(); });
+    panel.classList.toggle('open', open); strip.classList.toggle('active', open);
+    if(open) stop(); else start(); }                                        // pause cycling while expanded
+  strip.addEventListener('click', ()=>toggle());
   addEventListener('keydown', e=>{
     if(/^(INPUT|TEXTAREA)$/.test((e.target||{}).tagName)) return;          // don't hijack the contact form
-    if(e.key==='h'||e.key==='H'||e.key==='?'){ userTouched=true; toggle(); }
+    if(e.key==='h'||e.key==='H'||e.key==='?') toggle();
     else if(e.key==='Escape' && panel.classList.contains('open')) toggle(false);
   });
-  // one gentle auto-peek so players discover it, then fold away unless they opened it themselves
-  setTimeout(()=>{ if(userTouched) return; toggle(true);
-    setTimeout(()=>{ if(!userTouched) toggle(false); }, 6500); }, 2000);
+  keyEl.textContent=CMDS[0][0]; dEl.textContent=CMDS[0][1]; start();
 })();
 
 // ── proactive nudge: stir from idle and re-engage ────────────
