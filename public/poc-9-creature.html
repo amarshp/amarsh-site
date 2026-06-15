@@ -30,7 +30,7 @@ body.core-hover #cur{background:#ccff00;}
 #sat-feed{text-align:right;}
 #sat-feed .rdot{color:#ff4466;text-shadow:0 0 8px #ff4466;animation:recblink 1.4s steps(1) infinite;}
 #sat-traj{position:fixed;bottom:26px;left:26px;z-index:50;pointer-events:none;opacity:1;}
-#sat-blueprint{position:fixed;bottom:12px;right:24px;z-index:50;pointer-events:none;opacity:.9;overflow:hidden;}
+#sat-blueprint{position:fixed;bottom:6px;right:24px;z-index:50;pointer-events:none;opacity:.9;overflow:hidden;}
 #weapon{position:fixed;right:26px;bottom:160px;z-index:56;width:196px;font-family:'Orbitron',sans-serif;pointer-events:none;text-align:right;}
 #weapon .wlbl{font-size:8px;letter-spacing:1.5px;color:#7fe0ff;opacity:.9;margin-bottom:5px;}
 #weapon .wkey{color:#9ff6ff;opacity:.6;margin-left:6px;}
@@ -1088,6 +1088,8 @@ const projCards=[]; let projActive=false;
 function _wrap(g,text,x,y,maxW,lh){ const words=text.split(' '); let line='',yy=y;
   for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ g.fillText(line.trim(),x,yy); line=w+' '; yy+=lh; } else line=t; }
   g.fillText(line.trim(),x,yy); return yy; }
+const _GC=['#00eaff','#ff2a8c','#aaff00'], _GLY='▓▒░█╳#@%&*≠§¤';   // glitch palette + corruption glyphs
+function _corrupt(text, rate){ return text.split('').map(ch => (ch!==' ' && Math.random()<rate) ? _GLY[(Math.random()*_GLY.length)|0] : ch).join(''); }
 // Chromatic-aberration (RGB-split) text — the glitch-entity signature, NOT the clean sat HUD look.
 function _rgb(g, text, x, y, font, main){
   g.font=font; g.save(); g.globalCompositeOperation='lighter';
@@ -1121,7 +1123,7 @@ function makeCardCanvas(p, expanded){
   g.fillStyle='rgba(8,6,16,0.66)'; g.fillRect(0,0,W,H);                // dark, not sat-cyan
   _glitchDeco(g,W,H,p.sc);
   _rgb(g, p.code+'  '+p.status, 26, 44, '700 21px Orbitron, monospace', p.sc);
-  const ty=_rgbWrap(g, p.title, 26, 84, W-52, 32, '900 28px Orbitron, sans-serif', '#eaf7ff');
+  const ty=_rgbWrap(g, _corrupt(p.title,0.08), 26, 84, W-52, 32, '900 28px Orbitron, sans-serif', '#eaf7ff');  // a few glyphs corrupt each render
   if(expanded){
     g.fillStyle='rgba(210,240,255,0.85)'; g.font='400 16px monospace'; _wrap(g, p.desc, 26, ty+36, W-52, 22);
     _rgb(g, '▸ '+p.metric, 26, H-62, '700 17px Orbitron, monospace', '#eaf7ff');
@@ -1132,6 +1134,14 @@ function makeCardCanvas(p, expanded){
     g.fillStyle='rgba(0,234,255,0.62)'; g.font='400 14px monospace'; g.fillText('◣ FIRE//EXPAND', 26, H-20);
   }
   g.fillStyle='rgba(0,0,0,0.17)'; for(let y=0;y<H;y+=3) g.fillRect(0,y,W,1);   // heavy CRT scanlines
+  g.save(); g.globalCompositeOperation='difference'; g.fillStyle='#ffffff';   // colour-channel inversion slices
+  for(let k=0;k<2+((Math.random()*2)|0);k++){ const y=(Math.random()*H)|0, h=3+(Math.random()*15|0); g.fillRect(0,y,W,h); }
+  g.restore();
+  if(Math.random()<0.07){                                                      // occasional full-card SIGNAL//LOSS dropout
+    g.fillStyle='rgba(8,6,16,0.85)'; g.fillRect(0,0,W,H);
+    for(let k=0;k<150;k++){ g.globalAlpha=0.3+Math.random()*0.55; g.fillStyle=_GC[(Math.random()*3)|0]; g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,2+(Math.random()*11|0),2); }
+    g.globalAlpha=1; _rgb(g, '▚ SIGNAL // LOSS ▚', 54, H/2+8, '700 22px Orbitron, monospace', '#ff2a8c');
+  }
   return c;
 }
 function _cardGeo(expanded){ const w=1.0, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
