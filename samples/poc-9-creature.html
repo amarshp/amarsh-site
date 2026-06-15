@@ -1080,7 +1080,7 @@ function updateDisc(dt) {
       discT[i]+=dt;
       const f=Math.min(1, dt*15);
       discPosArr[ix]+=(discTgt[ix]-discPosArr[ix])*f; discPosArr[iy]+=(discTgt[iy]-discPosArr[iy])*f; discPosArr[iz]+=(discTgt[iz]-discPosArr[iz])*f;
-      discCol[ix]=1.8; discCol[iy]=1.8; discCol[iz]=1.4;   // bright white flash (additive >1 = blooms)
+      discCol[ix]=0.9; discCol[iy]=2.0; discCol[iz]=1.7;   // bright cyan-white flash (matches the energy barrier)
       if(discT[i]>=0.16) discState[i]=2;
       continue;
     }
@@ -1126,15 +1126,38 @@ world.add(disc2);
 const SH_REGEN_DELAY=3.0;                 // s of no-fire before the ring starts rebuilding
 const SH_BLOCK_DOTS=24;                   // dots spent per intercepted bolt → ~5-6 blocks empties the ring
 let lastAttackT=-1e9, discRegenClock=0;
-const shieldFlashes=[];                   // expanding deflection shockwave rings (3D, at the block point)
-function shieldFlash(pos){
-  const m=new THREE.Mesh(new THREE.RingGeometry(0.05,0.12,40), new THREE.MeshBasicMaterial({color:0xeaff66,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));
-  m.position.copy(pos); m.renderOrder=4; scene.add(m); shieldFlashes.push({m,t:0});
+// FUTURISTIC DEFLECTION — a hexagonal energy barrier glitches into existence at the impact and the bolt shatters on
+// it: a hex-cell force-field with an expanding shockwave ring, an impact flash, and glitchy RGB-tear bands (NaN is a
+// glitch entity, so its shield flickers like corrupted signal). Billboarded so the hex pattern always reads flat-on.
+const hexShields=[];
+const _HEX_FRAG=`precision highp float; uniform float uT; varying vec2 vUv;
+  float hexDist(vec2 p){ p=abs(p); return max(dot(p,vec2(0.866025,0.5)), p.y); }
+  float hashv(vec2 p){ return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453); }
+  void main(){
+    float r=length(vUv); if(r>1.0) discard;
+    vec2 hp=vUv*5.5, a=vec2(1.0,1.7320508);
+    float hd=min(hexDist(mod(hp,a)-a*0.5), hexDist(mod(hp+a*0.5,a)-a*0.5));
+    float cell=smoothstep(0.32,0.5,hd);                       // glowing hex-cell edges
+    float ring=smoothstep(0.10,0.0,abs(r-uT*1.05));           // expanding shockwave front
+    float flash=smoothstep(0.5,0.0,r)*pow(1.0-uT,2.0);        // central impact flash
+    float band=step(0.85, hashv(vec2(floor(vUv.y*22.0), floor(uT*34.0))));  // glitch tear bands
+    float energy=cell*(0.35+ring*1.4) + ring*1.15 + flash + band*cell*0.7;
+    float rim=smoothstep(1.0,0.55,r);
+    vec3 col=mix(vec3(0.30,1.0,0.85), vec3(1.0), ring*0.7+flash) + vec3(0.6,1.0,0.2)*cell*0.25;  // glitch-cyan + yellow hex
+    gl_FragColor=vec4(col, clamp(energy*rim*(1.0-uT*0.5),0.0,1.0));
+  }`;
+function spawnHexShield(pos){
+  const m=new THREE.ShaderMaterial({ transparent:true, blending:THREE.AdditiveBlending, depthWrite:false, side:THREE.DoubleSide,
+    uniforms:{ uT:{value:0} },
+    vertexShader:`varying vec2 vUv; void main(){ vUv=uv*2.0-1.0; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+    fragmentShader:_HEX_FRAG });
+  const mesh=new THREE.Mesh(new THREE.CircleGeometry(0.9,56), m); mesh.position.copy(pos); mesh.renderOrder=5; scene.add(mesh);
+  hexShields.push({mesh,t:0});
 }
 function updateShieldFlashes(dt){
-  for(let i=shieldFlashes.length-1;i>=0;i--){ const f=shieldFlashes[i]; f.t+=dt; const k=f.t/0.42;
-    f.m.quaternion.copy(camera.quaternion); f.m.scale.setScalar(0.3+k*6.0); f.m.material.opacity=Math.max(0,0.95*(1-k));
-    if(k>=1){ scene.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); shieldFlashes.splice(i,1); } }
+  for(let i=hexShields.length-1;i>=0;i--){ const f=hexShields[i]; f.t+=dt; const k=f.t/0.55;
+    f.mesh.material.uniforms.uT.value=k; f.mesh.quaternion.copy(camera.quaternion); f.mesh.scale.setScalar(0.7+k*0.8);
+    if(k>=1){ scene.remove(f.mesh); f.mesh.geometry.dispose(); f.mesh.material.dispose(); hexShields.splice(i,1); } }
 }
 // send the nearest live dots out to intercept a bolt at world-point `atWorld`
 function shieldBlock(atWorld){
@@ -1148,11 +1171,21 @@ function shieldBlock(atWorld){
   const n=Math.min(SH_BLOCK_DOTS, cand.length);
   for(let j=0;j<n;j++){ const i=cand[j][1]; discState[i]=1; discT[i]=0;
     discTgt[i*3]=at.x; discTgt[i*3+1]=at.y; discTgt[i*3+2]=at.z; discLive--; }
-  try{ spawnExplosion(atWorld.clone(), 0xfaff66, 1.5); }catch(e){}   // bright burst
-  shieldFlash(atWorld);                                              // expanding deflection ring
+  spawnHexShield(atWorld);                                           // hexagonal energy barrier flickers up + shatters the bolt
+  try{ spawnExplosion(atWorld.clone(), 0x66ffd0, 1.1); }catch(e){}   // cyan glitch shards
   onShieldBlock();
 }
-function resetShield(){ for(let i=0;i<DISC_N;i++) discState[i]=0; discLive=DISC_N; lastAttackT=-1e9; }
+// rebuild the WHOLE ring with a clean pop-up: every dot revives at the centre on its evenly-spaced slot and bursts
+// outward; the orbital spring catches them at the ring radius → the disc reforms complete and uniform (not clumpy).
+function resetShield(){
+  for(let i=0;i<DISC_N;i++){ discState[i]=0;
+    const a=(i/DISC_N)*Math.PI*2, r0=0.12;
+    discPosArr[i*3]=Math.cos(a)*r0; discPosArr[i*3+1]=DISC_Y[i]*0.2; discPosArr[i*3+2]=Math.sin(a)*r0;
+    discVel[i*3]=Math.cos(a)*4.5 - Math.sin(a)*ORBIT_V; discVel[i*3+1]=0; discVel[i*3+2]=Math.sin(a)*4.5 + Math.cos(a)*ORBIT_V;  // burst out + tangential
+    discCol[i*3]=0.80; discCol[i*3+1]=1.0; discCol[i*3+2]=0.0;
+  }
+  discLive=DISC_N; lastAttackT=-1e9; discPtGeo.attributes.position.needsUpdate=true; discPtGeo.attributes.color.needsUpdate=true;
+}
 
 // ── FLYBYS — comets (with tails) + real tumbling asteroids drift past now and then ──
 const flybys = new THREE.Group(); world.add(flybys);   // in world → drag-orbit lets you view them from any angle
