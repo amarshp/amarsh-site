@@ -157,16 +157,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 
 /* ── section space-events ── */
 /* PROJECTS: cards fly in from the void like ships docking, then stop */
-@keyframes dockIn{ from{opacity:0;transform:translate(170px,-14px) scale(.9);} 60%{opacity:1;} to{opacity:1;transform:translate(0,0) scale(1);} }
-@keyframes thrust{ 0%{box-shadow:-48px 0 34px -8px rgba(0,238,255,.7);border-left-color:#00eeff;} 78%{border-left-color:#00eeff;} 100%{box-shadow:none;} }
-/* the 3D fleet is the event now — panel cards just fade in quietly (no boring side-slide) */
-@keyframes fadeUp{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
-.fx-projects .pitem{ animation:fadeUp .4s ease backwards; }
-.fx-projects .pitem:nth-child(1){animation-delay:.05s}
-.fx-projects .pitem:nth-child(2){animation-delay:.12s}
-.fx-projects .pitem:nth-child(3){animation-delay:.19s}
-.fx-projects .pitem:nth-child(4){animation-delay:.26s}
-.fx-projects .pitem:nth-child(5){animation-delay:.33s}
+/* PROJECTS uses the in-scene 3D hologram (no bottom panel), so the old card-dock CSS is gone. */
 </style>
 </head>
 <body>
@@ -1053,49 +1044,94 @@ function updateExplosions(dt){
 // ── SECTION SPACE-EVENTS — opening a section fires a 3D in-scene event (the panel still carries the text) ──
 // Reuses the existing effect machinery (explosion / expanding rings / disc eject / warp). PROJECTS adds a
 // small fleet of ships that fly in and dock. Panel CSS reveals are kept in place but the headline is the 3D event.
-const ships=[]; const _shipUp=new THREE.Vector3(0,1,0);
-function clearShips(){ for(const s of ships){ scene.remove(s.m); scene.remove(s.trail);
-  s.m.geometry.dispose(); s.m.material.dispose(); s.fl.material.dispose(); s.tg.dispose(); s.trail.material.dispose(); } ships.length=0; }
-function spawnShips(){
-  clearShips();
-  const N=5, TN=16;
-  for(let i=0;i<N;i++){
-    const frac=(i/(N-1))-0.5;                                   // -0.5..0.5 across the view
-    const target=new THREE.Vector3(frac*3.8, 0.62 - Math.abs(frac)*0.18, 1.1); // tight arc upper-centre, clearly on-screen above the panel
-    const dir=new THREE.Vector3(frac>=0?1:-1, 0.18, -0.15).normalize();
-    const start=target.clone().add(dir.multiplyScalar(20+Math.random()*8));  // streak in from far off-screen
-    const hue=0.45+i*0.05, col=new THREE.Color().setHSL(hue,0.95,0.62);
-    const m=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.95,7), new THREE.MeshBasicMaterial({color:col, wireframe:true, transparent:true, opacity:0}));
-    m.position.copy(start); m.quaternion.setFromUnitVectors(_shipUp, target.clone().sub(start).normalize());
-    const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:col,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-    fl.scale.setScalar(1.0); fl.position.y=-0.62; m.add(fl);    // bright engine flare at the tail
-    const tp=new Float32Array(TN*3); for(let k=0;k<TN;k++){ tp[k*3]=start.x; tp[k*3+1]=start.y; tp[k*3+2]=start.z; }
-    const tg=new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tp,3));
-    const trail=new THREE.Line(tg, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
-    scene.add(m); scene.add(trail);
-    ships.push({m,fl,tg,trail,start:start.clone(),target,t:0,hist:Array.from({length:TN},()=>start.clone())});
+// PROJECTS HOLOGRAM — the entity projects its mission log into the air to its right; FIRE on a card toggles details.
+const PROJECTS=[
+  {code:'PRJ-001',status:'DEPLOYED',sc:'#36ffa0',title:'MULTI-AGENT RAG ORCHESTRATOR',desc:'LangGraph pipeline with 8 specialized agents, LLM-as-Judge + RAGAS evaluation, running in production.',metric:'73% hallucination ↓ · 200K+ daily queries',tags:['LANGGRAPH','RAG','RAGAS','BEDROCK']},
+  {code:'PRJ-002',status:'ACTIVE',sc:'#36d6ff',title:'MCP TOOL-CALLING FRAMEWORK',desc:'Production MCP server with A2A protocol bridges and zero-downtime deployments.',metric:'50K+ tool calls/day · sub-200ms p99',tags:['MCP','A2A','LANGCHAIN','FASTAPI']},
+  {code:'PRJ-003',status:'PROD',sc:'#ffb347',title:'NEURAL EVAL PIPELINE',desc:'LangSmith + custom judge models monitoring 15+ production endpoints; drift alerting with automated rollback.',metric:'MTTR cut by 80%',tags:['LANGSMITH','LLM-JUDGE','SAGEMAKER','PYTHON']},
+  {code:'PRJ-004',status:'DEPLOYED',sc:'#36ffa0',title:'CONVERSATIONAL AGENT PLATFORM',desc:'Enterprise conversational AI with persistent memory and multi-tool use.',metric:'10K+ concurrent users · 99.9% SLA',tags:['LANGCHAIN','OPENAI API','BEDROCK','REDIS']},
+  {code:'PRJ-005',status:'ACTIVE',sc:'#36d6ff',title:'AUTONOMOUS RESEARCH AGENT',desc:'Self-directed ReAct agent synthesizing multi-source data into structured reports.',metric:'85% research time ↓ vs manual',tags:['REACT','MCP','LANGGRAPH','PYTHON']},
+];
+// parented to scene (NOT world) so drag-rotating the world doesn't tumble the readout; cards billboard to camera.
+const projGroup=new THREE.Group(); scene.add(projGroup); projGroup.visible=false;
+const projRays=new THREE.Group(); scene.add(projRays);
+const projCards=[]; let projActive=false;
+function _wrap(g,text,x,y,maxW,lh){ const words=text.split(' '); let line='',yy=y;
+  for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ g.fillText(line.trim(),x,yy); line=w+' '; yy+=lh; } else line=t; }
+  g.fillText(line.trim(),x,yy); return yy; }
+function makeCardCanvas(p, expanded){
+  const W=512, H=expanded?384:208, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
+  g.fillStyle='rgba(6,22,34,0.62)'; g.fillRect(0,0,W,H);
+  g.strokeStyle='rgba(120,230,255,0.55)'; g.lineWidth=2; g.strokeRect(7,7,W-14,H-14);
+  g.strokeStyle=p.sc; g.lineWidth=3;                                  // accent corner ticks
+  [[10,10,1,1],[W-10,10,-1,1],[10,H-10,1,-1],[W-10,H-10,-1,-1]].forEach(([x,y,dx,dy])=>{ g.beginPath(); g.moveTo(x+dx*26,y); g.lineTo(x,y); g.lineTo(x,y+dy*26); g.stroke(); });
+  g.font='700 22px Orbitron, monospace'; g.fillStyle=p.sc; g.fillText(p.code+'   ● '+p.status, 28, 46);
+  g.font='900 29px Orbitron, sans-serif'; g.fillStyle='#e3fbff'; const ty=_wrap(g,p.title,28,86,W-56,33);
+  if(expanded){
+    g.font='400 17px monospace'; g.fillStyle='rgba(205,240,255,0.82)'; _wrap(g,p.desc, 28, ty+38, W-56, 23);
+    g.font='700 18px Orbitron, monospace'; g.fillStyle=p.sc; g.fillText('▸ '+p.metric, 28, H-64);
+    g.font='600 13px Orbitron, monospace'; let tx=28; g.fillStyle='rgba(160,235,255,0.92)';
+    p.tags.forEach(t=>{ const w=g.measureText(t).width+18; g.strokeStyle='rgba(120,230,255,0.38)'; g.lineWidth=1; g.strokeRect(tx,H-40,w,24); g.fillText(t, tx+9, H-23); tx+=w+8; });
+    g.font='400 13px monospace'; g.fillStyle='rgba(140,210,240,0.5)'; g.fillText('◣ FIRE TO CLOSE', W-156, 46);
+  } else {
+    g.font='400 15px monospace'; g.fillStyle='rgba(150,215,245,0.6)'; g.fillText('◣ FIRE TO EXPAND', 28, H-22);
   }
+  g.fillStyle='rgba(0,0,0,0.10)'; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,2);   // holographic scanlines
+  return c;
 }
-function updateShips(dt){
-  for(const s of ships){ s.t=Math.min(1, s.t+dt*0.42);         // ~2.4s fly-in so the streak really reads
-    const e=1-Math.pow(1-s.t,3);                                // ease-out → decelerate and dock
-    s.m.position.lerpVectors(s.start, s.target, e);
-    s.m.material.opacity=Math.min(1,s.t*4)*0.95;
-    s.fl.material.opacity=Math.max(0,(1-s.t*1.5))*0.95;         // engine cuts as it parks
-    s.hist.unshift(s.m.position.clone()); s.hist.pop();         // glowing motion trail
-    const arr=s.tg.attributes.position.array;
-    for(let k=0;k<s.hist.length;k++){ arr[k*3]=s.hist[k].x; arr[k*3+1]=s.hist[k].y; arr[k*3+2]=s.hist[k].z; }
-    s.tg.attributes.position.needsUpdate=true;
-    s.trail.material.opacity=Math.max(0,(1-s.t*1.4))*0.75;      // streak fades as it stops
+function _cardGeo(expanded){ const w=1.55, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
+function redrawCard(card){
+  if(card.tex) card.tex.dispose();
+  const tex=new THREE.CanvasTexture(makeCardCanvas(card.p, card.expanded)); tex.colorSpace=THREE.SRGBColorSpace;
+  card.mesh.material.map=tex; card.mesh.material.needsUpdate=true; card.tex=tex;
+  card.mesh.geometry.dispose(); card.mesh.geometry=_cardGeo(card.expanded);
+}
+function clearProjHolo(){
+  for(const c of projCards){ projGroup.remove(c.mesh); c.mesh.geometry.dispose(); c.mesh.material.dispose(); if(c.tex) c.tex.dispose();
+    projRays.remove(c.ray); c.ray.geometry.dispose(); c.ray.material.dispose(); }
+  projCards.length=0; projGroup.visible=false; projActive=false;
+}
+function buildProjHolo(){
+  clearProjHolo();
+  PROJECTS.forEach((p,i)=>{
+    const frac=(i/(PROJECTS.length-1))-0.5;                            // -0.5..0.5
+    const pos=new THREE.Vector3(2.3 + (1-Math.abs(frac))*0.55, -frac*2.55, 0.5 - frac*0.25);  // right-side vertical arc
+    const mesh=new THREE.Mesh(_cardGeo(false), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide}));
+    mesh.position.copy(pos); projGroup.add(mesh);
+    const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), pos.clone()]),
+      new THREE.LineBasicMaterial({color:new THREE.Color(p.sc), transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+    projRays.add(ray);
+    const card={p, mesh, tex:null, ray, expanded:false, baseY:pos.y, bob:Math.random()*6, appear:0};
+    projCards.push(card); redrawCard(card);
+  });
+  projGroup.visible=true; projActive=true;
+}
+function toggleProjCard(card){ card.expanded=!card.expanded; redrawCard(card);
+  try{ playSound(card.expanded?'panel_open':'panel_close'); }catch(e){}
+  try{ spawnExplosion(card.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(card.p.sc).getHex(), 0.4); }catch(e){} }
+function updateProjHolo(dt, t){
+  if(!projActive) return;
+  for(const c of projCards){ c.appear=Math.min(1, c.appear+dt*1.6);
+    c.mesh.quaternion.copy(camera.quaternion);                         // billboard to camera
+    const yb=c.baseY + Math.sin(t*1.1 + c.bob)*0.05;                   // gentle float
+    c.mesh.position.y=yb;
+    c.mesh.material.opacity=c.appear*(0.84 + Math.sin(t*7 + c.bob*3)*0.06);   // materialize + flicker
+    const rp=c.ray.geometry.attributes.position.array; rp[3]=c.mesh.position.x; rp[4]=yb; rp[5]=c.mesh.position.z;
+    c.ray.geometry.attributes.position.needsUpdate=true;
+    c.ray.material.opacity=c.appear*(0.16 + Math.sin(t*9 + c.bob)*0.05);     // projection beam flicker
   }
 }
 let _lastEventSec=null;
 function sectionEvent(secId){
   if(secId===_lastEventSec) return;          // ignore duplicate opens (NaN's auto-guide re-fires openSection)
   _lastEventSec=secId;
-  clearShips();
+  clearProjHolo();
   const C=new THREE.Vector3(0,0,0);                             // the entity/core sits at the world origin
-  if(secId==='s-projects'){ spawnShips(); warp=Math.max(warp,0.4); }            // ships dock in
+  if(secId==='s-projects'){ buildProjHolo(); warp=Math.max(warp,0.35);          // entity projects its mission holograms
+    try{ nanReply(nanPick([
+      "These are the missions I've run with Amarsh — I'm projecting them now. Fire a bolt at any one to crack it open.",
+      "Here's his work, hung in the air beside me. Shoot a card and I'll unfold the details for you.",
+      "My mission log. Aim and fire on any project to expand it — shoot it again to close it."]), 'happy', 5); }catch(e){} }
   else if(secId==='s-contact'){ spawnExplosion(C,0x66ddff,2.2);                 // beacon detonation
     for(let i=0;i<3;i++) coreExpandRings.push({r:0.2,maxR:2.4,alpha:1,t:i*0.12}); discEject(2.6); warp=Math.max(warp,0.5); }
   else if(secId==='s-skills'){                                                  // systems booting — scan pulses
@@ -1104,7 +1140,9 @@ function sectionEvent(secId){
     coreExpandRings.push({r:0.2,maxR:2.0,alpha:1,t:0}); }
 }
 window.__sectionEvent=sectionEvent; // debug hook
-window.__ships=ships;               // debug hook — inspect ship positions
+window.__projHolo=()=>{ buildProjHolo(); return projCards.length; };          // debug: force the hologram
+window.__projExpand=(i)=>{ if(projCards[i]) toggleProjCard(projCards[i]); };   // debug: toggle a card
+window.__projCards=projCards;                                                  // debug: inspect/force cards
 
 // ── WEAPONS — SPACE fires a dark-matter bolt at the cursor; attacking the entity overloads it → nova ──
 // Lore: the satellite condenses bolts from dark-matter flux threading the fold; the magazine recharges itself.
@@ -1118,8 +1156,12 @@ function fireBolt(){
   ammo-=1; lastFire=now;
   _ndc.set((mx/W)*2-1, -(my/H)*2+1);
   _ray.setFromCamera(_ndc, camera);
-  // resolve target: nearest flyby near the ray, else the entity if aimed at it, else a miss into the void
+  // resolve target: hologram cards take PRIORITY (so shooting a project never provokes the entity), then
+  // nearest flyby near the ray, else a planet, else the entity if aimed at it, else a miss into the void
   let target=null, impact=null, bestD=1e9;
+  if(projActive){ for(const card of projCards){ card.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
+    const r=Math.max(0.8, card.mesh.geometry.parameters.height*0.6);
+    if(d < r && d < bestD){ bestD=d; target={kind:'proj',card}; impact=_tmpV.clone(); } } }
   for(const c of fly){ c.obj.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     if(d < c.rad && d < bestD){ bestD=d; target={kind:'fly',c}; impact=_tmpV.clone(); } }
   for(const p of planets){ p.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
@@ -1152,6 +1194,7 @@ function updateProjectiles(dt){
 }
 function resolveHit(target, at){
   if(!target){ spawnExplosion(at, 0x88ddff, 0.45); return; }     // miss → faint spark
+  if(target.kind==='proj'){ if(projActive && projCards.includes(target.card)) toggleProjCard(target.card); return; }   // expand/collapse a project card
   if(target.kind==='fly'){ const c=target.c, idx=fly.indexOf(c);
     if(idx>=0){ c.obj.getWorldPosition(_tmpV); spawnExplosion(_tmpV, c.type==='comet'?0x88e0ff:0xffaa55, c.type==='comet'?1.1:1.5); removeFlyby(c); fly.splice(idx,1); }
     return; }
@@ -1640,7 +1683,7 @@ function animate(){
   flyClock += dt; if(flyClock > flyNext){ flyClock=0; flyNext=14+Math.random()*16; spawnFlyby(); }
   updateFlybys(dt);
   updateExplosions(dt);
-  if(ships.length) updateShips(dt);
+  updateProjHolo(dt, t);
   updateProjectiles(dt);
   ammo = Math.min(AMMO_MAX, ammo + AMMO_RATE*dt);   // satellite recharges bolts from dark-matter flux
   attackDmg = Math.max(0, attackDmg - dt*0.25);      // assault pressure bleeds off if you stop firing
@@ -1996,20 +2039,17 @@ window.openSection = function(secId){
   document.getElementById('hint').style.opacity='0';
   document.getElementById('drag-hint').style.opacity='0';
   playSound('panel_open');
-  // reveal the content panel — for PROJECTS, hold it back so the fleet flies in across the open view first
-  const reveal=()=>{
-    if(activeSec!==secId) return;                                // user closed/switched during the delay
-    document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
-    document.getElementById(secId)?.classList.add('on');
-    const panel=document.getElementById('panel');
-    panel.classList.add('open');
-    panel.classList.remove('fx-home','fx-projects','fx-skills','fx-contact');
-    void panel.offsetWidth;
-    panel.classList.add('fx-'+secId.replace('s-',''));
-    document.getElementById('xbtn').classList.add('vis');
-    targetPOffset=H*0.19;
-  };
-  if(secId==='s-projects') setTimeout(reveal, 1200); else reveal();
+  // PROJECTS shows its hologram in-scene — NO bottom panel ("the dock"). Just the close affordance.
+  if(secId==='s-projects'){ document.getElementById('xbtn').classList.add('vis'); return; }
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById(secId)?.classList.add('on');
+  const panel=document.getElementById('panel');
+  panel.classList.add('open');
+  panel.classList.remove('fx-home','fx-projects','fx-skills','fx-contact');
+  void panel.offsetWidth;
+  panel.classList.add('fx-'+secId.replace('s-',''));
+  document.getElementById('xbtn').classList.add('vis');
+  targetPOffset=H*0.19;
 };
 
 window.closePanel = function(){
@@ -2019,7 +2059,7 @@ window.closePanel = function(){
   document.getElementById('hint').style.opacity='';
   document.getElementById('drag-hint').style.opacity='';
   targetPOffset=0;
-  clearShips(); _lastEventSec=null;   // dismiss docked ships; allow the event to re-fire on next open
+  clearProjHolo(); _lastEventSec=null;   // power down the hologram; allow the event to re-fire on next open
   playSound('panel_close');
 };
 
