@@ -20,7 +20,7 @@ body.nav-hover #cur2{width:28px;height:28px;border-color:#ccff00;}
 body.core-hover #cur2{width:36px;height:36px;border-color:#ff2200;box-shadow:0 0 12px rgba(255,34,0,.5);}
 body.core-hover #cur{background:#ccff00;}
 
-#top{position:fixed;top:52px;left:74px;right:74px;display:flex;justify-content:space-between;align-items:flex-start;z-index:50;pointer-events:none;}
+#top{position:fixed;top:52px;left:74px;right:74px;display:flex;justify-content:space-between;align-items:flex-start;z-index:64;pointer-events:none;}
 .tn{font-family:'Orbitron',sans-serif;font-weight:900;font-size:13px;color:#fff;letter-spacing:5px;}
 .ts{font-size:10px;color:rgba(204,255,0,0.55);letter-spacing:3px;margin-top:4px;}
 .tr{text-align:right;}
@@ -186,10 +186,9 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
     <div class="ts">SENIOR AGENTIC AI ENGINEER</div>
     <div id="sat-stats">
       <div>SAT · NaN-WATCH 01</div>
-      <div>ALT <b id="ss-alt">540.1</b> km</div>
-      <div>VEL <b id="ss-vel">7.59</b> km/s</div>
-      <div>INC <b>28.5</b>° · LEO</div>
-      <div>PWR <b id="ss-pwr">98</b>% · SIG <b id="ss-sig">-81</b> dBm</div>
+      <div>Ø NaN <b id="ss-size">98,000</b> km</div>
+      <div>RANGE <b id="ss-dist">204,800</b> km</div>
+      <div>G-FORCE <b id="ss-grav">0.002</b> g</div>
     </div>
   </div>
   <div class="tr">
@@ -790,12 +789,13 @@ for (let n=0;n<NUM_PTS;n++){
   for (let s=0;s<NUM_SPIKE;s++){ const c=dx*_spikeDir[s].x+dy*_spikeDir[s].y+dz*_spikeDir[s].z;
     if(c>0){ const h=_spikeH[s]*Math.pow(c, SPIKE_W); if(h>bump) bump=h; } }   // tallest spike wins (no stacking → bounded size)
   const r=R0+bump;
-  cN.push({ dx, dy, dz, r0:r,
+  cN.push({ dx, dy, dz, r0:r, bump,
     ox:Math.random()*6.28, oy:Math.random()*6.28,
     sx:0.5+Math.random()*0.7, sy:0.4+Math.random()*0.6,
     amp:0.02+Math.random()*0.03 });            // gentle radial breathing
 }
 const _maxRest = cN.reduce((m,p)=>Math.max(m,p.r0), 0);   // longest spike at rest → used to keep tips inside the disc
+const _maxBump = cN.reduce((m,p)=>Math.max(m,p.bump), 0); // tallest spike's bump → folded into the disc cap when spikes grow
 // Faces (glass) and unique edges (wireframe) straight from the icosphere index — one clean surface topology.
 const glassTris = Array.from(_icoIdx);
 const cEdges = [];
@@ -877,15 +877,17 @@ fracture.frustumCulled=false; fracture.renderOrder=2; world.add(fracture);
 
 // Helper: update creature positions each frame.
 // agit (0..~2) = agitation: widens motion + adds fast writhing tremor.
-function updateCreature(t, agit) {
+function updateCreature(t, agit, charge) {
   const arr = cGeom.attributes.position.array;
   const col = cGeom.attributes.color.array;
-  const amul = 1 + agit * 0.6;   // agitation broadens motion — the lively writhe/jump when riled
-  const trem = agit * 0.025;     // fast tremor when riled
+  const amul = 1 + agit * 0.6;          // agitation broadens motion — the lively writhe/jump when riled
+  const tremAmp = 0.022 + charge*0.10;  // the angrier it is, the bigger the fast tremor (freq comes via writheAccum)
   // animated node positions first — the web lines AND the glass faces both read from these same nodes.
-  // Breathing modulates each vertex's RADIUS along its fixed direction, so spikes stay sharp as it pulses.
+  // Breathing modulates each vertex's RADIUS; spikes GROW outward + whip faster as aggravation (charge) builds (Venom-style).
   for(let n=0;n<NUM_PTS;n++){ const p=cN[n];
-    const rr = p.r0 + (Math.sin(t*p.sx + p.ox) + Math.sin(t*p.sy + p.oy))*p.amp*amul + Math.sin(t*9.0 + p.ox)*trem;
+    const rr = p.r0 + spikeBoost*p.bump*0.85
+             + (Math.sin(t*p.sx + p.ox) + Math.sin(t*p.sy + p.oy))*p.amp*amul
+             + Math.sin(writheAccum + p.ox)*tremAmp*(0.5 + p.bump*1.6);
     nodePos[n*3]   = p.dx*rr;
     nodePos[n*3+1] = p.dy*rr;
     nodePos[n*3+2] = p.dz*rr;
@@ -1356,7 +1358,7 @@ function onEntityShot(){
       : ["Keep firing and you'll tear the fold wide open—!","Okay—OKAY. You want a reaction? You'll get a singularity.","You really want to watch me come apart, don't you."];
     try{ nanReply(lines[(Math.random()*lines.length)|0], attackDmg>=3?'fight':'scared', 4); }catch(e){}
   }
-  if(attackDmg>=12 && !novaActive){ triggerNova(); attackDmg=0; }   // takes more hits now before it collapses
+  if(attackDmg>=NOVA_DMG_THRESH && !novaActive){ triggerNova(); attackDmg=0; }   // many more hits now — rage escalates first
 }
 window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); fireBolt(); } });
 window.__fire=fireBolt; // debug hook (time-based behaviour can't be seen in a single screenshot)
@@ -1494,6 +1496,10 @@ let lastMxA=0, lastMyA=0, idleClock=0;
 let mode='neutral', prevMode='neutral', modeTime=0, shockHold=0;
 let valence=0.2, arousal=0;
 let convoMood='neutral', convoMoodT=0; // conversation / interaction drives the entity's emotion
+let writheAccum=0, spikeBoost=0, novaCharge=0;   // aggravation: fast-tremor accumulator, smoothed spike growth, 0→1 charge toward nova
+const NOVA_CORE_THRESH=16, NOVA_DMG_THRESH=22;   // takes many more pokes/hits now — the rage visibly escalates first
+const KM_PER_UNIT=49000;                          // scene→km, anchored to planet radii (0.13u ≈ Earth 6371km)
+const __telemetry={distKm:0,sizeKm:0,g:0,horizon:false};
 // Impose an emotion that PERSISTS then cools to neutral (classifier resumes when the timer runs out).
 // Won't shorten a stronger emotion already burning; events (pokes, shots, compliments) feed this.
 function nanFeel(m, dur){ if(!m) return; convoMood=m; convoMoodT=Math.max(convoMoodT, dur||8); }
@@ -1627,7 +1633,7 @@ function runGesture(pts){
 }
 
 // ── SUPERNOVA → BLACK HOLE easter egg (overload the core) ─────
-let coreHits=0, lastCoreHit=0, novaActive=false, novaPhase=0, novaT=0, novaOrig=null;
+let coreHits=0, lastCoreHit=0, novaActive=false, novaPhase=0, novaT=0, novaOrig=null, __novaRedshift=0;
 const novaFlash=document.createElement('div');
 novaFlash.style.cssText='position:fixed;inset:0;z-index:60;background:#ffffff;opacity:0;pointer-events:none;';
 document.body.appendChild(novaFlash);
@@ -1649,7 +1655,8 @@ window.__setDmg=(v)=>{ attackDmg=v; nanFeel('fight', 8); };   // debug: force th
 window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).project(camera);
   return {active:novaActive, phase:novaPhase, t:+novaT.toFixed(2), bhVis:bhGroup.visible, bhScale:+bhGroup.scale.x.toFixed(2),
     creScale:+creatureMesh.scale.x.toFixed(3), bhSX:Math.round((v.x*0.5+0.5)*W), bhSY:Math.round((-v.y*0.5+0.5)*H), bhInFront:v.z<1,
-    flashOp:novaFlash.style.opacity, camZ:+camera.position.z.toFixed(2)}; };
+    flashOp:novaFlash.style.opacity, camZ:+camera.position.z.toFixed(2),
+    redshift:+__novaRedshift.toFixed(2), gForce:+__telemetry.g.toFixed(1), distKm:Math.round(__telemetry.distKm)}; };
 
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
@@ -1667,7 +1674,7 @@ renderer.domElement.addEventListener('click',e=>{
     const now=performance.now();
     coreHits = (now-lastCoreHit < 2500) ? coreHits+1 : 1;
     lastCoreHit = now;
-    if(coreHits>=7 && !novaActive){ triggerNova(); return; }
+    if(coreHits>=NOVA_CORE_THRESH && !novaActive){ triggerNova(); return; }
     coreExpanded=!coreExpanded;
     coreTargetScale = coreExpanded ? 1.3 : 1;   // modest expand so the core still fits inside the disc-bounded glass
     playSound(coreExpanded ? 'core_expand' : 'core_contract');
@@ -1774,22 +1781,37 @@ function updateNova(dt, t){
     coreGroup.scale.setScalar(Math.max(0.02, 17*(1-k)*(1-k)));
     coreMat.color.setRGB(0,0,0); glowMat.color.setRGB(0.05,0,0.09);
     bloomPass.strength = Math.max(0.5, 3.2*(1-k)) + 1.0;
-    [creatureMesh, disc, disc2, stars, galaxy, planetGroup, flybys].forEach(o=>o.scale.multiplyScalar(pull));
+    [creatureMesh, disc, disc2, planetGroup, flybys].forEach(o=>o.scale.multiplyScalar(pull));  // matter collapses; the star-field/galaxy survive to be fallen-through
     creatureMesh.rotation.z += dt*(2+k*10); stars.rotation.z += dt*(1+k*8); galaxy.rotation.z += dt*(1+k*6);
     novaFlash.style.background='#000000'; novaFlash.style.opacity=(0.08+k*0.40).toFixed(3);   // darken, but we SEE the BH form
     if(k>0.35){ bhGroup.visible=true; bhGroup.scale.setScalar(0.15 + ((k-0.35)/0.65)*1.0); }  // the hole grows in
     if(novaT>=1.6){ novaPhase=3; novaT=0; bhGroup.visible=true; bhGroup.scale.setScalar(1.15); }
   }
-  else if(novaPhase===3){            // BLACK HOLE — held, cinematic (the movie moment, ~7s)
-    if(window.__novaFreeze){ novaT=2.0; }   // debug: hold the black-hole view
-    [creatureMesh, disc, disc2, stars, galaxy, planetGroup, flybys].forEach(o=>o.scale.setScalar(0.0001));
+  else if(novaPhase===3){            // FALL-IN — the satellite is dragged across the photon sphere toward the horizon (~7s)
+    if(window.__novaFreeze!==undefined && window.__novaFreeze!==false){       // debug: park at a target novaT (number) or 3.5
+      novaT = (typeof window.__novaFreeze==='number') ? window.__novaFreeze : 3.5; }
+    const k=Math.min(1, novaT/7.0);
+    const grav=Math.pow(k, 2.3);                          // gravitational accel — a slow drift, then a rush at the end
+    [creatureMesh, disc, disc2].forEach(o=>o.scale.setScalar(0.0001));        // consumed matter stays gone
     coreGroup.scale.setScalar(0.0001);
-    bhGroup.visible=true; bhGroup.scale.setScalar(1.15 + Math.sin(novaT*0.5)*0.03);
-    bloomPass.strength = 1.5;
-    camera.position.z = camDist - Math.min(1.5, novaT*0.22);                    // slow cinematic dolly-in
-    const vig=(0.16 + Math.min(0.30, novaT*0.035)).toFixed(2);
-    novaFlash.style.background='radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 30%, rgba(0,0,0,'+vig+') 80%)';
+    // the BACKGROUND universe survives and warps — stars get pinched toward the hole and swirled (frame-dragging).
+    // (This is the real "falling in" cue; blanking it would leave nothing to fall past.)
+    const pinch=Math.max(0.05, 1 - grav*0.88);
+    stars.scale.setScalar(novaOrig.stars*pinch); galaxy.scale.setScalar(novaOrig.galaxy*pinch);
+    stars.rotation.z += dt*(0.4+grav*5.5); galaxy.rotation.z += dt*(0.3+grav*4.0);
+    // lensing/photon-ring brighten; the camera plunges from its current range down to just outside the shadow
+    bhGroup.visible=true; bhGroup.scale.setScalar(1.15 + grav*0.8 + Math.sin(novaT*0.5)*0.03);
+    bloomPass.strength = 1.4 + grav*2.4;
+    camera.position.z = camDist - grav*(camDist-0.5);                          // dolly camDist → ~0.5 (at the shadow surface)
+    // the shadow engulfs the view; corners bleed gravitational-redshift red, which SWELLS then fades to pure black
+    // as we cross the event horizon (no light escapes) — the screen is solid black before the camera meets the shadow.
+    const hole=(30 - grav*30).toFixed(0);
+    const rs=Math.floor(Math.sin(Math.min(1,grav)*Math.PI)*75);            // redshift peaks mid-fall, → 0 (black) at the horizon
+    const coreA=Math.min(1, 0.18 + grav*1.05).toFixed(2);                  // centre fills in → fully opaque at the horizon
+    const midA=Math.min(1, 0.40 + grav*0.85).toFixed(2);
+    novaFlash.style.background='radial-gradient(circle at 50% 50%, rgba('+rs+',0,0,'+coreA+') '+hole+'%, rgba('+Math.floor(rs*0.6)+',0,0,'+midA+') 72%, #000 100%)';
     novaFlash.style.opacity='1';
+    __novaRedshift=grav;
     if(novaT>=7.0){ novaPhase=4; novaT=0; }
   }
   else if(novaPhase===4){            // SILENCE — the hole collapses to a point and winks out
@@ -1834,8 +1856,28 @@ function updateNova(dt, t){
       return;
     }
   }
+  updateTelemetry();                 // distance/gravity EXPLODE as the satellite is pulled in
   composer.render();
   ctx.clearRect(0,0,W,H);            // wipe the HUD during the sequence
+}
+
+// ── LIVE TELEMETRY — distance to the entity, its size (planet-anchored), and gravitational pull.
+// All derived from the SAME camera↔entity distance that drives the black-hole dolly, so they EXPLODE in lockstep
+// as the satellite is pulled in (g ∝ 1/d⁴ — tidal-steep, so it blows up to millions of g at the horizon).
+const _ssSize=document.getElementById('ss-size'), _ssDist=document.getElementById('ss-dist'), _ssGrav=document.getElementById('ss-grav');
+function fmtKm(km){ return km>=1e6 ? (km/1e6).toFixed(2)+'M' : km>=100 ? Math.round(km).toLocaleString() : km.toFixed(1); }
+function fmtG(g){ return g>=1e6 ? (g/1e6).toFixed(1)+'M' : g>=1e3 ? (g/1e3).toFixed(1)+'k' : g>=1 ? g.toFixed(1) : g.toFixed(3); }
+function updateTelemetry(){
+  const camToC=camera.position.length();                              // entity (and black hole) sit at the origin
+  const eRad=creatureMesh.scale.x*_maxRest;
+  const bhR=(novaActive && bhGroup.visible) ? 0.6*bhGroup.scale.x : 0;
+  const surfR=Math.max(eRad, bhR);
+  const dSurf=Math.max(0.015, camToC-surfR);
+  const g=0.62/Math.pow(dSurf,4);
+  __telemetry.distKm=dSurf*KM_PER_UNIT; __telemetry.sizeKm=surfR*2*KM_PER_UNIT; __telemetry.g=g; __telemetry.horizon=dSurf<=0.05;
+  if(_ssSize) _ssSize.textContent=fmtKm(__telemetry.sizeKm);
+  if(_ssDist) _ssDist.textContent=fmtKm(__telemetry.distKm);
+  if(_ssGrav){ _ssGrav.textContent=fmtG(g); _ssGrav.style.color = g>1000 ? '#ff5544' : ''; }
 }
 
 // ── MAIN LOOP ─────────────────────────────────────────────────
@@ -1883,10 +1925,15 @@ function animate(){
   // RAGE escalates as you keep attacking it — drives MORE vertex-waving, MORE balloon, and a swelling disc,
   // building visibly until it bursts into the nova. (attackDmg climbs per hit, bleeds off if you stop.)
   const rage = creAgit + Math.min(1.8, attackDmg*0.32);
-  discRnow = DISC_R * (1 + Math.min(0.78, rage*0.20));   // the yellow ring swells out when it's angry
+  // novaCharge 0→1 = how close to bursting (max of poke-count / bolt-damage). Drives the escalating Venom aggravation.
+  const _chargeT = Math.min(1, Math.max(attackDmg/NOVA_DMG_THRESH, coreHits/NOVA_CORE_THRESH));
+  novaCharge += (_chargeT - novaCharge) * 0.08;                       // smoothed so it climbs/ebbs, never snaps
+  writheAccum += dt * (6 + novaCharge*46);                            // fast-tremor frequency ramps WAY up as it rages
+  spikeBoost  += (novaCharge - spikeBoost) * 0.06;                    // spikes grow/retract smoothly (Venom barbs)
+  discRnow = DISC_R * (1 + Math.min(0.95, rage*0.18 + novaCharge*0.55)); // the yellow ring swells out the angrier it gets
   // Creature mood-driven motion (affect engine owns reach / colour; rage owns how hard it writhes)
   creReach += (creReachT - creReach) * 0.05;
-  updateCreature(t, rage);   // more rage → vertices writhe/wave harder = visibly angrier
+  updateCreature(t, rage, novaCharge);   // more charge → vertices writhe faster + spikes extend = visibly angrier
   creatureMesh.material.color.copy(moodColor);
   // Phase in/out of time — entity briefly vanishes then re-materialises (~8.3s cycle)
   const cyc = (t*0.12) % 1;
@@ -1905,17 +1952,18 @@ function animate(){
   // Lively mood scale (reach + breath + agitation) — it balloons/recoils with reaction. The cap is DYNAMIC:
   // it shrinks as agitation grows so the pulsing spike-tips kiss the disc edge but never punch through it.
   const moodScale = breathe * creReach * (1 + rage*0.20);          // riled/attacked → balloons big toward the (swollen) disc
-  const _osc = 0.1*(1 + rage*0.6) + rage*0.025;                     // headroom the breathing/writhe pulse needs
-  const _cap = discRnow*0.99/(_maxRest + _osc);                     // cap follows the LIVE disc, so it grows with it
+  const _osc = 0.1*(1 + rage*0.6) + rage*0.025 + novaCharge*0.06;   // headroom the breathing/writhe pulse needs
+  const _spikeMaxNow = _maxRest + spikeBoost*_maxBump*0.85;         // grown spikes reach further → cap must account for them
+  const _cap = discRnow*0.99/(_spikeMaxNow + _osc);                // cap follows the LIVE disc, so tips kiss but never cross
   const _entS = Math.max(coreScale*0.62, Math.min(ENTITY_SCALE * moodScale, _cap));
   creatureMesh.scale.setScalar(_entS);
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
   membrane.scale.copy(creatureMesh.scale);
   membrane.rotation.copy(creatureMesh.rotation);
-  // FISSION: edges proliferate the MORE it's attacked — smooth ramp keyed to hit pressure (attackDmg, nova at 12),
-  // ease-in so early hits add a few crisscross lines and it accelerates toward burst (no 24→200 pop).
+  // FISSION: edges proliferate the MORE it's charged toward nova — ease-in so early hits add a few crisscross
+  // lines and it accelerates as it nears the burst (shares the same novaCharge that drives the writhe/spikes).
   fracture.scale.copy(creatureMesh.scale); fracture.rotation.copy(creatureMesh.rotation);
-  fissionT += (Math.min(1, attackDmg/12) - fissionT) * 0.10;       // smoothed, no per-hit jump
+  fissionT += (novaCharge - fissionT) * 0.10;                      // smoothed, no per-hit jump
   const _show = fissionT*fissionT;                                  // ease-in: gradual then chain-reaction
   fracture.material.opacity = Math.min(0.85, _show*0.9);
   fractureGeom.setDrawRange(0, Math.floor(fracEdges.length*_show)*2);
@@ -1978,6 +2026,8 @@ function animate(){
   const coreScreenR = Math.min(W,H) * 0.045 * coreScale;
   const dx=mx-eCX, dy=my-eCY;
   hovCore = Math.sqrt(dx*dx+dy*dy) < coreScreenR;
+
+  updateTelemetry();   // live distance / size / gravity readout (top-left)
 
   // Render
   composer.render();
@@ -2834,15 +2884,11 @@ setTimeout(()=>{
 (function satHUD(){
   const st=Date.now();
   const $=id=>document.getElementById(id);
-  const altEl=$('ss-alt'),velEl=$('ss-vel'),pwrEl=$('ss-pwr'),sigEl=$('ss-sig'),timeEl=$('sf-time'),distEl=$('sf-dist'),tjPath=$('tj-path'),tjSat=$('tj-sat');
+  const timeEl=$('sf-time'),distEl=$('sf-dist'),tjPath=$('tj-path'),tjSat=$('tj-sat');   // top-left DIST/SIZE/G-FORCE are now live (updateTelemetry)
   const pad=n=>String(n).padStart(2,'0');
   setInterval(()=>{
     const s=Math.floor((Date.now()-st)/1000);
     if(timeEl) timeEl.textContent=pad((s/3600)|0)+':'+pad(((s/60)|0)%60)+':'+pad(s%60);
-    if(altEl) altEl.textContent=(540.1+Math.sin(s*0.7)*1.4).toFixed(1);
-    if(velEl) velEl.textContent=(7.59+Math.sin(s*0.5)*0.02).toFixed(2);
-    if(pwrEl) pwrEl.textContent=Math.round(97+Math.sin(s*0.3)*2);
-    if(sigEl) sigEl.textContent=Math.round(-81+Math.sin(s*0.9)*4);
     if(distEl) distEl.textContent=(1.41+Math.sin(s*0.2)*0.03).toFixed(2);
   },1000);
   // Accurate satellite ground track — real rotating-Earth parametric model on an equirectangular map:
