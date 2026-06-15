@@ -110,10 +110,21 @@ body.core-hover #cur{background:#ccff00;}
 #xbtn.vis{display:block;}
 #xbtn:hover{color:#ccff00;border-color:rgba(204,255,0,.5);}
 
-#hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);font-size:8px;letter-spacing:4px;color:rgba(255,255,255,.15);z-index:50;pointer-events:none;animation:hb 3s infinite;transition:opacity .5s;}
+#hint{position:fixed;bottom:62px;left:50%;transform:translateX(-50%);font-size:8px;letter-spacing:4px;color:rgba(255,255,255,.15);z-index:50;pointer-events:none;animation:hb 3s infinite;transition:opacity .5s;}
 @keyframes hb{0%,100%{opacity:.15;}50%{opacity:.38;}}
 #drag-hint{position:fixed;bottom:20px;right:24px;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.1);z-index:50;pointer-events:none;transition:opacity .4s;}
 #gesture-hint{position:fixed;bottom:40px;left:50%;transform:translateX(-50%);font-size:9px;letter-spacing:3px;color:rgba(204,255,0,.85);z-index:51;pointer-events:none;opacity:0;transition:opacity .3s;text-shadow:0 0 8px rgba(204,255,0,.6);white-space:nowrap;}
+/* ── FLIGHT MANUAL — discoverable, dismissible controls tutorial (never forced) ── */
+#manual-tab{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);z-index:62;font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:2px;color:rgba(127,224,255,.72);border:1px solid rgba(127,224,255,.3);background:rgba(4,12,18,.7);backdrop-filter:blur(3px);padding:6px 14px;border-radius:4px;cursor:pointer;user-select:none;transition:all .2s;box-shadow:0 0 14px rgba(0,238,255,.12);}
+#manual-tab:hover,#manual-tab.active{color:#9ff6ff;border-color:rgba(127,224,255,.7);box-shadow:0 0 22px rgba(0,238,255,.32);}
+#manual-tab b{color:#ccff00;font-weight:700;margin-left:7px;}
+#manual{position:fixed;bottom:52px;left:50%;transform:translateX(-50%) translateY(12px);z-index:62;width:min(560px,92vw);background:rgba(4,12,20,.93);border:1px solid rgba(127,224,255,.35);border-radius:6px;padding:15px 20px 16px;backdrop-filter:blur(6px);box-shadow:0 0 40px rgba(0,238,255,.13),inset 0 0 30px rgba(0,238,255,.04);opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;}
+#manual.open{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+#manual .m-h{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:4px;color:#9ff6ff;margin-bottom:11px;text-shadow:0 0 8px rgba(0,238,255,.5);}
+#manual .m-row{display:flex;gap:14px;align-items:baseline;padding:5px 0;border-top:1px solid rgba(127,224,255,.08);font-family:'Share Tech Mono',monospace;font-size:11px;color:rgba(220,245,255,.6);line-height:1.45;}
+#manual .m-k{flex:0 0 150px;font-family:'Orbitron',sans-serif;font-size:8.5px;letter-spacing:1px;color:#ccff00;text-align:right;}
+#manual .m-foot{margin-top:11px;font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:rgba(127,224,255,.42);}
+#manual .m-foot b{color:#9ff6ff;}
 #gesture-hint.vis{opacity:1;}
 #gesture-hint b{color:#fff;font-weight:400;}
 body.spell-mode #cur{background:#ccff00;box-shadow:0 0 14px #ccff00;width:9px;height:9px;}
@@ -254,6 +265,19 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 <div id="hint">[ SELECT A NODE · HOLD SHIFT + DRAW A GESTURE ]</div>
 <div id="drag-hint">DRAG ROTATE · SHIFT+DRAW</div>
 <div id="gesture-hint">↻ ABOUT &nbsp; <b>→</b> PROJECTS &nbsp; <b>↑</b> SKILLS &nbsp; <b>↓</b> CONTACT &nbsp; <b>←</b> BACK</div>
+
+<div id="manual-tab">❔ CONTROLS <b>H</b></div>
+<div id="manual">
+  <div class="m-h">▦ FLIGHT MANUAL</div>
+  <div class="m-row"><span class="m-k">DRAG</span><span>orbit your view around NaN</span></div>
+  <div class="m-row"><span class="m-k">SHIFT + DRAW ✎</span><span>draw a gesture to navigate — ↻ About · → Projects · ↑ Skills · ↓ Contact · ← Back</span></div>
+  <div class="m-row"><span class="m-k">SPACE / CLICK</span><span>fire a dark-matter bolt at your cursor</span></div>
+  <div class="m-row"><span class="m-k">SHOOT comets / planets</span><span>blast the drifting bodies apart</span></div>
+  <div class="m-row"><span class="m-k">SHOOT the core</span><span>provoke NaN — keep firing and it collapses into a nova</span></div>
+  <div class="m-row"><span class="m-k">OPEN PROJECTS</span><span>NaN projects holograms — shoot a card to expand its details</span></div>
+  <div class="m-row"><span class="m-k">▲ OPEN UPLINK</span><span>talk to NaN out loud (voice)</span></div>
+  <div class="m-foot">press <b>H</b> or <b>?</b> to toggle · <b>Esc</b> to close — nothing here is required, just explore</div>
+</div>
 
 <div id="nanSays"><span class="who">NaN</span><span class="txt"></span></div>
 <div id="nanChips"></div>
@@ -2665,6 +2689,24 @@ setTimeout(()=>{
     if(tjPath&&tjSat&&tjPath.getTotalLength){ const L=tjPath.getTotalLength(); let p=0;
       (function move(){ p=(p+0.0016)%1; const q=tjPath.getPointAtLength(p*L); tjSat.setAttribute('cx',q.x); tjSat.setAttribute('cy',q.y); requestAnimationFrame(move); })(); }
   }catch(e){ console.warn('[orbit] ground-track unavailable', e); }
+})();
+
+// ── FLIGHT MANUAL — controls tutorial: toggle via the tab, H/?, Esc; peeks once on load (never forced) ──
+(function flightManual(){
+  const panel=document.getElementById('manual'), tab=document.getElementById('manual-tab');
+  if(!panel||!tab) return;
+  let userTouched=false;
+  function toggle(force){ const open = force!==undefined ? force : !panel.classList.contains('open');
+    panel.classList.toggle('open', open); tab.classList.toggle('active', open); }
+  tab.addEventListener('click', ()=>{ userTouched=true; toggle(); });
+  addEventListener('keydown', e=>{
+    if(/^(INPUT|TEXTAREA)$/.test((e.target||{}).tagName)) return;          // don't hijack the contact form
+    if(e.key==='h'||e.key==='H'||e.key==='?'){ userTouched=true; toggle(); }
+    else if(e.key==='Escape' && panel.classList.contains('open')) toggle(false);
+  });
+  // one gentle auto-peek so players discover it, then fold away unless they opened it themselves
+  setTimeout(()=>{ if(userTouched) return; toggle(true);
+    setTimeout(()=>{ if(!userTouched) toggle(false); }, 6500); }, 2000);
 })();
 
 // ── proactive nudge: stir from idle and re-engage ────────────
