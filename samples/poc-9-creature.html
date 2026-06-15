@@ -159,13 +159,14 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 /* PROJECTS: cards fly in from the void like ships docking, then stop */
 @keyframes dockIn{ from{opacity:0;transform:translate(170px,-14px) scale(.9);} 60%{opacity:1;} to{opacity:1;transform:translate(0,0) scale(1);} }
 @keyframes thrust{ 0%{box-shadow:-48px 0 34px -8px rgba(0,238,255,.7);border-left-color:#00eeff;} 78%{border-left-color:#00eeff;} 100%{box-shadow:none;} }
-/* cards wait for the panel to finish rising (~0.6s), then fly in like ships docking */
-.fx-projects .pitem{ animation:dockIn .62s cubic-bezier(.16,.9,.34,1) backwards, thrust .9s ease-out backwards; }
-.fx-projects .pitem:nth-child(1){animation-delay:.55s}
-.fx-projects .pitem:nth-child(2){animation-delay:.70s}
-.fx-projects .pitem:nth-child(3){animation-delay:.85s}
-.fx-projects .pitem:nth-child(4){animation-delay:1.00s}
-.fx-projects .pitem:nth-child(5){animation-delay:1.15s}
+/* the 3D fleet is the event now — panel cards just fade in quietly (no boring side-slide) */
+@keyframes fadeUp{ from{opacity:0;transform:translateY(8px);} to{opacity:1;transform:translateY(0);} }
+.fx-projects .pitem{ animation:fadeUp .4s ease backwards; }
+.fx-projects .pitem:nth-child(1){animation-delay:.05s}
+.fx-projects .pitem:nth-child(2){animation-delay:.12s}
+.fx-projects .pitem:nth-child(3){animation-delay:.19s}
+.fx-projects .pitem:nth-child(4){animation-delay:.26s}
+.fx-projects .pitem:nth-child(5){animation-delay:.33s}
 </style>
 </head>
 <body>
@@ -1053,34 +1054,45 @@ function updateExplosions(dt){
 // Reuses the existing effect machinery (explosion / expanding rings / disc eject / warp). PROJECTS adds a
 // small fleet of ships that fly in and dock. Panel CSS reveals are kept in place but the headline is the 3D event.
 const ships=[]; const _shipUp=new THREE.Vector3(0,1,0);
-function clearShips(){ for(const s of ships){ scene.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); s.fl.material.dispose(); } ships.length=0; }
+function clearShips(){ for(const s of ships){ scene.remove(s.m); scene.remove(s.trail);
+  s.m.geometry.dispose(); s.m.material.dispose(); s.fl.material.dispose(); s.tg.dispose(); s.trail.material.dispose(); } ships.length=0; }
 function spawnShips(){
   clearShips();
-  const N=5;
+  const N=5, TN=16;
   for(let i=0;i<N;i++){
     const frac=(i/(N-1))-0.5;                                   // -0.5..0.5 across the view
-    const target=new THREE.Vector3(frac*4.4, (i%2?0.55:-0.35), 1.1);   // a docked row in front of the entity
-    const dir=new THREE.Vector3(frac>=0?1:-1, 0.18, 0).normalize();
-    const start=target.clone().add(dir.multiplyScalar(15+Math.random()*7));   // streak in from off-screen
-    const hue=0.46+i*0.045;
-    const geo=new THREE.ConeGeometry(0.13,0.52,8);
-    const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(hue,0.9,0.62), wireframe:true, transparent:true, opacity:0}));
+    const target=new THREE.Vector3(frac*3.8, 0.62 - Math.abs(frac)*0.18, 1.1); // tight arc upper-centre, clearly on-screen above the panel
+    const dir=new THREE.Vector3(frac>=0?1:-1, 0.18, -0.15).normalize();
+    const start=target.clone().add(dir.multiplyScalar(20+Math.random()*8));  // streak in from far off-screen
+    const hue=0.45+i*0.05, col=new THREE.Color().setHSL(hue,0.95,0.62);
+    const m=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.95,7), new THREE.MeshBasicMaterial({color:col, wireframe:true, transparent:true, opacity:0}));
     m.position.copy(start); m.quaternion.setFromUnitVectors(_shipUp, target.clone().sub(start).normalize());
-    const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:new THREE.Color().setHSL(hue,0.9,0.72),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
-    fl.scale.setScalar(0.55); fl.position.y=-0.34; m.add(fl);   // thruster flare at the tail
-    scene.add(m);
-    ships.push({m,fl,start:start.clone(),target,t:0});
+    const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:col,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+    fl.scale.setScalar(1.0); fl.position.y=-0.62; m.add(fl);    // bright engine flare at the tail
+    const tp=new Float32Array(TN*3); for(let k=0;k<TN;k++){ tp[k*3]=start.x; tp[k*3+1]=start.y; tp[k*3+2]=start.z; }
+    const tg=new THREE.BufferGeometry(); tg.setAttribute('position', new THREE.BufferAttribute(tp,3));
+    const trail=new THREE.Line(tg, new THREE.LineBasicMaterial({color:col, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+    scene.add(m); scene.add(trail);
+    ships.push({m,fl,tg,trail,start:start.clone(),target,t:0,hist:Array.from({length:TN},()=>start.clone())});
   }
 }
 function updateShips(dt){
-  for(const s of ships){ s.t=Math.min(1, s.t+dt*0.6);
-    const e=1-Math.pow(1-s.t,3);                                // ease-out → decelerate and stop (docking)
+  for(const s of ships){ s.t=Math.min(1, s.t+dt*0.42);         // ~2.4s fly-in so the streak really reads
+    const e=1-Math.pow(1-s.t,3);                                // ease-out → decelerate and dock
     s.m.position.lerpVectors(s.start, s.target, e);
-    s.m.material.opacity=Math.min(1,s.t*4)*0.9;
-    s.fl.material.opacity=Math.max(0,(1-s.t*1.4))*0.9;          // engine cuts as it parks
+    s.m.material.opacity=Math.min(1,s.t*4)*0.95;
+    s.fl.material.opacity=Math.max(0,(1-s.t*1.5))*0.95;         // engine cuts as it parks
+    s.hist.unshift(s.m.position.clone()); s.hist.pop();         // glowing motion trail
+    const arr=s.tg.attributes.position.array;
+    for(let k=0;k<s.hist.length;k++){ arr[k*3]=s.hist[k].x; arr[k*3+1]=s.hist[k].y; arr[k*3+2]=s.hist[k].z; }
+    s.tg.attributes.position.needsUpdate=true;
+    s.trail.material.opacity=Math.max(0,(1-s.t*1.4))*0.75;      // streak fades as it stops
   }
 }
+let _lastEventSec=null;
 function sectionEvent(secId){
+  if(secId===_lastEventSec) return;          // ignore duplicate opens (NaN's auto-guide re-fires openSection)
+  _lastEventSec=secId;
   clearShips();
   const C=new THREE.Vector3(0,0,0);                             // the entity/core sits at the world origin
   if(secId==='s-projects'){ spawnShips(); warp=Math.max(warp,0.4); }            // ships dock in
@@ -1092,6 +1104,7 @@ function sectionEvent(secId){
     coreExpandRings.push({r:0.2,maxR:2.0,alpha:1,t:0}); }
 }
 window.__sectionEvent=sectionEvent; // debug hook
+window.__ships=ships;               // debug hook — inspect ship positions
 
 // ── WEAPONS — SPACE fires a dark-matter bolt at the cursor; attacking the entity overloads it → nova ──
 // Lore: the satellite condenses bolts from dark-matter flux threading the fold; the magazine recharges itself.
@@ -1978,21 +1991,25 @@ function drawRipples(){
 
 // ── PANEL CONTROL ─────────────────────────────────────────────
 window.openSection = function(secId){
-  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
-  document.getElementById(secId)?.classList.add('on');
   activeSec=secId;
-  const panel=document.getElementById('panel');
-  panel.classList.add('open');
-  // themed space-event entrance per section (restart animation each open)
-  panel.classList.remove('fx-home','fx-projects','fx-skills','fx-contact');
-  void panel.offsetWidth;
-  panel.classList.add('fx-'+secId.replace('s-',''));
-  document.getElementById('xbtn').classList.add('vis');
+  try{ sectionEvent(secId); }catch(e){ console.warn('[sectionEvent]', e); }   // fire the 3D space-event FIRST
   document.getElementById('hint').style.opacity='0';
   document.getElementById('drag-hint').style.opacity='0';
-  targetPOffset=H*0.19;
   playSound('panel_open');
-  try{ sectionEvent(secId); }catch(e){ console.warn('[sectionEvent]', e); }   // fire the 3D space-event
+  // reveal the content panel — for PROJECTS, hold it back so the fleet flies in across the open view first
+  const reveal=()=>{
+    if(activeSec!==secId) return;                                // user closed/switched during the delay
+    document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+    document.getElementById(secId)?.classList.add('on');
+    const panel=document.getElementById('panel');
+    panel.classList.add('open');
+    panel.classList.remove('fx-home','fx-projects','fx-skills','fx-contact');
+    void panel.offsetWidth;
+    panel.classList.add('fx-'+secId.replace('s-',''));
+    document.getElementById('xbtn').classList.add('vis');
+    targetPOffset=H*0.19;
+  };
+  if(secId==='s-projects') setTimeout(reveal, 1200); else reveal();
 };
 
 window.closePanel = function(){
@@ -2002,7 +2019,7 @@ window.closePanel = function(){
   document.getElementById('hint').style.opacity='';
   document.getElementById('drag-hint').style.opacity='';
   targetPOffset=0;
-  clearShips();   // dismiss any docked project ships
+  clearShips(); _lastEventSec=null;   // dismiss docked ships; allow the event to re-fire on next open
   playSound('panel_close');
 };
 
