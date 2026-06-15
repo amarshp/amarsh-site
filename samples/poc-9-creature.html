@@ -40,6 +40,12 @@ body.core-hover #cur{background:#ccff00;}
 #w-pips i.charging{background:rgba(127,224,255,.22);}
 #w-count{font-size:10px;color:#bdf3ff;margin-top:4px;letter-spacing:1px;opacity:.85;}
 #w-count.low{color:#ff6655;}
+#w-shield .wlbl{margin-top:9px;color:#ccff00;}
+#sh-pips{display:grid;grid-template-columns:repeat(6,1fr);gap:5px;justify-items:end;margin-left:auto;width:148px;margin-top:4px;}
+#sh-pips i{width:11px;height:11px;border:1px solid rgba(204,255,0,.4);border-radius:50%;background:rgba(20,24,8,.4);transition:background .15s,box-shadow .15s;}
+#sh-pips i.up{background:radial-gradient(circle,#eaff66,#bfa000);box-shadow:0 0 7px rgba(204,255,0,.8);}
+#sh-lbl{font-size:9px;color:#ccff00;margin-top:3px;letter-spacing:1px;opacity:.8;}
+#sh-lbl.down{color:#ff6655;}
 #sat-blueprint .bp-lbl{font-family:'Orbitron',sans-serif;font-size:7px;letter-spacing:2px;fill:rgba(127,224,255,.7);}
 .td{width:5px;height:5px;border-radius:50%;background:#ccff00;animation:pb 2s infinite;}
 @keyframes pb{0%,100%{opacity:1;box-shadow:0 0 6px #ccff00;}50%{opacity:.2;box-shadow:none;}}
@@ -295,6 +301,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
   <div class="wlbl">⛁ DARK-MATTER BOLTS <span class="wkey">[SPACE] FIRE</span></div>
   <div id="w-pips"></div>
   <div id="w-count">12 / 12 · recharging</div>
+  <div id="w-shield"><div class="wlbl">◍ ORB SHIELD <span class="wkey">NaN's defence</span></div><div id="sh-pips"></div><div id="sh-lbl">6 / 6 · up</div></div>
 </div>
 
 <div id="panel">
@@ -1051,6 +1058,49 @@ const disc2Geo = new THREE.TorusGeometry(1.14, 0.004, 6, 128);
 const disc2 = new THREE.Mesh(disc2Geo, new THREE.MeshBasicMaterial({color: 0x00eeff, transparent: true, opacity: 0.22}));
 world.add(disc2);
 
+// ── ORB SHIELD — a ring of bright yellow orbs (same family as the disc) that DEFEND NaN. When you fire at the
+// entity, the nearest orb darts out to intercept the bolt and bursts — it's spent. Only once every orb is gone
+// can the bolts reach NaN itself. The shield slowly regenerates if you stop attacking.
+const SHIELD_MAX=6, SH_REGEN_DELAY=4.0, SH_REGEN_GAP=1.3;
+let lastAttackT=-1e9, shieldRegenClock=0;
+const shieldOrbs=[];
+for(let i=0;i<SHIELD_MAX;i++){
+  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0xeaff55,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  sp.scale.setScalar(0.0001); sp.renderOrder=3; world.add(sp);
+  shieldOrbs.push({mesh:sp, slot:(i/SHIELD_MAX)*Math.PI*2, ang:(i/SHIELD_MAX)*Math.PI*2, alive:true, state:'orbit', tt:0, grow:0, from:new THREE.Vector3(), to:new THREE.Vector3()});
+}
+const _shV=new THREE.Vector3();
+const shReady=()=>shieldOrbs.filter(o=>o.alive && o.state==='orbit');
+function nearestShieldOrb(p){ let best=null,bd=1e9; for(const o of shReady()){ const d=o.mesh.position.distanceTo(p); if(d<bd){bd=d;best=o;} } return best; }
+function shieldIntercept(orb, at){ orb.state='intercept'; orb.tt=0; orb.from.copy(orb.mesh.position); orb.to.copy(at); }
+function updateShield(dt, t){
+  const now=performance.now();
+  // regeneration — only after you've stopped attacking for a while; one orb returns at a time
+  if(now-lastAttackT > SH_REGEN_DELAY*1000){
+    shieldRegenClock+=dt;
+    if(shieldRegenClock>SH_REGEN_GAP){ shieldRegenClock=0; const d=shieldOrbs.find(o=>!o.alive); if(d){ d.alive=true; d.state='orbit'; d.grow=0; } }
+  } else shieldRegenClock=0;
+  const r=discRnow*0.99;
+  for(const o of shieldOrbs){ const sm=o.mesh;
+    if(o.state==='orbit'){
+      if(!o.alive){ sm.scale.setScalar(0.0001); sm.material.opacity=0; continue; }
+      o.grow=Math.min(1, o.grow+dt*3.2); o.ang+=dt*0.6;
+      _shV.set(Math.cos(o.ang)*r, Math.sin(t*1.3+o.slot)*0.05, Math.sin(o.ang)*r).applyQuaternion(disc.quaternion);  // ride the disc's tilted ellipse
+      sm.position.copy(_shV);
+      sm.material.color.setHex(0xeaff55); sm.material.opacity=0.92*o.grow;
+      sm.scale.setScalar(0.135*o.grow*(1+0.09*Math.sin(t*4+o.slot)));
+    } else if(o.state==='intercept'){   // dart to meet the bolt in front of NaN, flare white, then burst
+      o.tt+=dt; const k=Math.min(1, o.tt/0.15);
+      sm.position.lerpVectors(o.from, o.to, k);
+      sm.material.color.setRGB(1,1,0.45+k*0.55); sm.material.opacity=0.96;
+      sm.scale.setScalar(0.135+k*0.13);
+      if(k>=1){ o.alive=false; o.state='orbit'; sm.scale.setScalar(0.0001); sm.material.opacity=0;
+        try{ spawnExplosion(sm.position.clone(), 0xeaff44, 0.6); }catch(e){}
+        coreExpandRings.push({r:0.08,maxR:0.55,alpha:1,t:0}); }
+    }
+  }
+}
+
 // ── FLYBYS — comets (with tails) + real tumbling asteroids drift past now and then ──
 const flybys = new THREE.Group(); world.add(flybys);   // in world → drag-orbit lets you view them from any angle
 const fly = [];
@@ -1314,6 +1364,11 @@ function fireBolt(){
     if(d < Math.max(p.rad*1.5, 0.6) && d < bestD){ bestD=d; target={kind:'planet',p}; impact=_tmpV.clone(); } }
   if(!target){ const eh=_ray.intersectObject(membrane, false);   // real geometry hit — only the actual glass shape takes damage
     if(eh.length && eh[0].distance < bestD){ target={kind:'entity'}; impact=eh[0].point.clone(); } }
+  // SHIELD — if the shot is aimed at NaN and an orb is still up, the nearest orb intercepts the bolt instead.
+  if(target && target.kind==='entity'){ const ready=shReady();
+    if(ready.length>0){ const orb=nearestShieldOrb(impact)||ready[0];
+      const meet=impact.clone().multiplyScalar(1.12);   // block point: just OUTSIDE the surface, facing the incoming bolt
+      shieldIntercept(orb, meet); onShieldBlock(ready.length); target={kind:'blocked'}; impact=meet; } }
   const dest = impact || _ray.ray.at(40, new THREE.Vector3());
   window.__lastShot = target ? target.kind : 'miss';   // debug: what the last bolt locked onto
   spawnBolt(_ray.ray.at(1.6, new THREE.Vector3()), dest, target);   // muzzle just in front of the feed
@@ -1340,6 +1395,7 @@ function updateProjectiles(dt){
 }
 function resolveHit(target, at){
   if(!target){ spawnExplosion(at, 0x88ddff, 0.45); return; }     // miss → faint spark
+  if(target.kind==='blocked'){ spawnExplosion(at, 0xeaff44, 0.5); return; }   // an orb ate the bolt — no damage to NaN
   if(target.kind==='proj'){ if(projActive && projCards.includes(target.card)) toggleProjCard(target.card); return; }   // expand/collapse a project card
   if(target.kind==='fly'){ const c=target.c, idx=fly.indexOf(c);
     if(idx>=0){ c.obj.getWorldPosition(_tmpV); spawnExplosion(_tmpV, c.type==='comet'?0x88e0ff:0xffaa55, c.type==='comet'?1.1:1.5); removeFlyby(c); fly.splice(idx,1); }
@@ -1348,7 +1404,20 @@ function resolveHit(target, at){
     spawnExplosion(_tmpV, p.type==='lava'?0xff6622:p.type==='ice'?0x9fe8ff:0xffbb66, 1.4+p.rad*2); removePlanet(p); return; }
   if(target.kind==='entity'){ creatureMesh.getWorldPosition(_tmpV); spawnExplosion(_tmpV, 0xff5533, 1.2); onEntityShot(); }
 }
+function onShieldBlock(readyCount){
+  lastAttackT=performance.now(); warp=Math.max(warp,0.18); stimPoke=Math.min(1,stimPoke+0.3);
+  nanFeel('scared', 6);
+  const now=performance.now();
+  if(now-lastShotReact>1500){ lastShotReact=now;
+    const line = readyCount<=1
+      ? "That was my LAST orb—! Hit me again and there's nothing between us."
+      : ["My orbs will take everything you throw.","The shield holds. Keep wasting your bolts.","You can't reach me through them."][(Math.random()*3)|0];
+    try{ nanReply(line, 'scared', 3); }catch(e){}
+  }
+  if(readyCount<=1){ try{ nanReply("Shields DOWN. I'm exposed now—please.", 'scared', 4); }catch(e){} }   // the orb just spent was the last
+}
 function onEntityShot(){
+  lastAttackT=performance.now();
   attackDmg += 1; warp=Math.max(warp,0.25); stimPoke=Math.min(1,stimPoke+0.5);
   nanFeel(attackDmg>=3?'fight':'scared', 9);
   const now=performance.now();
@@ -1362,6 +1431,8 @@ function onEntityShot(){
 }
 window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); fireBolt(); } });
 window.__fire=fireBolt; // debug hook (time-based behaviour can't be seen in a single screenshot)
+window.__shield=(n)=>{ shieldOrbs.forEach((o,i)=>{ o.alive=i<n; o.state='orbit'; o.grow=1; }); lastAttackT=performance.now(); };  // debug: set live orb count
+window.__atk=()=>({dmg:+attackDmg.toFixed(2), shield:shReady().length, charge:+novaCharge.toFixed(2)});                       // debug: attack/shield state
 const _wPips=document.getElementById('w-pips'), _wCount=document.getElementById('w-count'), _pips=[];
 if(_wPips){ for(let i=0;i<AMMO_MAX;i++){ const el=document.createElement('i'); _wPips.appendChild(el); _pips.push(el); } }
 let _ammoShown=-1;
@@ -1369,6 +1440,14 @@ function updateAmmoHUD(){
   const n=Math.floor(ammo); if(n===_ammoShown) return; _ammoShown=n;
   for(let i=0;i<_pips.length;i++){ _pips[i].classList.toggle('lit', i<n); _pips[i].classList.toggle('charging', i===n && n<AMMO_MAX); }
   if(_wCount){ _wCount.textContent = n+' / '+AMMO_MAX + (n<AMMO_MAX?' · recharging':' · full'); _wCount.classList.toggle('low', n<3); }
+}
+const _shPips=document.getElementById('sh-pips'), _shLbl=document.getElementById('sh-lbl'), _shp=[];
+if(_shPips){ for(let i=0;i<SHIELD_MAX;i++){ const el=document.createElement('i'); _shPips.appendChild(el); _shp.push(el); } }
+let _shShown=-1;
+function updateShieldHUD(n){
+  if(n===_shShown) return; _shShown=n;
+  for(let i=0;i<_shp.length;i++) _shp[i].classList.toggle('up', i<n);
+  if(_shLbl){ _shLbl.textContent = n+' / '+SHIELD_MAX + (n===0?' · DOWN — NaN exposed' : n<SHIELD_MAX?' · regenerating':' · up'); _shLbl.classList.toggle('down', n===0); }
 }
 
 // ── PLANETS — captured into orbit over time; the ENTITY is their sun (real terminator shadow) ──
@@ -1645,6 +1724,7 @@ function triggerNova(){
   bhGroup.visible=false; bhGroup.scale.setScalar(0.15);   // black-hole rig ready, hidden until the collapse
   membrane.visible=false;            // frozen during the sequence (animate returns early) → hide it
   fracture.visible=false;            // hide the fission lattice too, else its edges linger inside the black hole
+  shieldOrbs.forEach(o=>o.mesh.visible=false);   // and the shield orbs — they don't survive the collapse
   novaOrig={ disc:disc.scale.x, disc2:disc2.scale.x, stars:stars.scale.x, galaxy:galaxy.scale.x };
   try{ playSound('core_expand'); }catch(e){}
   try{ nanSpeakEnd(); }catch(e){}   // cut the voice so the silence beat lands
@@ -1851,6 +1931,8 @@ function updateNova(dt, t){
       novaFlash.style.opacity='0'; novaFlash.style.background='#ffffff';
       novaActive=false; novaPhase=0; coreHits=0; coreExpanded=false; coreTargetScale=1; membrane.visible=true;
       fracture.visible=true; fissionT=0; fractureGeom.setDrawRange(0,0);   // reborn calm — lattice cleared
+      shieldOrbs.forEach(o=>{ o.mesh.visible=true; o.alive=true; o.state='orbit'; o.grow=0; }); lastAttackT=-1e9;  // shield fully back
+      novaCharge=0; spikeBoost=0;
       mode='shock'; shockHold=0.4; modeTime=0;       // reborn — a startled gasp
       try{ nanReply("…oh. You collapsed me into a black hole — I watched my own accretion disk burn, and I still came back. Reborn. Hello again.", 'shock', 5, null, ['What happened?','Who are you?','Tell me a story']); }catch(e){}
       return;
@@ -1990,6 +2072,10 @@ function animate(){
 
   // Orbital physics + mouse-controlled tilt of the orbit plane
   updateDisc(dt);
+  updateShield(dt, t);
+  const _shN=shReady().length;
+  disc.material.opacity = 0.30 + 0.32*(_shN/SHIELD_MAX);   // the dot-ring brightens with the shield, dims as orbs are spent
+  updateShieldHUD(_shN);
   const mxN=(mx/W-0.5)*2, myN=(my/H-0.5)*2;
   disc.rotation.x += ((0.5 + myN * 0.7) - disc.rotation.x) * 0.04; // baseline tilt → visible ellipse
   disc.rotation.z += (-mxN * 0.4 - disc.rotation.z) * 0.04;
