@@ -828,7 +828,7 @@ const world = new THREE.Group();
 scene.add(world);
 world.add(creatureMesh);
 creatureMesh.renderOrder = 2;   // draw the full wireframe ON TOP of the glass so every edge stays visible
-const ENTITY_SCALE = 0.98;  // sits INSIDE the yellow-dot disc (DISC_R 1.32): spike tips ≈1.24·0.98 ≈1.2 < 1.32
+const ENTITY_SCALE = 0.72;  // resting size — well below the disc so moods can balloon UP toward it with life
 
 // Translucent GLASS body — the SAME closed surface the wireframe bounds: it fills the hull faces (glassTris)
 // and breathes with the same animated nodes. Full wireframe still draws on top, so every edge stays clean
@@ -865,8 +865,8 @@ world.add(membrane);
 function updateCreature(t, agit) {
   const arr = cGeom.attributes.position.array;
   const col = cGeom.attributes.color.array;
-  const amul = 1 + agit * 0.35;  // agitation widens motion only a little (so it doesn't balloon when riled)
-  const trem = agit * 0.015;     // gentle tremor when riled
+  const amul = 1 + agit * 0.6;   // agitation broadens motion — the lively writhe/jump when riled
+  const trem = agit * 0.025;     // fast tremor when riled
   // animated node positions first — the web lines AND the glass faces both read from these same nodes.
   // Breathing modulates each vertex's RADIUS along its fixed direction, so spikes stay sharp as it pulses.
   for(let n=0;n<NUM_PTS;n++){ const p=cN[n];
@@ -1808,10 +1808,12 @@ function animate(){
     creRecoilY + Math.cos(t*8.3)*creAgit*0.03,
     Math.sin(t*0.4)*0.06
   );
-  // Near-constant size: mood only nudges scale (no ballooning when scared/angry), HARD-capped well inside the
-  // disc, and floored to the core so the glass always wraps outside it (core is small + capped, so it fits).
-  const moodScale = breathe * (1 + (creReach-1)*0.3);
-  const _entS = Math.max(coreScale*0.6, Math.min(ENTITY_SCALE * moodScale, DISC_R*0.86/_maxRest));
+  // Lively mood scale (reach + breath + agitation) — it balloons/recoils with reaction. The cap is DYNAMIC:
+  // it shrinks as agitation grows so the pulsing spike-tips kiss the disc edge but never punch through it.
+  const moodScale = breathe * creReach * (1 + creAgit*0.04);
+  const _osc = 0.1*(1 + creAgit*0.6) + creAgit*0.025;              // headroom the breathing/agit pulse needs
+  const _cap = DISC_R*0.99/(_maxRest + _osc);                       // → tips (incl. peaks) stay inside the disc
+  const _entS = Math.max(coreScale*0.62, Math.min(ENTITY_SCALE * moodScale, _cap));
   creatureMesh.scale.setScalar(_entS);
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
   membrane.scale.copy(creatureMesh.scale);
