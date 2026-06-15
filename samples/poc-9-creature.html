@@ -1088,60 +1088,47 @@ const projCards=[]; let projActive=false;
 function _wrap(g,text,x,y,maxW,lh){ const words=text.split(' '); let line='',yy=y;
   for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ g.fillText(line.trim(),x,yy); line=w+' '; yy+=lh; } else line=t; }
   g.fillText(line.trim(),x,yy); return yy; }
-const _GC=['#00eaff','#ff2a8c','#aaff00'], _GLY='▓▒░█╳#@%&*≠§¤';   // glitch palette + corruption glyphs
-function _corrupt(text, rate){ return text.split('').map(ch => (ch!==' ' && Math.random()<rate) ? _GLY[(Math.random()*_GLY.length)|0] : ch).join(''); }
-// Chromatic-aberration (RGB-split) text — the glitch-entity signature, NOT the clean sat HUD look.
+const _GC=['#00eaff','#ff2a8c','#aaff00'];   // entity glitch palette
+// Subtle chromatic-aberration — glitch flavour but READABLE (tight ±1.5 split, crisp face on top).
 function _rgb(g, text, x, y, font, main){
   g.font=font; g.save(); g.globalCompositeOperation='lighter';
-  g.fillStyle='rgba(0,240,255,0.95)'; g.fillText(text, x-3, y-1);      // cyan ghost (wider split)
-  g.fillStyle='rgba(255,42,140,0.9)'; g.fillText(text, x+3, y+1);      // magenta ghost
-  g.fillStyle='rgba(170,255,0,0.4)'; g.fillText(text, x+1, y-2);       // lime fringe
-  g.restore(); g.fillStyle=main; g.fillText(text, x, y);              // crisp face
+  g.fillStyle='rgba(0,240,255,0.5)'; g.fillText(text, x-1.5, y);
+  g.fillStyle='rgba(255,42,140,0.45)'; g.fillText(text, x+1.5, y+0.5);
+  g.restore(); g.fillStyle=main; g.fillText(text, x, y);
 }
 function _rgbWrap(g,text,x,y,maxW,lh,font,main){ g.font=font; const words=text.split(' '); let line='',yy=y;
   for(const w of words){ const t=line+w+' '; if(g.measureText(t).width>maxW && line){ _rgb(g,line.trim(),x,yy,font,main); line=w+' '; yy+=lh; } else line=t; }
   _rgb(g,line.trim(),x,yy,font,main); return yy; }
 function _glitchDeco(g,W,H,sc){
-  const GC=['#00eaff','#ff2a8c','#aaff00'];                            // the entity glitch palette: cyan/magenta/lime
-  for(let k=0;k<10;k++){ const y=(Math.random()*H)|0, h=1+(Math.random()*12|0), off=(Math.random()*30-15)|0;   // datamosh slices
-    g.globalAlpha=0.07+Math.random()*0.2; g.fillStyle=GC[k%3]; g.fillRect(off,y,W,h); }
-  for(let k=0;k<7;k++){ g.globalAlpha=0.10+Math.random()*0.22; g.fillStyle=GC[(Math.random()*3)|0];   // corruption blocks
-    g.fillRect((Math.random()*W)|0,(Math.random()*H)|0, 8+(Math.random()*60|0), 4+(Math.random()*16|0)); }
+  // datamosh slices confined to the TOP & BOTTOM margins — glitch texture that never crosses the text
+  for(let k=0;k<6;k++){ const top=Math.random()<0.5, y= top ? (3+(Math.random()*13|0)) : (H-17+(Math.random()*13|0));
+    g.globalAlpha=0.08+Math.random()*0.13; g.fillStyle=_GC[k%3]; g.fillRect((Math.random()*22-11)|0, y, W, 1+(Math.random()*4|0)); }
   g.globalAlpha=1;
-  g.fillStyle='rgba(190,240,255,0.06)'; for(let k=0;k<90;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // static noise
-  g.globalAlpha=0.28; g.fillStyle=sc; g.fillRect(7,20,W-14,26); g.globalAlpha=1;   // corrupt header band behind the code line
-  g.lineWidth=2;                                                       // torn RGB-split frame (offset, not clean)
-  g.strokeStyle='rgba(0,240,255,0.6)'; g.strokeRect(8,8,W-16,H-16);
-  g.strokeStyle='rgba(255,42,140,0.5)'; g.strokeRect(12,5,W-16,H-16);
-  g.strokeStyle='rgba(170,255,0,0.25)'; g.strokeRect(6,11,W-16,H-16);
-  g.fillStyle='rgba(8,6,16,0.92)'; for(let k=0;k<6;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*50|0);   // chew gaps in the frame
-    if(e===0) g.fillRect(14+Math.random()*(W-90),5,len,6); else if(e===1) g.fillRect(14+Math.random()*(W-90),H-11,len,6);
-    else if(e===2) g.fillRect(5,14+Math.random()*(H-70),6,len); else g.fillRect(W-11,14+Math.random()*(H-70),6,len); }
+  g.fillStyle='rgba(190,240,255,0.04)'; for(let k=0;k<45;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // faint static
+  g.globalAlpha=0.18; g.fillStyle=sc; g.fillRect(8,19,W-16,30); g.globalAlpha=1;   // subtle corrupt header band
+  g.lineWidth=2;                                                       // torn RGB-split frame (glitch chrome)
+  g.strokeStyle='rgba(0,240,255,0.55)'; g.strokeRect(8,8,W-16,H-16);
+  g.strokeStyle='rgba(255,42,140,0.35)'; g.strokeRect(11,6,W-16,H-16);
+  g.fillStyle='rgba(7,10,20,0.92)'; for(let k=0;k<4;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*40|0);   // chew small gaps in the frame
+    if(e===0) g.fillRect(14+Math.random()*(W-90),6,len,5); else if(e===1) g.fillRect(14+Math.random()*(W-90),H-11,len,5);
+    else if(e===2) g.fillRect(6,14+Math.random()*(H-70),5,len); else g.fillRect(W-11,14+Math.random()*(H-70),5,len); }
 }
 function makeCardCanvas(p, expanded){
   const W=512, H=expanded?384:208, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
-  g.fillStyle='rgba(8,6,16,0.66)'; g.fillRect(0,0,W,H);                // dark, not sat-cyan
+  g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H);                // solid dark panel → text contrast
   _glitchDeco(g,W,H,p.sc);
-  _rgb(g, p.code+'  '+p.status, 26, 44, '700 21px Orbitron, monospace', p.sc);
-  const ty=_rgbWrap(g, _corrupt(p.title,0.08), 26, 84, W-52, 32, '900 28px Orbitron, sans-serif', '#eaf7ff');  // a few glyphs corrupt each render
+  _rgb(g, p.code+'  '+p.status, 26, 43, '700 21px Orbitron, monospace', p.sc);
+  const ty=_rgbWrap(g, p.title, 26, 84, W-52, 33, '900 28px Orbitron, sans-serif', '#f2fbff');   // crisp white title
   if(expanded){
-    g.fillStyle='rgba(210,240,255,0.85)'; g.font='400 16px monospace'; _wrap(g, p.desc, 26, ty+36, W-52, 22);
-    _rgb(g, '▸ '+p.metric, 26, H-62, '700 17px Orbitron, monospace', '#eaf7ff');
+    g.fillStyle='rgba(220,242,255,0.92)'; g.font='400 16px monospace'; _wrap(g, p.desc, 26, ty+34, W-52, 22);
+    _rgb(g, '▸ '+p.metric, 26, H-60, '700 17px Orbitron, monospace', '#f2fbff');
     g.font='600 12px Orbitron, monospace'; let tx=26;
-    p.tags.forEach(t=>{ const w=g.measureText(t).width+16; g.strokeStyle='rgba(0,234,255,0.4)'; g.lineWidth=1; g.strokeRect(tx,H-38,w,22); g.fillStyle='rgba(185,240,255,0.9)'; g.fillText(t, tx+8, H-22); tx+=w+7; });
-    g.fillStyle='rgba(255,42,109,0.65)'; g.font='400 12px monospace'; g.fillText('◣ FIRE//CLOSE', W-150, 44);
+    p.tags.forEach(t=>{ const w=g.measureText(t).width+16; g.strokeStyle='rgba(0,240,255,0.42)'; g.lineWidth=1; g.strokeRect(tx,H-38,w,22); g.fillStyle='rgba(195,240,255,0.95)'; g.fillText(t, tx+8, H-22); tx+=w+7; });
+    g.fillStyle='rgba(255,42,140,0.6)'; g.font='400 12px monospace'; g.fillText('◣ FIRE//CLOSE', W-150, 43);
   } else {
-    g.fillStyle='rgba(0,234,255,0.62)'; g.font='400 14px monospace'; g.fillText('◣ FIRE//EXPAND', 26, H-20);
+    g.fillStyle='rgba(0,240,255,0.72)'; g.font='400 14px monospace'; g.fillText('◣ FIRE//EXPAND', 26, H-20);
   }
-  g.fillStyle='rgba(0,0,0,0.17)'; for(let y=0;y<H;y+=3) g.fillRect(0,y,W,1);   // heavy CRT scanlines
-  g.save(); g.globalCompositeOperation='difference'; g.fillStyle='#ffffff';   // colour-channel inversion slices
-  for(let k=0;k<2+((Math.random()*2)|0);k++){ const y=(Math.random()*H)|0, h=3+(Math.random()*15|0); g.fillRect(0,y,W,h); }
-  g.restore();
-  if(Math.random()<0.07){                                                      // occasional full-card SIGNAL//LOSS dropout
-    g.fillStyle='rgba(8,6,16,0.85)'; g.fillRect(0,0,W,H);
-    for(let k=0;k<150;k++){ g.globalAlpha=0.3+Math.random()*0.55; g.fillStyle=_GC[(Math.random()*3)|0]; g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,2+(Math.random()*11|0),2); }
-    g.globalAlpha=1; _rgb(g, '▚ SIGNAL // LOSS ▚', 54, H/2+8, '700 22px Orbitron, monospace', '#ff2a8c');
-  }
+  g.fillStyle='rgba(0,0,0,0.10)'; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,1);   // faint scanlines (don't bury the text)
   return c;
 }
 function _cardGeo(expanded){ const w=1.0, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
@@ -1157,8 +1144,8 @@ function clearProjHolo(){
 function buildProjHolo(){
   clearProjHolo();
   PROJECTS.forEach((p,i)=>{
-    const mid=(PROJECTS.length-1)/2;                                   // evenly spaced column on the right, centred in view
-    const pos=new THREE.Vector3(2.0 - Math.abs(i-mid)*0.1, 1.2 - i*0.72, 0.45);  // fits all 5 on-screen, no overlap, uses full height
+    const mid=(PROJECTS.length-1)/2;                                   // evenly spaced column on the right, shifted DOWN
+    const pos=new THREE.Vector3(2.0 - Math.abs(i-mid)*0.1, 1.0 - i*0.66, 0.45);  // balanced: more top headroom, bottom space used, no clip
     const mesh=new THREE.Mesh(_cardGeo(false), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide}));
     mesh.position.copy(pos); projGroup.add(mesh);
     const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), pos.clone()]),
@@ -1178,12 +1165,12 @@ function updateProjHolo(dt, t){
     c.mesh.quaternion.copy(camera.quaternion);                         // billboard to camera
     // GLITCH: occasional horizontal tear (jx) + periodic datamosh re-render; constant micro-shake
     c.glitch-=dt;
-    if(c.glitch<=0){ c.glitch=0.18+Math.random()*0.7; c.jx=Math.random()<0.45 ? (Math.random()*0.16-0.08) : 0;
-      if(Math.random()<0.45) _applyCanvas(c); }                        // re-glitch the datamosh slices
+    if(c.glitch<=0){ c.glitch=0.3+Math.random()*0.9; c.jx=Math.random()<0.35 ? (Math.random()*0.09-0.045) : 0;   // smaller, rarer tear
+      if(Math.random()<0.4) _applyCanvas(c); }                         // re-glitch the chrome datamosh
     const yb=c.baseY + Math.sin(t*1.1 + c.bob)*0.05;
-    c.mesh.position.set(c.baseX + c.jx + Math.sin(t*47 + c.bob)*0.006, yb, c.baseZ);   // tear + jitter
-    const stut = (Math.sin(t*23 + c.bob*5) > 0.93) ? 0.35 : 1;         // sudden signal dropouts
-    c.mesh.material.opacity = c.appear * (0.8 + Math.sin(t*7 + c.bob*3)*0.08) * stut;
+    c.mesh.position.set(c.baseX + c.jx + Math.sin(t*47 + c.bob)*0.004, yb, c.baseZ);   // gentle tear + micro-jitter
+    const stut = (Math.sin(t*19 + c.bob*5) > 0.975) ? 0.55 : 1;        // brief, rare signal dropouts
+    c.mesh.material.opacity = c.appear * (0.88 + Math.sin(t*6 + c.bob*3)*0.06) * stut;
     const rp=c.ray.geometry.attributes.position.array; rp[3]=c.mesh.position.x; rp[4]=yb; rp[5]=c.mesh.position.z;
     c.ray.geometry.attributes.position.needsUpdate=true;
     c.ray.material.opacity = c.appear * (0.16 + Math.sin(t*31 + c.bob)*0.1) * stut;    // unstable beam
