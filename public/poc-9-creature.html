@@ -1282,7 +1282,7 @@ window.__navPos=()=>navPos;                                                    /
 // ── WEAPONS — SPACE fires a dark-matter bolt at the cursor; attacking the entity overloads it → nova ──
 // Lore: the satellite condenses bolts from dark-matter flux threading the fold; the magazine recharges itself.
 const AMMO_MAX=12, AMMO_RATE=0.9;       // bolts; recharge per second
-let ammo=AMMO_MAX, attackDmg=0, lastFire=0, lastShotReact=0;
+let ammo=AMMO_MAX, attackDmg=0, lastFire=0, lastShotReact=0, fissionT=0;
 const projectiles=[];
 const _ray=new THREE.Raycaster(), _ndc=new THREE.Vector2(), _tmpV=new THREE.Vector3(), _cw=new THREE.Vector3();
 function fireBolt(){
@@ -1629,6 +1629,7 @@ function triggerNova(){
   novaActive=true; novaPhase=1; novaT=0;
   bhGroup.visible=false; bhGroup.scale.setScalar(0.15);   // black-hole rig ready, hidden until the collapse
   membrane.visible=false;            // frozen during the sequence (animate returns early) → hide it
+  fracture.visible=false;            // hide the fission lattice too, else its edges linger inside the black hole
   novaOrig={ disc:disc.scale.x, disc2:disc2.scale.x, stars:stars.scale.x, galaxy:galaxy.scale.x };
   try{ playSound('core_expand'); }catch(e){}
   try{ nanSpeakEnd(); }catch(e){}   // cut the voice so the silence beat lands
@@ -1818,6 +1819,7 @@ function updateNova(dt, t){
       bhGroup.visible=false;
       novaFlash.style.opacity='0'; novaFlash.style.background='#ffffff';
       novaActive=false; novaPhase=0; coreHits=0; coreExpanded=false; coreTargetScale=1; membrane.visible=true;
+      fracture.visible=true; fissionT=0; fractureGeom.setDrawRange(0,0);   // reborn calm — lattice cleared
       mode='shock'; shockHold=0.4; modeTime=0;       // reborn — a startled gasp
       try{ nanReply("…oh. You collapsed me into a black hole — I watched my own accretion disk burn, and I still came back. Reborn. Hello again.", 'shock', 5, null, ['What happened?','Who are you?','Tell me a story']); }catch(e){}
       return;
@@ -1901,11 +1903,13 @@ function animate(){
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
   membrane.scale.copy(creatureMesh.scale);
   membrane.rotation.copy(creatureMesh.rotation);
-  // FISSION: reveal more fracture edges + brighten them the angrier (more attacked) it is
+  // FISSION: edges proliferate the MORE it's attacked — smooth ramp keyed to hit pressure (attackDmg, nova at 12),
+  // ease-in so early hits add a few crisscross lines and it accelerates toward burst (no 24→200 pop).
   fracture.scale.copy(creatureMesh.scale); fracture.rotation.copy(creatureMesh.rotation);
-  const _rr=Math.max(0, rage-0.2);
-  fracture.material.opacity = Math.min(0.85, _rr*0.55);
-  fractureGeom.setDrawRange(0, Math.floor(fracEdges.length*Math.min(1,_rr*0.6))*2);
+  fissionT += (Math.min(1, attackDmg/12) - fissionT) * 0.10;       // smoothed, no per-hit jump
+  const _show = fissionT*fissionT;                                  // ease-in: gradual then chain-reaction
+  fracture.material.opacity = Math.min(0.85, _show*0.9);
+  fractureGeom.setDrawRange(0, Math.floor(fracEdges.length*_show)*2);
   membrane.material.uniforms.uColor.value.copy(moodColor);
   membrane.material.uniforms.uOpacity.value = Math.min(0.42, moodOpacity * phaseVis * 0.62); // reflective glass reads more
 
