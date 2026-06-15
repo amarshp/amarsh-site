@@ -279,7 +279,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
   <div class="m-row"><span class="m-k">SPACE / CLICK</span><span>fire a dark-matter bolt at your cursor</span></div>
   <div class="m-row"><span class="m-k">SHOOT comets / planets</span><span>blast the drifting bodies apart</span></div>
   <div class="m-row"><span class="m-k">SHOOT the core</span><span>provoke NaN — keep firing and it collapses into a nova</span></div>
-  <div class="m-row"><span class="m-k">OPEN PROJECTS</span><span>NaN projects holograms — shoot a card to expand its details</span></div>
+  <div class="m-row"><span class="m-k">OPEN PROJECTS</span><span>NaN projects holograms — click a card (or shoot it) to expand its details</span></div>
   <div class="m-row"><span class="m-k">▲ OPEN UPLINK</span><span>talk to NaN out loud (voice)</span></div>
   <div class="m-foot">press <b>H</b> or <b>?</b> to toggle · <b>Esc</b> to close — nothing here is required, just explore</div>
 </div>
@@ -1075,11 +1075,16 @@ function updateExplosions(dt){
 // small fleet of ships that fly in and dock. Panel CSS reveals are kept in place but the headline is the 3D event.
 // PROJECTS HOLOGRAM — the entity projects its mission log into the air to its right; FIRE on a card toggles details.
 const PROJECTS=[
-  {code:'PRJ-001',status:'DEPLOYED',sc:'#36ffa0',title:'MULTI-AGENT RAG ORCHESTRATOR',desc:'LangGraph pipeline with 8 specialized agents, LLM-as-Judge + RAGAS evaluation, running in production.',metric:'73% hallucination ↓ · 200K+ daily queries',tags:['LANGGRAPH','RAG','RAGAS','BEDROCK']},
-  {code:'PRJ-002',status:'ACTIVE',sc:'#36d6ff',title:'MCP TOOL-CALLING FRAMEWORK',desc:'Production MCP server with A2A protocol bridges and zero-downtime deployments.',metric:'50K+ tool calls/day · sub-200ms p99',tags:['MCP','A2A','LANGCHAIN','FASTAPI']},
-  {code:'PRJ-003',status:'PROD',sc:'#ffb347',title:'NEURAL EVAL PIPELINE',desc:'LangSmith + custom judge models monitoring 15+ production endpoints; drift alerting with automated rollback.',metric:'MTTR cut by 80%',tags:['LANGSMITH','LLM-JUDGE','SAGEMAKER','PYTHON']},
-  {code:'PRJ-004',status:'DEPLOYED',sc:'#36ffa0',title:'CONVERSATIONAL AGENT PLATFORM',desc:'Enterprise conversational AI with persistent memory and multi-tool use.',metric:'10K+ concurrent users · 99.9% SLA',tags:['LANGCHAIN','OPENAI API','BEDROCK','REDIS']},
-  {code:'PRJ-005',status:'ACTIVE',sc:'#36d6ff',title:'AUTONOMOUS RESEARCH AGENT',desc:'Self-directed ReAct agent synthesizing multi-source data into structured reports.',metric:'85% research time ↓ vs manual',tags:['REACT','MCP','LANGGRAPH','PYTHON']},
+  {code:'PRJ-001',status:'DEPLOYED',sc:'#36ffa0',title:'MULTI-AGENT RAG ORCHESTRATOR',desc:'LangGraph pipeline with 8 specialized agents, LLM-as-Judge + RAGAS evaluation, running in production.',metric:'73% hallucination ↓ · 200K+ daily queries',tags:['LANGGRAPH','RAG','RAGAS','BEDROCK'],
+    say:"This one's his pride. Eight agents in a LangGraph mesh, a judge model and RAGAS keeping them honest — cut hallucinations seventy-three percent across two hundred thousand queries a day."},
+  {code:'PRJ-002',status:'ACTIVE',sc:'#36d6ff',title:'MCP TOOL-CALLING FRAMEWORK',desc:'Production MCP server with A2A protocol bridges and zero-downtime deployments.',metric:'50K+ tool calls/day · sub-200ms p99',tags:['MCP','A2A','LANGCHAIN','FASTAPI'],
+    say:"The plumbing that lets agents actually DO things. A production MCP server with A2A bridges — fifty thousand tool calls a day, under two hundred milliseconds, never goes down."},
+  {code:'PRJ-003',status:'PROD',sc:'#ffb347',title:'NEURAL EVAL PIPELINE',desc:'LangSmith + custom judge models monitoring 15+ production endpoints; drift alerting with automated rollback.',metric:'MTTR cut by 80%',tags:['LANGSMITH','LLM-JUDGE','SAGEMAKER','PYTHON'],
+    say:"His safety net. Custom judges watching fifteen live endpoints, screaming the moment a model drifts and rolling it back on its own. Cut mean-time-to-recovery by eighty percent."},
+  {code:'PRJ-004',status:'DEPLOYED',sc:'#36ffa0',title:'CONVERSATIONAL AGENT PLATFORM',desc:'Enterprise conversational AI with persistent memory and multi-tool use.',metric:'10K+ concurrent users · 99.9% SLA',tags:['LANGCHAIN','OPENAI API','BEDROCK','REDIS'],
+    say:"A conversational platform that actually remembers you — persistent memory, real tool use, ten thousand people on it at once at three-nines uptime."},
+  {code:'PRJ-005',status:'ACTIVE',sc:'#36d6ff',title:'AUTONOMOUS RESEARCH AGENT',desc:'Self-directed ReAct agent synthesizing multi-source data into structured reports.',metric:'85% research time ↓ vs manual',tags:['REACT','MCP','LANGGRAPH','PYTHON'],
+    say:"My favourite, honestly. A self-directed ReAct agent that goes off, reads everything, and hands back a structured report — eighty-five percent less time than a human would take."},
 ];
 // parented to scene (NOT world) so drag-rotating the world doesn't tumble the readout; cards billboard to camera.
 const projGroup=new THREE.Group(); scene.add(projGroup); projGroup.visible=false;
@@ -1120,13 +1125,13 @@ function makeCardCanvas(p, expanded){
   _rgb(g, p.code+'  '+p.status, 26, 43, '700 21px Orbitron, monospace', p.sc);
   const ty=_rgbWrap(g, p.title, 26, 84, W-52, 33, '900 28px Orbitron, sans-serif', '#f2fbff');   // crisp white title
   if(expanded){
-    g.fillStyle='rgba(220,242,255,0.92)'; g.font='400 16px monospace'; _wrap(g, p.desc, 26, ty+34, W-52, 22);
-    _rgb(g, '▸ '+p.metric, 26, H-60, '700 17px Orbitron, monospace', '#f2fbff');
-    g.font='600 12px Orbitron, monospace'; let tx=26;
-    p.tags.forEach(t=>{ const w=g.measureText(t).width+16; g.strokeStyle='rgba(0,240,255,0.42)'; g.lineWidth=1; g.strokeRect(tx,H-38,w,22); g.fillStyle='rgba(195,240,255,0.95)'; g.fillText(t, tx+8, H-22); tx+=w+7; });
-    g.fillStyle='rgba(255,42,140,0.6)'; g.font='400 12px monospace'; g.fillText('◣ FIRE//CLOSE', W-150, 43);
+    g.fillStyle='rgba(224,244,255,0.95)'; g.font='400 19px monospace'; _wrap(g, p.desc, 26, ty+38, W-52, 26);
+    _rgb(g, '▸ '+p.metric, 26, H-62, '700 20px Orbitron, monospace', '#f2fbff');
+    g.font='600 14px Orbitron, monospace'; let tx=26;
+    p.tags.forEach(t=>{ const w=g.measureText(t).width+18; g.strokeStyle='rgba(0,240,255,0.42)'; g.lineWidth=1; g.strokeRect(tx,H-40,w,24); g.fillStyle='rgba(195,240,255,0.95)'; g.fillText(t, tx+9, H-23); tx+=w+8; });
+    g.fillStyle='rgba(255,42,140,0.62)'; g.font='400 12px monospace'; g.fillText('▸ CLICK TO CLOSE', W-168, 43);
   } else {
-    g.fillStyle='rgba(0,240,255,0.72)'; g.font='400 14px monospace'; g.fillText('◣ FIRE//EXPAND', 26, H-20);
+    g.fillStyle='rgba(0,240,255,0.74)'; g.font='400 14px monospace'; g.fillText('▸ CLICK TO EXPAND', 26, H-20);
   }
   g.fillStyle='rgba(0,0,0,0.10)'; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,1);   // faint scanlines (don't bury the text)
   return c;
@@ -1158,9 +1163,14 @@ function buildProjHolo(){
   });
   projGroup.visible=true; projActive=true;
 }
-function toggleProjCard(card){ card.expanded=!card.expanded; redrawCard(card);
-  try{ playSound(card.expanded?'panel_open':'panel_close'); }catch(e){}
-  try{ spawnExplosion(card.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(card.p.sc).getHex(), 0.4); }catch(e){} }
+function toggleProjCard(card){
+  const open=!card.expanded;
+  if(open){ for(const c of projCards){ if(c!==card && c.expanded){ c.expanded=false; redrawCard(c); } } }  // accordion: one open at a time (no overlap)
+  card.expanded=open; redrawCard(card);
+  try{ playSound(open?'panel_open':'panel_close'); }catch(e){}
+  try{ spawnExplosion(card.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(card.p.sc).getHex(), 0.4); }catch(e){}
+  if(open){ try{ nanSpeakEnd(); }catch(e){}                         // cut any current line, then NaN talks about THIS project
+            try{ nanReply(card.p.say, 'happy', 7); }catch(e){} } }
 function updateProjHolo(dt, t){
   if(!projActive) return;
   for(const c of projCards){ c.age += dt;
@@ -1174,11 +1184,16 @@ function updateProjHolo(dt, t){
     const px = c.from.x + (c.slot.x - c.from.x)*e + c.jx*pr + Math.sin(t*47 + c.bob)*0.004*pr;   // fly out from the core
     const py = c.from.y + (yb - c.from.y)*e;
     const pz = c.from.z + (c.slot.z - c.from.z)*e;
-    c.mesh.position.set(px, py, pz);
-    c.mesh.scale.setScalar(0.12 + 0.88*e);                             // grows as the entity projects it out
+    const es = 0.12 + 0.88*e;                                          // emergence growth
+    const tScale = (pr>=1) ? (c.expanded?1.32:1.0) : es;              // the selected card swells big + readable
+    c.curScale = (c.curScale==null) ? es : c.curScale + (tScale - c.curScale)*Math.min(1, dt*9);
+    const tZ = (pr>=1 && c.expanded) ? 0.55 : 0;                       // and lifts toward the camera (renders in front)
+    c.curZ = (c.curZ==null) ? 0 : c.curZ + (tZ - c.curZ)*Math.min(1, dt*9);
+    c.mesh.position.set(px, py, pz + c.curZ);
+    c.mesh.scale.setScalar(c.curScale);
     const stut = (Math.sin(t*19 + c.bob*5) > 0.975) ? 0.55 : 1;
     c.mesh.material.opacity = Math.min(1, pr*2.4) * (0.88 + Math.sin(t*6 + c.bob*3)*0.06) * stut;
-    const rp=c.ray.geometry.attributes.position.array; rp[3]=px; rp[4]=py; rp[5]=pz; c.ray.geometry.attributes.position.needsUpdate=true;
+    const rp=c.ray.geometry.attributes.position.array; rp[3]=px; rp[4]=py; rp[5]=pz+c.curZ; c.ray.geometry.attributes.position.needsUpdate=true;
     const beam = pr<1 ? 0.55 : 0.2;                                    // projection beam blazes while emitting, then settles
     c.ray.material.opacity = Math.min(1, pr*3) * (beam + Math.sin(t*31 + c.bob)*0.08) * stut;
   }
@@ -1191,9 +1206,9 @@ function sectionEvent(secId){
   const C=new THREE.Vector3(0,0,0);                             // the entity/core sits at the world origin
   if(secId==='s-projects'){ buildProjHolo(); warp=Math.max(warp,0.35);          // entity projects its mission holograms
     try{ nanReply(nanPick([
-      "These are the missions I've run with Amarsh — I'm projecting them now. Fire a bolt at any one to crack it open.",
-      "Here's his work, hung in the air beside me. Shoot a card and I'll unfold the details for you.",
-      "My mission log. Aim and fire on any project to expand it — shoot it again to close it."]), 'happy', 5); }catch(e){} }
+      "These are the missions I've run with Amarsh — I'm projecting them now. Click any card to crack it open.",
+      "Here's his work, hung in the air beside me. Tap a card (or shoot it) and I'll unfold the details.",
+      "My mission log. Click any project to expand it — click it again to close it."]), 'happy', 5); }catch(e){} }
   else if(secId==='s-contact'){ spawnExplosion(C,0x66ddff,2.2);                 // beacon detonation
     for(let i=0;i<3;i++) coreExpandRings.push({r:0.2,maxR:2.4,alpha:1,t:i*0.12}); discEject(2.6); warp=Math.max(warp,0.5); }
   else if(secId==='s-skills'){                                                  // systems booting — scan pulses
@@ -1560,6 +1575,14 @@ window.__triggerNova=triggerNova; // debug hook (also fires on 7 rapid core taps
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
   if(hovNav>=0){ const sec=NAV[hovNav].sec; if(activeSec===sec) closePanel(); else openSection(sec); return; }   // active node = close
+  if(projActive){                                   // click a hologram project card to expand / collapse it
+    _ndc.set((e.clientX/W)*2-1, -(e.clientY/H)*2+1); _ray.setFromCamera(_ndc, camera);
+    let hit=null, bd=1e9;
+    for(const card of projCards){ card.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
+      const r=Math.max(0.55, card.mesh.geometry.parameters.height*card.mesh.scale.y*0.62);
+      if(d<r && d<bd){ bd=d; hit=card; } }
+    if(hit){ toggleProjCard(hit); return; }
+  }
   if(hovCore){
     // overload detection: rapid repeated taps on the core → supernova
     const now=performance.now();
@@ -2747,7 +2770,7 @@ setTimeout(()=>{
     ['SPACE / CLICK','fire a dark-matter bolt at your cursor'],
     ['SHOOT bodies','blast the drifting comets & planets apart'],
     ['SHOOT the core','provoke NaN — keep firing for a nova'],
-    ['OPEN PROJECTS','NaN projects holograms — shoot a card to expand'],
+    ['OPEN PROJECTS','NaN projects holograms — click a card to expand it'],
     ['▲ OPEN UPLINK','talk to NaN out loud (voice)'],
     ['PRESS H','open the full flight manual'],
   ];
