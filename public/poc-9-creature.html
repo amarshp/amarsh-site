@@ -828,7 +828,7 @@ const world = new THREE.Group();
 scene.add(world);
 world.add(creatureMesh);
 creatureMesh.renderOrder = 2;   // draw the full wireframe ON TOP of the glass so every edge stays visible
-const ENTITY_SCALE = 0.72;  // resting size — well below the disc so moods can balloon UP toward it with life
+const ENTITY_SCALE = 0.76;  // resting size — below the disc so moods can balloon UP toward it with life
 
 // Translucent GLASS body — the SAME closed surface the wireframe bounds: it fills the hull faces (glassTris)
 // and breathes with the same animated nodes. Full wireframe still draws on top, so every edge stays clean
@@ -929,6 +929,7 @@ const coreRings = [];
 // the spring always pulls them back into the ring track.
 const DISC_N = 170;
 const DISC_R = 1.32;
+let discRnow = DISC_R;   // live disc radius — swells when the entity is angry/attacked (set each frame in animate)
 const ORBIT_V = 1.0; // tangential orbit speed
 const K_RAD = 6.0, C_RAD = 2.0;   // radial spring + damping
 const K_Y = 9.0, C_Y = 2.2;       // out-of-plane spring + damping
@@ -962,8 +963,8 @@ function updateDisc(dt) {
     const tx = -pz/rho, tz = px/rho;       // planar tangent unit
     const vr = vx*rx + vz*rz;              // radial speed (in plane)
     const vt = vx*tx + vz*tz;              // tangential speed
-    // radial spring-damper toward DISC_R
-    const aR = -K_RAD*(rho - DISC_R) - C_RAD*vr;
+    // radial spring-damper toward the live disc radius (expands when angry)
+    const aR = -K_RAD*(rho - discRnow) - C_RAD*vr;
     // tangential: gently restore orbit speed (preserves orbit direction)
     const aT = (ORBIT_V - vt) * 1.5;
     vx += (rx*aR + tx*aT) * h;
@@ -1790,9 +1791,13 @@ function animate(){
   breathAccum += dt * 0.9 * breathRateMul;
   const breathe = 1 + Math.sin(breathAccum)*0.035*breathDepthMul + Math.sin(breathAccum*2.3)*0.01;
 
-  // Creature mood-driven motion (affect engine owns reach / agit / colour)
+  // RAGE escalates as you keep attacking it — drives MORE vertex-waving, MORE balloon, and a swelling disc,
+  // building visibly until it bursts into the nova. (attackDmg climbs per hit, bleeds off if you stop.)
+  const rage = creAgit + Math.min(1.8, attackDmg*0.32);
+  discRnow = DISC_R * (1 + Math.min(0.78, rage*0.20));   // the yellow ring swells out when it's angry
+  // Creature mood-driven motion (affect engine owns reach / colour; rage owns how hard it writhes)
   creReach += (creReachT - creReach) * 0.05;
-  updateCreature(t, creAgit);
+  updateCreature(t, rage);   // more rage → vertices writhe/wave harder = visibly angrier
   creatureMesh.material.color.copy(moodColor);
   // Phase in/out of time — entity briefly vanishes then re-materialises (~8.3s cycle)
   const cyc = (t*0.12) % 1;
@@ -1810,9 +1815,9 @@ function animate(){
   );
   // Lively mood scale (reach + breath + agitation) — it balloons/recoils with reaction. The cap is DYNAMIC:
   // it shrinks as agitation grows so the pulsing spike-tips kiss the disc edge but never punch through it.
-  const moodScale = breathe * creReach * (1 + creAgit*0.04);
-  const _osc = 0.1*(1 + creAgit*0.6) + creAgit*0.025;              // headroom the breathing/agit pulse needs
-  const _cap = DISC_R*0.99/(_maxRest + _osc);                       // → tips (incl. peaks) stay inside the disc
+  const moodScale = breathe * creReach * (1 + rage*0.20);          // riled/attacked → balloons big toward the (swollen) disc
+  const _osc = 0.1*(1 + rage*0.6) + rage*0.025;                     // headroom the breathing/writhe pulse needs
+  const _cap = discRnow*0.99/(_maxRest + _osc);                     // cap follows the LIVE disc, so it grows with it
   const _entS = Math.max(coreScale*0.62, Math.min(ENTITY_SCALE * moodScale, _cap));
   creatureMesh.scale.setScalar(_entS);
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
