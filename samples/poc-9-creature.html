@@ -1151,7 +1151,9 @@ function buildProjHolo(){
     const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), pos.clone()]),
       new THREE.LineBasicMaterial({color:new THREE.Color(p.sc), transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
     projRays.add(ray);
-    const card={p, mesh, tex:null, ray, expanded:false, baseX:pos.x, baseY:pos.y, baseZ:pos.z, bob:Math.random()*6, appear:0, glitch:0, jx:0};
+    mesh.scale.setScalar(0.0001);                                      // starts collapsed at the core, projects out
+    const card={p, mesh, tex:null, ray, expanded:false, slot:pos, from:new THREE.Vector3(0.25,0,0.35),
+      t0:0.22*i, age:0, bob:Math.random()*6, glitch:0, jx:0};           // staggered emergence from the entity
     projCards.push(card); redrawCard(card);
   });
   projGroup.visible=true; projActive=true;
@@ -1161,19 +1163,24 @@ function toggleProjCard(card){ card.expanded=!card.expanded; redrawCard(card);
   try{ spawnExplosion(card.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(card.p.sc).getHex(), 0.4); }catch(e){} }
 function updateProjHolo(dt, t){
   if(!projActive) return;
-  for(const c of projCards){ c.appear=Math.min(1, c.appear+dt*1.6);
+  for(const c of projCards){ c.age += dt;
+    const pr = Math.max(0, Math.min(1, (c.age - c.t0)/0.85));          // staggered, ~0.85s emergence per card
+    const e  = 1-Math.pow(1-pr,3);                                     // ease-out
     c.mesh.quaternion.copy(camera.quaternion);                         // billboard to camera
-    // GLITCH: occasional horizontal tear (jx) + periodic datamosh re-render; constant micro-shake
     c.glitch-=dt;
-    if(c.glitch<=0){ c.glitch=0.3+Math.random()*0.9; c.jx=Math.random()<0.35 ? (Math.random()*0.09-0.045) : 0;   // smaller, rarer tear
-      if(Math.random()<0.4) _applyCanvas(c); }                         // re-glitch the chrome datamosh
-    const yb=c.baseY + Math.sin(t*1.1 + c.bob)*0.05;
-    c.mesh.position.set(c.baseX + c.jx + Math.sin(t*47 + c.bob)*0.004, yb, c.baseZ);   // gentle tear + micro-jitter
-    const stut = (Math.sin(t*19 + c.bob*5) > 0.975) ? 0.55 : 1;        // brief, rare signal dropouts
-    c.mesh.material.opacity = c.appear * (0.88 + Math.sin(t*6 + c.bob*3)*0.06) * stut;
-    const rp=c.ray.geometry.attributes.position.array; rp[3]=c.mesh.position.x; rp[4]=yb; rp[5]=c.mesh.position.z;
-    c.ray.geometry.attributes.position.needsUpdate=true;
-    c.ray.material.opacity = c.appear * (0.16 + Math.sin(t*31 + c.bob)*0.1) * stut;    // unstable beam
+    if(c.glitch<=0){ c.glitch=0.3+Math.random()*0.9; c.jx=Math.random()<0.35 ? (Math.random()*0.09-0.045) : 0;
+      if(pr>0.96 && Math.random()<0.4) _applyCanvas(c); }              // only re-glitch once settled (no flicker mid-projection)
+    const yb = c.slot.y + Math.sin(t*1.1 + c.bob)*0.05;
+    const px = c.from.x + (c.slot.x - c.from.x)*e + c.jx*pr + Math.sin(t*47 + c.bob)*0.004*pr;   // fly out from the core
+    const py = c.from.y + (yb - c.from.y)*e;
+    const pz = c.from.z + (c.slot.z - c.from.z)*e;
+    c.mesh.position.set(px, py, pz);
+    c.mesh.scale.setScalar(0.12 + 0.88*e);                             // grows as the entity projects it out
+    const stut = (Math.sin(t*19 + c.bob*5) > 0.975) ? 0.55 : 1;
+    c.mesh.material.opacity = Math.min(1, pr*2.4) * (0.88 + Math.sin(t*6 + c.bob*3)*0.06) * stut;
+    const rp=c.ray.geometry.attributes.position.array; rp[3]=px; rp[4]=py; rp[5]=pz; c.ray.geometry.attributes.position.needsUpdate=true;
+    const beam = pr<1 ? 0.55 : 0.2;                                    // projection beam blazes while emitting, then settles
+    c.ray.material.opacity = Math.min(1, pr*3) * (beam + Math.sin(t*31 + c.bob)*0.08) * stut;
   }
 }
 let _lastEventSec=null;
@@ -1198,6 +1205,7 @@ window.__sectionEvent=sectionEvent; // debug hook
 window.__projHolo=()=>{ buildProjHolo(); return projCards.length; };          // debug: force the hologram
 window.__projExpand=(i)=>{ if(projCards[i]) toggleProjCard(projCards[i]); };   // debug: toggle a card
 window.__projCards=projCards;                                                  // debug: inspect/force cards
+window.__navPos=()=>navPos;                                                    // debug: nav node screen positions
 
 // ── WEAPONS — SPACE fires a dark-matter bolt at the cursor; attacking the entity overloads it → nova ──
 // Lore: the satellite condenses bolts from dark-matter flux threading the fold; the magazine recharges itself.
@@ -1551,7 +1559,7 @@ window.__triggerNova=triggerNova; // debug hook (also fires on 7 rapid core taps
 
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
-  if(hovNav>=0){ openSection(NAV[hovNav].sec); return; }
+  if(hovNav>=0){ const sec=NAV[hovNav].sec; if(activeSec===sec) closePanel(); else openSection(sec); return; }   // active node = close
   if(hovCore){
     // overload detection: rapid repeated taps on the core → supernova
     const now=performance.now();
@@ -1824,7 +1832,7 @@ function animate(){
 
   // Camera shift
   panelOffset+=(targetPOffset-panelOffset)*0.07;
-  targetProjY = activeSec ? -0.52 : 0;
+  targetProjY = (activeSec && activeSec!=='s-projects') ? -0.52 : 0;   // PROJECTS keeps the entity fixed (hologram is in-scene)
   projY+=(targetProjY-projY)*0.07;
   camera.position.y = projY;
   camDist += (camDistT - camDist) * 0.12;            // smooth scroll-zoom
@@ -1972,15 +1980,21 @@ function drawNavDiamonds(t, cx, cy){
     ctx.strokeStyle=active?nd.col:(hit?nd.col+'88':'rgba(255,255,255,0.18)');
     ctx.lineWidth=active?2:1; ctx.stroke();
     const s2=sz*.4;
-    ctx.beginPath(); ctx.moveTo(0,-s2); ctx.lineTo(s2,0); ctx.lineTo(0,s2); ctx.lineTo(-s2,0); ctx.closePath();
-    ctx.fillStyle=active?nd.col:(hit?nd.col+'60':'rgba(255,255,255,0.2)'); ctx.fill();
+    if(activeSec===nd.sec){                                   // the open section's node IS the close button — draw an ✕
+      ctx.strokeStyle='#ff5a6e'; ctx.lineWidth=2.6; const xr=sz*0.5;
+      ctx.beginPath(); ctx.moveTo(-xr,-xr); ctx.lineTo(xr,xr); ctx.moveTo(xr,-xr); ctx.lineTo(-xr,xr); ctx.stroke();
+    } else {
+      ctx.beginPath(); ctx.moveTo(0,-s2); ctx.lineTo(s2,0); ctx.lineTo(0,s2); ctx.lineTo(-s2,0); ctx.closePath();
+      ctx.fillStyle=active?nd.col:(hit?nd.col+'60':'rgba(255,255,255,0.2)'); ctx.fill();
+    }
     const lx=Math.cos(nd.ang)*32, ly=Math.sin(nd.ang)*32;
     const vOff=Math.abs(Math.sin(nd.ang))>.5?(Math.sin(nd.ang)>0?19:-15):4;
     ctx.font=`${active?'700':'400'} ${active?11:10}px "Orbitron",sans-serif`;
     ctx.fillStyle=active?nd.col:(hit?nd.col+'cc':'rgba(255,255,255,0.38)');
     ctx.textAlign='center';
-    if(active||hit){ctx.shadowColor=nd.col; ctx.shadowBlur=8;}
-    ctx.fillText(nd.lbl,lx,ly+vOff);
+    if(active||hit){ctx.shadowColor=activeSec===nd.sec?'#ff5a6e':nd.col; ctx.shadowBlur=8;}
+    if(activeSec===nd.sec) ctx.fillStyle='#ff8a96';
+    ctx.fillText(activeSec===nd.sec?'✕ CLOSE':nd.lbl, lx, ly+vOff);
     ctx.shadowBlur=0;
     ctx.restore();
   });
@@ -2095,7 +2109,7 @@ window.openSection = function(secId){
   document.getElementById('drag-hint').style.opacity='0';
   playSound('panel_open');
   // PROJECTS shows its hologram in-scene — NO bottom panel ("the dock"). Just the close affordance.
-  if(secId==='s-projects'){ document.getElementById('xbtn').classList.add('vis'); return; }
+  if(secId==='s-projects'){ return; }   // no bottom panel and no #xbtn — the PROJECTS node turns into an ✕ to close
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById(secId)?.classList.add('on');
   const panel=document.getElementById('panel');
