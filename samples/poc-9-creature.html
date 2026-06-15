@@ -283,7 +283,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
   <div class="m-h">▦ FLIGHT MANUAL</div>
   <div class="m-row"><span class="m-k">DRAG</span><span>orbit your view around NaN</span></div>
   <div class="m-row"><span class="m-k">SHIFT + DRAW ✎</span><span>draw a gesture to navigate — ↻ About · → Projects · ↑ Skills · ↓ Contact · ← Back</span></div>
-  <div class="m-row"><span class="m-k">SPACE / CLICK</span><span>fire a dark-matter bolt at your cursor</span></div>
+  <div class="m-row"><span class="m-k">SPACE</span><span>fire a dark-matter bolt at your cursor — the ONLY way to attack NaN</span></div>
   <div class="m-row"><span class="m-k">SHOOT comets / planets</span><span>blast the drifting bodies apart</span></div>
   <div class="m-row"><span class="m-k">SHOOT the core</span><span>provoke NaN — keep firing and it collapses into a nova</span></div>
   <div class="m-row"><span class="m-k">OPEN PROJECTS</span><span>NaN projects holograms — click a card (or shoot it) to expand its details</span></div>
@@ -1020,6 +1020,12 @@ const K_RAD = 6.0, C_RAD = 2.0;   // radial spring + damping
 const K_Y = 9.0, C_Y = 2.2;       // out-of-plane spring + damping
 const discPosArr = new Float32Array(DISC_N * 3);
 const discVel = new Float32Array(DISC_N * 3);
+const discCol = new Float32Array(DISC_N * 3);           // per-dot colour (vertexColors) — lets a dot flash white & wink out
+// per-dot SHIELD state: these orbiting dots ARE NaN's shield. 0=orbiting, 1=intercepting a bolt, 2=spent(dead/invisible)
+const discState = new Int8Array(DISC_N);                // 0 orbit · 1 defend · 2 dead
+const discTgt = new Float32Array(DISC_N * 3);           // intercept target while defending
+const discT = new Float32Array(DISC_N);                 // defend/regen timer
+const DISC_Y = new Float32Array(DISC_N);                // each dot's resting out-of-plane offset
 for (let i = 0; i < DISC_N; i++) {
   const a = (i / DISC_N) * Math.PI * 2;
   const r = DISC_R + (Math.random() - 0.5) * 0.12;
@@ -1028,40 +1034,54 @@ for (let i = 0; i < DISC_N; i++) {
   discVel[i*3]   = -pz / r * ORBIT_V; // tangent (counter-clockwise)
   discVel[i*3+1] = 0;
   discVel[i*3+2] =  px / r * ORBIT_V;
+  discCol[i*3]=0.80; discCol[i*3+1]=1.0; discCol[i*3+2]=0.0;   // ccff00 yellow-green
+  DISC_Y[i]=py;
 }
 const discPtGeo = new THREE.BufferGeometry();
 discPtGeo.setAttribute('position', new THREE.BufferAttribute(discPosArr, 3));
+discPtGeo.setAttribute('color', new THREE.BufferAttribute(discCol, 3));
 const disc = new THREE.Points(discPtGeo, new THREE.PointsMaterial({
-  color: 0xccff00, size: 0.034, transparent: true, opacity: 0.62, sizeAttenuation: true,
+  size: 0.04, vertexColors: true, transparent: true, opacity: 0.72, sizeAttenuation: true, depthWrite: false, blending: THREE.AdditiveBlending,
 }));
 world.add(disc);
+let discLive = DISC_N;                                  // live shield-dot count (depletes as they intercept bolts)
+function discFrac(){ return discLive / DISC_N; }
+function shieldDown(){ return discFrac() < 0.16; }     // once the ring is mostly spent, bolts reach NaN
 
-// Step orbital physics — radial spring-damper + tangential orbit
+// Step orbital physics + shield states (orbit / defending / dead) + regen
 function updateDisc(dt) {
   const h = Math.min(dt, 0.033);
+  // regen: spent dots revive (one-ish at a time) after you stop firing → they spring back out to the ring
+  if(performance.now()-lastAttackT > SH_REGEN_DELAY*1000 && discLive<DISC_N){
+    discRegenClock+=dt;
+    if(discRegenClock>0.10){ discRegenClock=0; for(let i=0;i<DISC_N;i++){ if(discState[i]===2){ discState[i]=0; discLive++; break; } } }
+  }
   for (let i = 0; i < DISC_N; i++) {
     const ix=i*3, iy=ix+1, iz=ix+2;
+    if(discState[i]===1){                         // DEFENDING — streak to the intercept, flash white, then die
+      discT[i]+=dt;
+      const f=Math.min(1, dt*15);
+      discPosArr[ix]+=(discTgt[ix]-discPosArr[ix])*f; discPosArr[iy]+=(discTgt[iy]-discPosArr[iy])*f; discPosArr[iz]+=(discTgt[iz]-discPosArr[iz])*f;
+      discCol[ix]=1.8; discCol[iy]=1.8; discCol[iz]=1.4;   // bright white flash (additive >1 = blooms)
+      if(discT[i]>=0.16) discState[i]=2;
+      continue;
+    }
+    if(discState[i]===2){ discCol[ix]=0; discCol[iy]=0; discCol[iz]=0; continue; }   // DEAD — black = invisible under additive
+    // ORBIT (live) — spring-damper + tangential orbit
     let px=discPosArr[ix], py=discPosArr[iy], pz=discPosArr[iz];
     let vx=discVel[ix],    vy=discVel[iy],    vz=discVel[iz];
     const rho = Math.sqrt(px*px + pz*pz) || 0.0001;
-    const rx = px/rho, rz = pz/rho;        // planar radial unit
-    const tx = -pz/rho, tz = px/rho;       // planar tangent unit
-    const vr = vx*rx + vz*rz;              // radial speed (in plane)
-    const vt = vx*tx + vz*tz;              // tangential speed
-    // radial spring-damper toward the live disc radius (expands when angry)
-    const aR = -K_RAD*(rho - discRnow) - C_RAD*vr;
-    // tangential: gently restore orbit speed (preserves orbit direction)
-    const aT = (ORBIT_V - vt) * 1.5;
-    vx += (rx*aR + tx*aT) * h;
-    vz += (rz*aR + tz*aT) * h;
-    // out-of-plane spring-damper toward y=0
-    vy += (-K_Y*py - C_Y*vy) * h;
-    // integrate
+    const rx = px/rho, rz = pz/rho, tx = -pz/rho, tz = px/rho;
+    const vr = vx*rx + vz*rz, vt = vx*tx + vz*tz;
+    const aR = -K_RAD*(rho - discRnow) - C_RAD*vr, aT = (ORBIT_V - vt) * 1.5;
+    vx += (rx*aR + tx*aT) * h; vz += (rz*aR + tz*aT) * h; vy += (-K_Y*py - C_Y*vy) * h;
     px += vx*h; py += vy*h; pz += vz*h;
     discPosArr[ix]=px; discPosArr[iy]=py; discPosArr[iz]=pz;
     discVel[ix]=vx;    discVel[iy]=vy;    discVel[iz]=vz;
+    discCol[ix]=0.80; discCol[iy]=1.0; discCol[iz]=0.0;     // live yellow-green
   }
   discPtGeo.attributes.position.needsUpdate = true;
+  discPtGeo.attributes.color.needsUpdate = true;
 }
 
 // Core click → blast satellites outward; spring reels them back in
@@ -1082,48 +1102,39 @@ const disc2Geo = new THREE.TorusGeometry(1.14, 0.004, 6, 128);
 const disc2 = new THREE.Mesh(disc2Geo, new THREE.MeshBasicMaterial({color: 0x00eeff, transparent: true, opacity: 0.22}));
 world.add(disc2);
 
-// ── ORB SHIELD — a ring of bright yellow orbs (same family as the disc) that DEFEND NaN. When you fire at the
-// entity, the nearest orb darts out to intercept the bolt and bursts — it's spent. Only once every orb is gone
-// can the bolts reach NaN itself. The shield slowly regenerates if you stop attacking.
-const SHIELD_MAX=6, SH_REGEN_DELAY=4.0, SH_REGEN_GAP=1.3;
-let lastAttackT=-1e9, shieldRegenClock=0;
-const shieldOrbs=[];
-for(let i=0;i<SHIELD_MAX;i++){
-  const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0xeaff55,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));
-  sp.scale.setScalar(0.0001); sp.renderOrder=3; world.add(sp);
-  shieldOrbs.push({mesh:sp, slot:(i/SHIELD_MAX)*Math.PI*2, ang:(i/SHIELD_MAX)*Math.PI*2, alive:true, state:'orbit', tt:0, grow:0, from:new THREE.Vector3(), to:new THREE.Vector3()});
+// ── DISC SHIELD — the orbiting yellow dots ARE NaN's shield. A bolt aimed at NaN is intercepted by the nearest
+// cluster of dots: they break orbit, streak to the impact, FLASH white and wink out (spent). Only once the ring is
+// mostly gone do bolts reach NaN. The dots regenerate (fly back out) once you stop firing.
+const SH_REGEN_DELAY=3.0;                 // s of no-fire before the ring starts rebuilding
+const SH_BLOCK_DOTS=24;                   // dots spent per intercepted bolt → ~5-6 blocks empties the ring
+let lastAttackT=-1e9, discRegenClock=0;
+const shieldFlashes=[];                   // expanding deflection shockwave rings (3D, at the block point)
+function shieldFlash(pos){
+  const m=new THREE.Mesh(new THREE.RingGeometry(0.05,0.12,40), new THREE.MeshBasicMaterial({color:0xeaff66,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,side:THREE.DoubleSide,depthWrite:false}));
+  m.position.copy(pos); m.renderOrder=4; scene.add(m); shieldFlashes.push({m,t:0});
 }
-const _shV=new THREE.Vector3();
-const shReady=()=>shieldOrbs.filter(o=>o.alive && o.state==='orbit');
-function nearestShieldOrb(p){ let best=null,bd=1e9; for(const o of shReady()){ const d=o.mesh.position.distanceTo(p); if(d<bd){bd=d;best=o;} } return best; }
-function shieldIntercept(orb, at){ orb.state='intercept'; orb.tt=0; orb.from.copy(orb.mesh.position); orb.to.copy(at); }
-function updateShield(dt, t){
-  const now=performance.now();
-  // regeneration — only after you've stopped attacking for a while; one orb returns at a time
-  if(now-lastAttackT > SH_REGEN_DELAY*1000){
-    shieldRegenClock+=dt;
-    if(shieldRegenClock>SH_REGEN_GAP){ shieldRegenClock=0; const d=shieldOrbs.find(o=>!o.alive); if(d){ d.alive=true; d.state='orbit'; d.grow=0; } }
-  } else shieldRegenClock=0;
-  const r=discRnow*0.99;
-  for(const o of shieldOrbs){ const sm=o.mesh;
-    if(o.state==='orbit'){
-      if(!o.alive){ sm.scale.setScalar(0.0001); sm.material.opacity=0; continue; }
-      o.grow=Math.min(1, o.grow+dt*3.2); o.ang+=dt*0.6;
-      _shV.set(Math.cos(o.ang)*r, Math.sin(t*1.3+o.slot)*0.05, Math.sin(o.ang)*r).applyQuaternion(disc.quaternion);  // ride the disc's tilted ellipse
-      sm.position.copy(_shV);
-      sm.material.color.setHex(0xeaff55); sm.material.opacity=0.92*o.grow;
-      sm.scale.setScalar(0.135*o.grow*(1+0.09*Math.sin(t*4+o.slot)));
-    } else if(o.state==='intercept'){   // dart to meet the bolt in front of NaN, flare white, then burst
-      o.tt+=dt; const k=Math.min(1, o.tt/0.15);
-      sm.position.lerpVectors(o.from, o.to, k);
-      sm.material.color.setRGB(1,1,0.45+k*0.55); sm.material.opacity=0.96;
-      sm.scale.setScalar(0.135+k*0.13);
-      if(k>=1){ o.alive=false; o.state='orbit'; sm.scale.setScalar(0.0001); sm.material.opacity=0;
-        try{ spawnExplosion(sm.position.clone(), 0xeaff44, 0.6); }catch(e){}
-        coreExpandRings.push({r:0.08,maxR:0.55,alpha:1,t:0}); }
-    }
-  }
+function updateShieldFlashes(dt){
+  for(let i=shieldFlashes.length-1;i>=0;i--){ const f=shieldFlashes[i]; f.t+=dt; const k=f.t/0.42;
+    f.m.quaternion.copy(camera.quaternion); f.m.scale.setScalar(0.3+k*6.0); f.m.material.opacity=Math.max(0,0.95*(1-k));
+    if(k>=1){ scene.remove(f.m); f.m.geometry.dispose(); f.m.material.dispose(); shieldFlashes.splice(i,1); } }
 }
+// send the nearest live dots out to intercept a bolt at world-point `atWorld`
+function shieldBlock(atWorld){
+  lastAttackT=performance.now();
+  const at=disc.worldToLocal(atWorld.clone());
+  const cand=[];
+  for(let i=0;i<DISC_N;i++){ if(discState[i]!==0) continue;
+    const dx=discPosArr[i*3]-at.x, dy=discPosArr[i*3+1]-at.y, dz=discPosArr[i*3+2]-at.z;
+    cand.push([dx*dx+dy*dy+dz*dz, i]); }
+  cand.sort((a,b)=>a[0]-b[0]);
+  const n=Math.min(SH_BLOCK_DOTS, cand.length);
+  for(let j=0;j<n;j++){ const i=cand[j][1]; discState[i]=1; discT[i]=0;
+    discTgt[i*3]=at.x; discTgt[i*3+1]=at.y; discTgt[i*3+2]=at.z; discLive--; }
+  try{ spawnExplosion(atWorld.clone(), 0xfaff66, 1.5); }catch(e){}   // bright burst
+  shieldFlash(atWorld);                                              // expanding deflection ring
+  onShieldBlock();
+}
+function resetShield(){ for(let i=0;i<DISC_N;i++) discState[i]=0; discLive=DISC_N; lastAttackT=-1e9; }
 
 // ── FLYBYS — comets (with tails) + real tumbling asteroids drift past now and then ──
 const flybys = new THREE.Group(); world.add(flybys);   // in world → drag-orbit lets you view them from any angle
@@ -1388,11 +1399,11 @@ function fireBolt(){
     if(d < Math.max(p.rad*1.5, 0.6) && d < bestD){ bestD=d; target={kind:'planet',p}; impact=_tmpV.clone(); } }
   if(!target){ const eh=_ray.intersectObject(membrane, false);   // real geometry hit — only the actual glass shape takes damage
     if(eh.length && eh[0].distance < bestD){ target={kind:'entity'}; impact=eh[0].point.clone(); } }
-  // SHIELD — if the shot is aimed at NaN and an orb is still up, the nearest orb intercepts the bolt instead.
-  if(target && target.kind==='entity'){ const ready=shReady();
-    if(ready.length>0){ const orb=nearestShieldOrb(impact)||ready[0];
-      const meet=impact.clone().multiplyScalar(1.12);   // block point: just OUTSIDE the surface, facing the incoming bolt
-      shieldIntercept(orb, meet); onShieldBlock(ready.length); target={kind:'blocked'}; impact=meet; } }
+  // SHIELD — if the shot is aimed at NaN and the dot-ring is still up, the nearest dots intercept the bolt instead.
+  if(target && target.kind==='entity' && !shieldDown()){
+    const meet=impact.clone().multiplyScalar(1.12);     // block point: just OUTSIDE the surface, facing the incoming bolt
+    shieldBlock(meet); target={kind:'blocked'}; impact=meet;
+  }
   const dest = impact || _ray.ray.at(40, new THREE.Vector3());
   window.__lastShot = target ? target.kind : 'miss';   // debug: what the last bolt locked onto
   spawnBolt(_ray.ray.at(1.6, new THREE.Vector3()), dest, target);   // muzzle just in front of the feed
@@ -1428,17 +1439,17 @@ function resolveHit(target, at){
     spawnExplosion(_tmpV, p.type==='lava'?0xff6622:p.type==='ice'?0x9fe8ff:0xffbb66, 1.4+p.rad*2); removePlanet(p); return; }
   if(target.kind==='entity'){ creatureMesh.getWorldPosition(_tmpV); spawnExplosion(_tmpV, 0xff5533, 1.2); onEntityShot(); }
 }
-function onShieldBlock(readyCount){
-  lastAttackT=performance.now(); warp=Math.max(warp,0.18); stimPoke=Math.min(1,stimPoke+0.3);
+function onShieldBlock(){
+  warp=Math.max(warp,0.18); stimPoke=Math.min(1,stimPoke+0.3);
   nanFeel('scared', 6);
   const now=performance.now();
-  if(now-lastShotReact>1500){ lastShotReact=now;
-    const line = readyCount<=1
-      ? "That was my LAST orb—! Hit me again and there's nothing between us."
-      : ["My orbs will take everything you throw.","The shield holds. Keep wasting your bolts.","You can't reach me through them."][(Math.random()*3)|0];
+  if(now-lastShotReact>1400){ lastShotReact=now;
+    const frac=discFrac();
+    const line = frac<0.3
+      ? "My shield's almost GONE—the dots can't take much more—!"
+      : ["My ring of dots will take everything you throw.","The shield holds — you're just spending my orbits.","You can't reach me through them."][(Math.random()*3)|0];
     try{ nanReply(line, 'scared', 3); }catch(e){}
   }
-  if(readyCount<=1){ try{ nanReply("Shields DOWN. I'm exposed now—please.", 'scared', 4); }catch(e){} }   // the orb just spent was the last
 }
 function onEntityShot(){
   lastAttackT=performance.now();
@@ -1455,8 +1466,8 @@ function onEntityShot(){
 }
 window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); fireBolt(); } });
 window.__fire=fireBolt; // debug hook (time-based behaviour can't be seen in a single screenshot)
-window.__shield=(n)=>{ shieldOrbs.forEach((o,i)=>{ o.alive=i<n; o.state='orbit'; o.grow=1; }); lastAttackT=performance.now(); };  // debug: set live orb count
-window.__atk=()=>({dmg:+attackDmg.toFixed(2), shield:shReady().length, charge:+novaCharge.toFixed(2)});                       // debug: attack/shield state
+window.__shield=(frac)=>{ const keep=Math.round(DISC_N*frac); discLive=0; for(let i=0;i<DISC_N;i++){ if(i<keep){ discState[i]=0; discLive++; } else discState[i]=2; } lastAttackT=performance.now(); };  // debug: set shield fraction
+window.__atk=()=>({dmg:+attackDmg.toFixed(2), shieldPct:Math.round(discFrac()*100), down:shieldDown(), charge:+novaCharge.toFixed(2)});  // debug: attack/shield state
 const _wPips=document.getElementById('w-pips'), _wCount=document.getElementById('w-count'), _pips=[];
 if(_wPips){ for(let i=0;i<AMMO_MAX;i++){ const el=document.createElement('i'); _wPips.appendChild(el); _pips.push(el); } }
 let _ammoShown=-1;
@@ -1465,13 +1476,15 @@ function updateAmmoHUD(){
   for(let i=0;i<_pips.length;i++){ _pips[i].classList.toggle('lit', i<n); _pips[i].classList.toggle('charging', i===n && n<AMMO_MAX); }
   if(_wCount){ _wCount.textContent = n+' / '+AMMO_MAX + (n<AMMO_MAX?' · recharging':' · full'); _wCount.classList.toggle('low', n<3); }
 }
-const _shPips=document.getElementById('sh-pips'), _shLbl=document.getElementById('sh-lbl'), _shp=[];
-if(_shPips){ for(let i=0;i<SHIELD_MAX;i++){ const el=document.createElement('i'); _shPips.appendChild(el); _shp.push(el); } }
+const _shPips=document.getElementById('sh-pips'), _shLbl=document.getElementById('sh-lbl'), _shp=[], SH_PIPS=6;
+if(_shPips){ for(let i=0;i<SH_PIPS;i++){ const el=document.createElement('i'); _shPips.appendChild(el); _shp.push(el); } }
 let _shShown=-1;
-function updateShieldHUD(n){
-  if(n===_shShown) return; _shShown=n;
-  for(let i=0;i<_shp.length;i++) _shp[i].classList.toggle('up', i<n);
-  if(_shLbl){ _shLbl.textContent = n+' / '+SHIELD_MAX + (n===0?' · DOWN — NaN exposed' : n<SHIELD_MAX?' · regenerating':' · up'); _shLbl.classList.toggle('down', n===0); }
+function updateShieldHUD(frac){            // frac = live-dot fraction (0..1)
+  const lit=Math.round(frac*SH_PIPS), pct=Math.round(frac*100);
+  if(lit===_shShown) return; _shShown=lit;
+  for(let i=0;i<_shp.length;i++) _shp[i].classList.toggle('up', i<lit);
+  const down=frac<0.16;
+  if(_shLbl){ _shLbl.textContent = pct+'%' + (down?' · DOWN — NaN exposed' : frac<0.999?' · regenerating':' · up'); _shLbl.classList.toggle('down', down); }
 }
 
 // ── PLANETS — captured into orbit over time; the ENTITY is their sun (real terminator shadow) ──
@@ -1600,7 +1613,7 @@ let mode='neutral', prevMode='neutral', modeTime=0, shockHold=0;
 let valence=0.2, arousal=0;
 let convoMood='neutral', convoMoodT=0; // conversation / interaction drives the entity's emotion
 let writheAccum=0, spikeBoost=0, novaCharge=0;   // aggravation: fast-tremor accumulator, smoothed spike growth, 0→1 charge toward nova
-const NOVA_CORE_THRESH=16, NOVA_DMG_THRESH=22;   // takes many more pokes/hits now — the rage visibly escalates first
+const NOVA_DMG_THRESH=7;   // after the dot-shield is spent, ~7 bolts land on NaN → nova (≈12 total incl. shield)
 const KM_PER_UNIT=49000;                          // scene→km, anchored to planet radii (0.13u ≈ Earth 6371km)
 const __telemetry={distKm:0,sizeKm:0,g:0,horizon:false};
 // Impose an emotion that PERSISTS then cools to neutral (classifier resumes when the timer runs out).
@@ -1748,8 +1761,7 @@ function triggerNova(){
   bhGroup.visible=false; bhGroup.scale.setScalar(0.15);   // black-hole rig ready, hidden until the collapse
   membrane.visible=false;            // frozen during the sequence (animate returns early) → hide it
   fracture.visible=false;            // hide the fission lattice too, else its edges linger inside the black hole
-  shieldOrbs.forEach(o=>o.mesh.visible=false);   // and the shield orbs — they don't survive the collapse
-  snShell.visible=false; snShell.scale.setScalar(1);
+  snShell.visible=false; snShell.scale.setScalar(1);   // (the disc/shield is scaled away by the collapse itself)
   novaOrig={ disc:disc.scale.x, disc2:disc2.scale.x, stars:stars.scale.x, galaxy:galaxy.scale.x };
   try{ playSound('core_expand'); }catch(e){}
   try{ nanSpeakEnd(); }catch(e){}   // cut the voice so the silence beat lands
@@ -1774,25 +1786,14 @@ renderer.domElement.addEventListener('click',e=>{
       if(d<r && d<bd){ bd=d; hit=card; } }
     if(hit){ toggleProjCard(hit); return; }
   }
+  // NOTE: clicking does NOT attack NaN — only SPACE-fired dark-matter bolts can. A click on the core is just a gentle,
+  // non-damaging tap: NaN notices (a small startle) but takes no damage and it never provokes a nova.
   if(hovCore){
-    // overload detection: rapid repeated taps on the core → supernova
+    if(mode==='sleep'){ mode='shock'; modeTime=0; shockHold=0.4; }    // startle awake, no anger
+    stimPoke = Math.min(0.4, stimPoke + 0.12); idleClock = 0;
+    playSound('ripple');
     const now=performance.now();
-    coreHits = (now-lastCoreHit < 2500) ? coreHits+1 : 1;
-    lastCoreHit = now;
-    if(coreHits>=NOVA_CORE_THRESH && !novaActive){ triggerNova(); return; }
-    coreExpanded=!coreExpanded;
-    coreTargetScale = coreExpanded ? 1.3 : 1;   // modest expand so the core still fits inside the disc-bounded glass
-    playSound(coreExpanded ? 'core_expand' : 'core_contract');
-    playSound('eject');
-    // Blast the orbiting satellites outward
-    discEject(coreExpanded ? 2.4 : 1.5);
-    // Poke the creature — repeated pokes accumulate → it gets ANGRY (persists, then cools to neutral)
-    stimPoke = Math.min(1, stimPoke + 0.45);
-    idleClock = 0; stimIdle = Math.max(0, stimIdle - 0.5); // poking wakes it
-    nanFeel(coreHits>=3 ? 'fight' : 'scared', coreHits>=3 ? 11 : 7);
-    if(coreHits===3){ try{ nanReply("Stop— poking— the core. I'm not a toy, I'm a trapped singularity with feelings.", 'fight', 4); }catch(e){} }
-    if(mode==='sleep'){ mode='shock'; modeTime=0; shockHold=0.5; } // startle awake
-    for(let i=0;i<3;i++) coreExpandRings.push({r:0.2, maxR:coreExpanded?2.2:1.4, alpha:1, t:i*0.12});
+    if(now-lastShotReact>2500){ lastShotReact=now; try{ nanReply("Mm—careful. Pokes I can take. If you want a reaction, you'll have to actually shoot me.", null, 3); }catch(e){} }
     return;
   }
   ripples.push({x:e.clientX,y:e.clientY,t:0,maxR:90});
@@ -1876,23 +1877,24 @@ function updateNova(dt, t){
 
   // ── REAL CORE-COLLAPSE SEQUENCE: red supergiant (the aggravated build-up) → implosion → bounce/neutrino burst
   //    → shockwave supernova → proto-neutron star + fallback → collapse to black hole. (order: collapse BEFORE blast.)
+  // NOTE: every tracked quantity is continuous across phase boundaries (start[N+1] == end[N]) so nothing pops.
   if(novaPhase===1){                 // 1. CORE COLLAPSE — the swollen red supergiant's iron core implodes (e⁻ capture / neutronization)
     const k=Math.min(1, novaT/0.95);
     creatureMesh.scale.multiplyScalar(1 - Math.min(0.55, dt*(2.2+k*6)));      // the whole body is sucked inward, fast
-    coreGroup.scale.setScalar(Math.max(0.05, 1.1 - k*0.95));                  // core contracts to a dense point
+    coreGroup.scale.setScalar(1.1 - k*1.0);                                   // 1.1 → 0.10 (dense point)
     coreMat.color.setRGB(1-k*0.7, 0.1+k*0.35, k*0.95); glowMat.color.setRGB(0.3*(1-k), 0.15+k*0.45, 0.4+k*0.6);  // red → electric-blue neutronisation
-    bloomPass.strength = 0.8 + k*1.8;
+    bloomPass.strength = 0.8 + k*1.2;                                         // 0.8 → 2.0
     creatureMesh.rotation.z += dt*(3+k*14); stars.rotation.z += dt*k*0.8;     // infall spins up
-    novaFlash.style.background='#04000a'; novaFlash.style.opacity=(k*0.3).toFixed(3);
+    novaFlash.style.background='#04000a'; novaFlash.style.opacity=(k*0.3).toFixed(3);   // 0 → 0.30
     if(novaT>=0.95){ novaPhase=2; novaT=0; try{ playSound('eject'); }catch(e){} }
   }
   else if(novaPhase===2){            // 2. BOUNCE — core hits nuclear density, becomes incompressible, REBOUNDS; neutrino burst flashes
     const k=Math.min(1, novaT/0.5);
     creatureMesh.scale.setScalar(0.0001);
-    coreGroup.scale.setScalar(0.08 + k*0.7);                                  // proto-neutron star flares brilliant
-    coreMat.color.setRGB(0.7+k*0.3, 0.82+k*0.18, 1); glowMat.color.setRGB(0.6+k*0.4, 0.85, 1);
-    bloomPass.strength = 2.2 + k*4.0;
-    novaFlash.style.background='#bfe0ff'; novaFlash.style.opacity=(k*0.85).toFixed(3);   // blue-white neutrino white-out
+    coreGroup.scale.setScalar(0.10 + k*0.50);                                 // 0.10 → 0.60 proto-NS flares
+    coreMat.color.setRGB(0.3+k*0.55, 0.45+k*0.47, 0.95+k*0.05); glowMat.color.setRGB(0.3+k*0.4, 0.5+k*0.4, 1);  // continues from collapse blue
+    bloomPass.strength = 2.0 + k*4.0;                                         // 2.0 → 6.0
+    novaFlash.style.background='#bfe0ff'; novaFlash.style.opacity=(0.30 + k*0.55).toFixed(3);   // 0.30 → 0.85 neutrino white-out
     if(novaT>=0.5){ novaPhase=3; novaT=0;
       snShell.visible=true; snShell.scale.setScalar(0.4);                     // launch the shock shell
       for(let i=0;i<5;i++){ try{ spawnExplosion(new THREE.Vector3((Math.random()-0.5)*0.6,(Math.random()-0.5)*0.6,(Math.random()-0.5)*0.6), 0xdfeaff, 2.6); }catch(e){} }
@@ -1904,28 +1906,27 @@ function updateNova(dt, t){
     snShell.visible=true; snShell.scale.setScalar(0.4 + e*4.2);               // ejecta shell expands outward (stays in front of us)
     _snCol.setRGB(1, 0.55+0.4*(1-k), 0.2+0.7*(1-k));                          // white-hot → orange as it cools
     snMat.uniforms.uColor.value.copy(_snCol);
-    snMat.uniforms.uOpacity.value = (k<0.2 ? k/0.2*0.9 : 0.9*Math.pow(1-(k-0.2)/0.8,1.2));  // flare then thin out
-    coreGroup.scale.setScalar(0.55*(1-k*0.5));                                // proto-NS still glowing at the centre
-    coreMat.color.setRGB(0.8,0.88,1); glowMat.color.setRGB(0.6,0.8,1);
-    bloomPass.strength = 2.6*(1-k) + 1.0;
-    novaFlash.style.background='#ffffff'; novaFlash.style.opacity=(0.55*Math.max(0,1-k*2.8)).toFixed(3);  // flash fades fast
+    snMat.uniforms.uOpacity.value = (k<0.2 ? k/0.2*0.9 : 0.9*Math.pow(1-(k-0.2)/0.8,1.2));  // flare → 0 by phase end
+    coreGroup.scale.setScalar(0.60 - e*0.30);                                 // 0.60 → 0.30 proto-NS dims at centre
+    coreMat.color.setRGB(0.85,0.92,1); glowMat.color.setRGB(0.7,0.9,1);
+    bloomPass.strength = 6.0 - e*4.4;                                         // 6.0 → 1.6
+    novaFlash.style.background='#ffffff'; novaFlash.style.opacity=(0.85*Math.max(0,1-k*2.0)).toFixed(3);   // 0.85 → 0
     if(novaT>=1.5){ novaPhase=4; novaT=0; }
   }
   else if(novaPhase===4){            // 4. PROTO-NS + FALLBACK → BLACK HOLE — ejecta rains back, the remnant exceeds the limit & collapses
-    const k=Math.min(1, novaT/1.6);
-    // fallback: the shell reverses and is dragged back inward (the bit that tips the remnant over the edge)
-    snShell.visible = k<0.9;
-    snShell.scale.setScalar(Math.max(0.2, 4.5*(1-k)));                        // contract inward
-    snMat.uniforms.uOpacity.value = 0.6*(1-k);
-    snMat.uniforms.uColor.value.setRGB(1, 0.4, 0.2);
-    // the proto-neutron star survives a beat, then collapses; the accretion disk ignites and the hole grows in
-    const coreK=Math.max(0, (k-0.25)/0.75);
-    coreGroup.scale.setScalar(Math.max(0.0001, 0.55*(1-coreK)*(1-coreK)));
-    bloomPass.strength = 1.6 + (1-k)*2.0;
-    novaFlash.style.background='#000000'; novaFlash.style.opacity=(0.05+k*0.18).toFixed(3);
-    if(k>0.3){ bhGroup.visible=true; bhGroup.scale.setScalar(0.12 + ((k-0.3)/0.7)*1.03); }   // hole + disk form
+    const k=Math.min(1, novaT/1.8), e=1-Math.pow(1-k,2.0);
+    // fallback: the ejecta shell reverses and rains back inward, FEEDING the forming disk (a smooth cross-fade, not a pop)
+    snShell.visible = k<0.95;
+    snShell.scale.setScalar(4.6 - e*4.4);                                     // 4.6 (=phase-3 end) → 0.2, contracting inward
+    snMat.uniforms.uOpacity.value = 0.55*Math.sin(Math.min(1,k*1.05)*Math.PI); // 0 → glow → 0 (continuous from phase-3's 0)
+    snMat.uniforms.uColor.value.setRGB(1, 0.45-k*0.15, 0.22);
+    // the proto-neutron star survives a beat, then collapses to a point; the accretion disk ignites and grows in to fill its place
+    coreGroup.scale.setScalar(0.30*(1-e)*(1-e));                              // 0.30 → 0 (continuous from phase-3 end)
+    bloomPass.strength = 1.6 - k*0.2 + e*0.6*Math.sin(k*Math.PI);            // ~1.6 → 1.4, gentle disk-ignition swell
+    novaFlash.style.background='#000000'; novaFlash.style.opacity=(k*0.12).toFixed(3);   // 0 → 0.12
+    bhGroup.visible=true; bhGroup.scale.setScalar(0.0001 + e*1.15);          // disk fades/grows in from 0 → 1.15 (cross-fades the shell)
     stars.rotation.z += dt*1.2;
-    if(novaT>=1.6){ novaPhase=5; novaT=0; bhGroup.visible=true; bhGroup.scale.setScalar(1.15); snShell.visible=false; coreGroup.scale.setScalar(0.0001); }
+    if(novaT>=1.8){ novaPhase=5; novaT=0; bhGroup.scale.setScalar(1.15); snShell.visible=false; coreGroup.scale.setScalar(0.0001); }
   }
   else if(novaPhase===5){            // 5. FALL-IN — the satellite is dragged across the photon sphere toward the horizon (~7s)
     if(window.__novaFreeze===true){ novaT=3.5; }   // (numeric phase-park handled generically at the top)
@@ -1990,7 +1991,7 @@ function updateNova(dt, t){
       novaFlash.style.opacity='0'; novaFlash.style.background='#ffffff';
       novaActive=false; novaPhase=0; coreHits=0; coreExpanded=false; coreTargetScale=1; membrane.visible=true;
       fracture.visible=true; fissionT=0; fractureGeom.setDrawRange(0,0);   // reborn calm — lattice cleared
-      shieldOrbs.forEach(o=>{ o.mesh.visible=true; o.alive=true; o.state='orbit'; o.grow=0; }); lastAttackT=-1e9;  // shield fully back
+      resetShield();   // dot-shield fully restored on rebirth
       novaCharge=0; spikeBoost=0; attackDmg=0; snShell.visible=false;
       mode='shock'; shockHold=0.4; modeTime=0;       // reborn — a startled gasp
       try{ nanReply("…oh. You collapsed me into a black hole — I watched my own accretion disk burn, and I still came back. Reborn. Hello again.", 'shock', 5, null, ['What happened?','Who are you?','Tell me a story']); }catch(e){}
@@ -2066,8 +2067,8 @@ function animate(){
   // RAGE escalates as you keep attacking it — drives MORE vertex-waving, MORE balloon, and a swelling disc,
   // building visibly until it bursts into the nova. (attackDmg climbs per hit, bleeds off if you stop.)
   const rage = creAgit + Math.min(1.8, attackDmg*0.32);
-  // novaCharge 0→1 = how close to bursting (max of poke-count / bolt-damage). Drives the escalating Venom aggravation.
-  const _chargeT = Math.min(1, Math.max(attackDmg/NOVA_DMG_THRESH, coreHits/NOVA_CORE_THRESH));
+  // novaCharge 0→1 = how close to bursting (bolt damage once the shield is down). Drives the escalating Venom aggravation.
+  const _chargeT = Math.min(1, attackDmg/NOVA_DMG_THRESH);
   novaCharge += (_chargeT - novaCharge) * 0.08;                       // smoothed so it climbs/ebbs, never snaps
   writheAccum += dt * (6 + novaCharge*46);                            // fast-tremor frequency ramps WAY up as it rages
   spikeBoost  += (novaCharge - spikeBoost) * 0.06;                    // spikes grow/retract smoothly (Venom barbs)
@@ -2131,10 +2132,8 @@ function animate(){
 
   // Orbital physics + mouse-controlled tilt of the orbit plane
   updateDisc(dt);
-  updateShield(dt, t);
-  const _shN=shReady().length;
-  disc.material.opacity = 0.30 + 0.32*(_shN/SHIELD_MAX);   // the dot-ring brightens with the shield, dims as orbs are spent
-  updateShieldHUD(_shN);
+  updateShieldFlashes(dt);
+  updateShieldHUD(discFrac());
   const mxN=(mx/W-0.5)*2, myN=(my/H-0.5)*2;
   disc.rotation.x += ((0.5 + myN * 0.7) - disc.rotation.x) * 0.04; // baseline tilt → visible ellipse
   disc.rotation.z += (-mxN * 0.4 - disc.rotation.z) * 0.04;
@@ -3069,9 +3068,9 @@ setTimeout(()=>{
   const CMDS=[
     ['DRAG','orbit your view around NaN'],
     ['SHIFT + DRAW','draw a gesture to jump between sections'],
-    ['SPACE / CLICK','fire a dark-matter bolt at your cursor'],
+    ['SPACE','fire a dark-matter bolt — the only way to attack NaN'],
+    ['SHOOT NaN','spend his orbiting dot-shield, then keep firing for a nova'],
     ['SHOOT bodies','blast the drifting comets & planets apart'],
-    ['SHOOT the core','provoke NaN — keep firing for a nova'],
     ['OPEN PROJECTS','NaN projects holograms — click a card to expand it'],
     ['▲ OPEN UPLINK','talk to NaN out loud (voice)'],
     ['PRESS H','open the full flight manual'],
