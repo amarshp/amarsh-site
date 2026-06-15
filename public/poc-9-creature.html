@@ -860,6 +860,19 @@ membrane.frustumCulled = false;   // bounds aren't recomputed each frame; never 
 membrane.renderOrder = 1;         // glass renders behind the wireframe so the lines read clearly through it
 world.add(membrane);
 
+// ── FISSION FRACTURE — extra hot crisscross edges across the SAME nodes, revealed more & more as rage builds.
+// Calm: invisible. Attacked: lines proliferate and brighten (a chain-reaction lattice) until it bursts into nova.
+const fracEdges=[]; { const _fset=new Set(cEdges.map(([a,b])=>a<b?`${a}-${b}`:`${b}-${a}`));
+  for(let i=0;i<NUM_PTS;i++) for(let n=0;n<3;n++){ const j=(Math.random()*NUM_PTS)|0; if(j===i) continue;
+    const k=i<j?`${i}-${j}`:`${j}-${i}`; if(_fset.has(k)) continue; _fset.add(k); fracEdges.push([i,j]); } }
+const fracPos=new Float32Array(fracEdges.length*6), fracCol=new Float32Array(fracEdges.length*6);
+fracEdges.forEach((_,e)=>{ for(let s=0;s<2;s++){ fracCol[e*6+s*3]=1; fracCol[e*6+s*3+1]=0.72+Math.random()*0.28; fracCol[e*6+s*3+2]=0.35; } });
+const fractureGeom=new THREE.BufferGeometry();
+fractureGeom.setAttribute('position', new THREE.BufferAttribute(fracPos,3));
+fractureGeom.setAttribute('color',    new THREE.BufferAttribute(fracCol,3));
+const fracture=new THREE.LineSegments(fractureGeom, new THREE.LineBasicMaterial({vertexColors:true, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+fracture.frustumCulled=false; fracture.renderOrder=2; world.add(fracture);
+
 // Helper: update creature positions each frame.
 // agit (0..~2) = agitation: widens motion + adds fast writhing tremor.
 function updateCreature(t, agit) {
@@ -887,6 +900,11 @@ function updateCreature(t, agit) {
   cGeom.attributes.color.needsUpdate = true;
   glassGeom.attributes.position.needsUpdate = true;   // glass shares the web's animated nodes
   glassGeom.computeBoundingSphere();                  // keep bounds current so raycasts hit the real (deforming) shape
+  const fa=fractureGeom.attributes.position.array;    // fission lattice rides the same nodes
+  for(let e=0;e<fracEdges.length;e++){ const i=fracEdges[e][0], j=fracEdges[e][1];
+    fa[e*6]=nodePos[i*3]; fa[e*6+1]=nodePos[i*3+1]; fa[e*6+2]=nodePos[i*3+2];
+    fa[e*6+3]=nodePos[j*3]; fa[e*6+4]=nodePos[j*3+1]; fa[e*6+5]=nodePos[j*3+2]; }
+  fractureGeom.attributes.position.needsUpdate=true;
 }
 
 // ── RED CORE ──────────────────────────────────────────────────
@@ -1611,6 +1629,7 @@ function triggerNova(){
   discEject(3);
 }
 window.__triggerNova=triggerNova; // debug hook (also fires on 7 rapid core taps)
+window.__setDmg=(v)=>{ attackDmg=v; nanFeel('fight', 8); };   // debug: force the rage level
 window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).project(camera);
   return {active:novaActive, phase:novaPhase, t:+novaT.toFixed(2), bhVis:bhGroup.visible, bhScale:+bhGroup.scale.x.toFixed(2),
     creScale:+creatureMesh.scale.x.toFixed(3), bhSX:Math.round((v.x*0.5+0.5)*W), bhSY:Math.round((-v.y*0.5+0.5)*H), bhInFront:v.z<1,
@@ -1875,6 +1894,11 @@ function animate(){
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
   membrane.scale.copy(creatureMesh.scale);
   membrane.rotation.copy(creatureMesh.rotation);
+  // FISSION: reveal more fracture edges + brighten them the angrier (more attacked) it is
+  fracture.scale.copy(creatureMesh.scale); fracture.rotation.copy(creatureMesh.rotation);
+  const _rr=Math.max(0, rage-0.2);
+  fracture.material.opacity = Math.min(0.85, _rr*0.55);
+  fractureGeom.setDrawRange(0, Math.floor(fracEdges.length*Math.min(1,_rr*0.6))*2);
   membrane.material.uniforms.uColor.value.copy(moodColor);
   membrane.material.uniforms.uOpacity.value = Math.min(0.42, moodOpacity * phaseVis * 0.62); // reflective glass reads more
 
