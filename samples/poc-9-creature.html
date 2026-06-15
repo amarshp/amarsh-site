@@ -843,11 +843,17 @@ const membrane = new THREE.Mesh(glassGeom, new THREE.ShaderMaterial({
   vertexShader:`varying vec3 vView; void main(){ vec4 mv=modelViewMatrix*vec4(position,1.0); vView=mv.xyz; gl_Position=projectionMatrix*mv; }`,
   fragmentShader:`precision highp float; uniform vec3 uColor; uniform float uOpacity; varying vec3 vView;
     void main(){
-      vec3 N = normalize(cross(dFdx(vView), dFdy(vView)));   // flat per-face normal → mosaic tiles
+      vec3 N = normalize(cross(dFdx(vView), dFdy(vView)));   // flat per-face normal → faceted glass
       vec3 V = normalize(-vView);
-      float graze = 1.0 - abs(dot(N, V));                    // 0 = facing you (thin), 1 = edge-on (thick)
-      float t = pow(graze, 1.5);
-      gl_FragColor = vec4(uColor * (0.30 + 0.70*t), uOpacity * (0.38 + 0.62*t));
+      float fres = pow(1.0 - abs(dot(N, V)), 3.0);           // glassy fresnel rim (reflective edges)
+      vec3 R = reflect(-V, N);                                // reflection vector (view space)
+      float env = clamp(R.y*0.5 + 0.5, 0.0, 1.0);
+      vec3 envCol = mix(vec3(0.015,0.03,0.07), vec3(0.55,0.85,1.0), pow(env,1.6));   // faked sky/ground reflection
+      float spec = pow(max(dot(R, normalize(vec3(0.35,0.75,0.55))), 0.0), 48.0);     // sharp glint
+      float spec2= pow(max(dot(R, normalize(vec3(-0.5,0.25,0.7))), 0.0), 16.0)*0.4;  // soft fill glint
+      vec3 col = uColor*(0.22 + 0.30*fres) + envCol*(0.30 + 0.60*fres) + vec3(spec + spec2);
+      float a  = uOpacity*(0.34 + 0.66*fres) + spec*0.7;
+      gl_FragColor = vec4(col, clamp(a, 0.0, 0.97));
     }`,
 }));
 membrane.frustumCulled = false;   // bounds aren't recomputed each frame; never cull the deforming glass
@@ -887,7 +893,7 @@ const coreGroup = new THREE.Group();
 world.add(coreGroup);
 
 // Outer glow sphere
-const glowGeo = new THREE.SphereGeometry(0.32, 32, 16);
+const glowGeo = new THREE.SphereGeometry(0.30, 32, 16);
 const glowMat = new THREE.MeshBasicMaterial({color: 0xff1100, transparent: true, opacity: 0.18, side: THREE.BackSide});
 const glowSphere = new THREE.Mesh(glowGeo, glowMat);
 coreGroup.add(glowSphere);
@@ -906,8 +912,8 @@ coreGroup.add(dot);
 
 // Two orbital rings at chaotic non-axis angles
 const coreRings = [];
-[[0.38, 0xff4400, 0.45, Math.PI*0.38, Math.PI*0.15],
- [0.54, 0xffaa00, 0.30, Math.PI*0.71, -Math.PI*0.22]].forEach(([r,col,op,rx,rz]) => {
+[[0.30, 0xff4400, 0.45, Math.PI*0.38, Math.PI*0.15],
+ [0.40, 0xffaa00, 0.30, Math.PI*0.71, -Math.PI*0.22]].forEach(([r,col,op,rx,rz]) => {   // kept small so they stay inside the glass
   const tGeo = new THREE.TorusGeometry(r, 0.007, 8, 96);
   const tMat = new THREE.MeshBasicMaterial({color: col, transparent: true, opacity: op});
   const torus = new THREE.Mesh(tGeo, tMat);
@@ -1590,7 +1596,7 @@ renderer.domElement.addEventListener('click',e=>{
     lastCoreHit = now;
     if(coreHits>=7 && !novaActive){ triggerNova(); return; }
     coreExpanded=!coreExpanded;
-    coreTargetScale = coreExpanded ? 2.8 : 1;
+    coreTargetScale = coreExpanded ? 2.0 : 1;   // the entity grows to keep the glass outside it (see scale floor)
     playSound(coreExpanded ? 'core_expand' : 'core_contract');
     playSound('eject');
     // Blast the orbiting satellites outward
@@ -1802,14 +1808,17 @@ function animate(){
     creRecoilY + Math.cos(t*8.3)*creAgit*0.03,
     Math.sin(t*0.4)*0.06
   );
-  // breathing/reach scale, then HARD-clamp so even at full reach the longest spike stays inside the disc
-  const _entS = Math.min(ENTITY_SCALE * Math.min(1.5, breathe * creReach * (1 + creAgit*0.05)), DISC_R*0.96/_maxRest);
+  // breathing/reach scale, disc-clamped; then floored to the core so the glass shell ALWAYS wraps outside it,
+  // even when the core sphere expands (the whole entity grows with the core, keeping the same containment).
+  const _entS = Math.max(
+    Math.min(ENTITY_SCALE * Math.min(1.5, breathe * creReach * (1 + creAgit*0.05)), DISC_R*0.96/_maxRest),
+    coreScale * 0.95);
   creatureMesh.scale.setScalar(_entS);
   // glass sits exactly ON the web (same nodes, same transform) — no inflation, so faces hug the lines
   membrane.scale.copy(creatureMesh.scale);
   membrane.rotation.copy(creatureMesh.rotation);
   membrane.material.uniforms.uColor.value.copy(moodColor);
-  membrane.material.uniforms.uOpacity.value = Math.min(0.30, moodOpacity * phaseVis * 0.5); // faint tint so the full web shows
+  membrane.material.uniforms.uOpacity.value = Math.min(0.42, moodOpacity * phaseVis * 0.62); // reflective glass reads more
 
   // Core: subtle idle breath + a MOUTH that pulses to the actual voice amplitude (centre fixed).
   if(nanSpeaking && nanAnalyser){
