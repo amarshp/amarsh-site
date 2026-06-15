@@ -1049,6 +1049,50 @@ function updateExplosions(dt){
   }
 }
 
+// ── SECTION SPACE-EVENTS — opening a section fires a 3D in-scene event (the panel still carries the text) ──
+// Reuses the existing effect machinery (explosion / expanding rings / disc eject / warp). PROJECTS adds a
+// small fleet of ships that fly in and dock. Panel CSS reveals are kept in place but the headline is the 3D event.
+const ships=[]; const _shipUp=new THREE.Vector3(0,1,0);
+function clearShips(){ for(const s of ships){ scene.remove(s.m); s.m.geometry.dispose(); s.m.material.dispose(); s.fl.material.dispose(); } ships.length=0; }
+function spawnShips(){
+  clearShips();
+  const N=5;
+  for(let i=0;i<N;i++){
+    const frac=(i/(N-1))-0.5;                                   // -0.5..0.5 across the view
+    const target=new THREE.Vector3(frac*4.4, (i%2?0.55:-0.35), 1.1);   // a docked row in front of the entity
+    const dir=new THREE.Vector3(frac>=0?1:-1, 0.18, 0).normalize();
+    const start=target.clone().add(dir.multiplyScalar(15+Math.random()*7));   // streak in from off-screen
+    const hue=0.46+i*0.045;
+    const geo=new THREE.ConeGeometry(0.13,0.52,8);
+    const m=new THREE.Mesh(geo, new THREE.MeshBasicMaterial({color:new THREE.Color().setHSL(hue,0.9,0.62), wireframe:true, transparent:true, opacity:0}));
+    m.position.copy(start); m.quaternion.setFromUnitVectors(_shipUp, target.clone().sub(start).normalize());
+    const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:new THREE.Color().setHSL(hue,0.9,0.72),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+    fl.scale.setScalar(0.55); fl.position.y=-0.34; m.add(fl);   // thruster flare at the tail
+    scene.add(m);
+    ships.push({m,fl,start:start.clone(),target,t:0});
+  }
+}
+function updateShips(dt){
+  for(const s of ships){ s.t=Math.min(1, s.t+dt*0.6);
+    const e=1-Math.pow(1-s.t,3);                                // ease-out → decelerate and stop (docking)
+    s.m.position.lerpVectors(s.start, s.target, e);
+    s.m.material.opacity=Math.min(1,s.t*4)*0.9;
+    s.fl.material.opacity=Math.max(0,(1-s.t*1.4))*0.9;          // engine cuts as it parks
+  }
+}
+function sectionEvent(secId){
+  clearShips();
+  const C=new THREE.Vector3(0,0,0);                             // the entity/core sits at the world origin
+  if(secId==='s-projects'){ spawnShips(); warp=Math.max(warp,0.4); }            // ships dock in
+  else if(secId==='s-contact'){ spawnExplosion(C,0x66ddff,2.2);                 // beacon detonation
+    for(let i=0;i<3;i++) coreExpandRings.push({r:0.2,maxR:2.4,alpha:1,t:i*0.12}); discEject(2.6); warp=Math.max(warp,0.5); }
+  else if(secId==='s-skills'){                                                  // systems booting — scan pulses
+    for(let i=0;i<4;i++) coreExpandRings.push({r:0.2,maxR:1.9,alpha:1,t:i*0.18}); discEject(0.8); }
+  else if(secId==='s-home'){ warp=Math.max(warp,1.0);                           // ABOUT — timeline warp-in
+    coreExpandRings.push({r:0.2,maxR:2.0,alpha:1,t:0}); }
+}
+window.__sectionEvent=sectionEvent; // debug hook
+
 // ── WEAPONS — SPACE fires a dark-matter bolt at the cursor; attacking the entity overloads it → nova ──
 // Lore: the satellite condenses bolts from dark-matter flux threading the fold; the magazine recharges itself.
 const AMMO_MAX=12, AMMO_RATE=0.9;       // bolts; recharge per second
@@ -1583,6 +1627,7 @@ function animate(){
   flyClock += dt; if(flyClock > flyNext){ flyClock=0; flyNext=14+Math.random()*16; spawnFlyby(); }
   updateFlybys(dt);
   updateExplosions(dt);
+  if(ships.length) updateShips(dt);
   updateProjectiles(dt);
   ammo = Math.min(AMMO_MAX, ammo + AMMO_RATE*dt);   // satellite recharges bolts from dark-matter flux
   attackDmg = Math.max(0, attackDmg - dt*0.25);      // assault pressure bleeds off if you stop firing
@@ -1947,6 +1992,7 @@ window.openSection = function(secId){
   document.getElementById('drag-hint').style.opacity='0';
   targetPOffset=H*0.19;
   playSound('panel_open');
+  try{ sectionEvent(secId); }catch(e){ console.warn('[sectionEvent]', e); }   // fire the 3D space-event
 };
 
 window.closePanel = function(){
@@ -1956,6 +2002,7 @@ window.closePanel = function(){
   document.getElementById('hint').style.opacity='';
   document.getElementById('drag-hint').style.opacity='';
   targetPOffset=0;
+  clearShips();   // dismiss any docked project ships
   playSound('panel_close');
 };
 
