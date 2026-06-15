@@ -227,6 +227,8 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
        forward shell, open aperture door, 2.4 m primary mirror, twin high-gain antennas. Proportions from NASA HST data. -->
   <svg viewBox="0 0 200 132" width="216" height="143">
     <text x="100" y="11" text-anchor="middle" class="bp-lbl" style="font-size:8px">▦ NaN-WATCH 01 · HUBBLE-CLASS</text>
+    <!-- framed panel (matches the ground-track map box) -->
+    <rect x="4" y="15" width="192" height="108" fill="rgba(8,20,32,.4)" stroke="rgba(127,224,255,.35)" stroke-width=".8"/>
     <!-- twin solar-array wings (mast + retractable multi-cell panel), mounted on the forward shell -->
     <g fill="rgba(20,40,58,.35)" stroke="rgba(127,224,255,.5)" stroke-width=".7">
       <rect x="58" y="13" width="52" height="25" rx="1"/><rect x="58" y="94" width="52" height="25" rx="1"/>
@@ -1050,6 +1052,7 @@ world.add(disc2);
 // ── FLYBYS — comets (with tails) + real tumbling asteroids drift past now and then ──
 const flybys = new THREE.Group(); world.add(flybys);   // in world → drag-orbit lets you view them from any angle
 const fly = [];
+const _tOut=new THREE.Vector3(), _tSwp=new THREE.Vector3();   // scratch for comet-tail direction (no per-frame alloc)
 // procedural rocky asteroid — displaced/faceted icosphere, lit (no external asset, looks like real rock)
 function makeAsteroid(rad){
   const geo=new THREE.IcosahedronGeometry(rad, 2), p=geo.attributes.position, v=new THREE.Vector3();
@@ -1070,20 +1073,20 @@ function spawnFlyby(){
     fly.push({type:'rock', obj:m, rad:0.42, p:start.clone(), v, spin:new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(1.1), life:0, maxLife:14});
     return;
   }
-  // COMET — bright head + long glowing tail, shootable
-  const TRAIL=28, col=new THREE.Color().setHSL(0.5+Math.random()*0.12, 0.85, 0.7);
+  // COMET — bright head + a soft anti-sunward dust plume (stacked additive sprites that taper out), shootable
+  const TAILN=9, col=new THREE.Color().setHSL(0.5+Math.random()*0.12, 0.85, 0.7);
   const head=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:col,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
-  head.scale.setScalar(0.7); head.position.copy(start); flybys.add(head);
-  const tg=new THREE.BufferGeometry(), tp=new Float32Array(TRAIL*3), tc=new Float32Array(TRAIL*3);
-  for(let i=0;i<TRAIL;i++){ tp[i*3]=start.x; tp[i*3+1]=start.y; tp[i*3+2]=start.z; const f=Math.pow(1-i/TRAIL,1.4); tc[i*3]=col.r*f; tc[i*3+1]=col.g*f; tc[i*3+2]=col.b*f; }
-  tg.setAttribute('position',new THREE.BufferAttribute(tp,3)); tg.setAttribute('color',new THREE.BufferAttribute(tc,3));
-  const tail=new THREE.Line(tg,new THREE.LineBasicMaterial({vertexColors:true,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));
-  flybys.add(tail);
-  fly.push({type:'comet', obj:head, tail, tg, col, rad:0.5, p:start.clone(), v, hist:Array.from({length:TRAIL},()=>start.clone()), life:0, maxLife:13});
+  head.scale.setScalar(0.46); head.position.copy(start); flybys.add(head);
+  const tailSprites=[];
+  for(let j=0;j<TAILN;j++){
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:col,transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false}));
+    s.position.copy(start); flybys.add(s); tailSprites.push(s);
+  }
+  fly.push({type:'comet', obj:head, tailSprites, col, rad:0.5, p:start.clone(), v, life:0, maxLife:13});
 }
 function removeFlyby(c){
   if(c.type==='rock'){ flybys.remove(c.obj); c.obj.geometry.dispose(); c.obj.material.dispose(); }
-  else { flybys.remove(c.obj); flybys.remove(c.tail); c.tg.dispose(); c.obj.material.dispose(); c.tail.material.dispose(); }
+  else { flybys.remove(c.obj); c.obj.material.dispose(); c.tailSprites.forEach(s=>{ flybys.remove(s); s.material.dispose(); }); }
 }
 function updateFlybys(dt){
   for(let i=fly.length-1;i>=0;i--){
@@ -1093,11 +1096,17 @@ function updateFlybys(dt){
       c.obj.position.copy(c.p); c.obj.rotation.x+=c.spin.x*dt; c.obj.rotation.y+=c.spin.y*dt;
       c.obj.material.opacity=fade; c.obj.material.transparent=fade<1;
     } else {
-      c.obj.position.copy(c.p); c.hist.unshift(c.p.clone()); c.hist.pop();
-      const arr=c.tg.attributes.position.array;
-      for(let k=0;k<c.hist.length;k++){ arr[k*3]=c.hist[k].x; arr[k*3+1]=c.hist[k].y; arr[k*3+2]=c.hist[k].z; }
-      c.tg.attributes.position.needsUpdate=true;
-      c.obj.material.opacity=fade; c.tail.material.opacity=0.95*fade;
+      c.obj.position.copy(c.p); c.obj.material.opacity=fade;
+      // tail streams ANTI-SUNWARD (away from the core at origin), swept slightly by motion
+      _tOut.copy(c.p).normalize();
+      _tSwp.copy(c.v).normalize().multiplyScalar(-0.4);
+      _tOut.multiplyScalar(0.7).add(_tSwp).normalize();
+      for(let j=0;j<c.tailSprites.length;j++){
+        const t=(j+1)/c.tailSprites.length, s=c.tailSprites[j];
+        s.position.copy(c.p).addScaledVector(_tOut, (j+1)*0.42);
+        s.scale.setScalar(0.5*(1-t*0.78));
+        s.material.opacity=fade*0.7*(1-t*0.92);
+      }
     }
     if(c.life>c.maxLife){ removeFlyby(c); fly.splice(i,1); }
   }
@@ -1577,7 +1586,7 @@ window.addEventListener('mouseup',()=>{
 let camDist=5.2, camDistT=5.2;
 renderer.domElement.addEventListener('wheel',e=>{
   e.preventDefault();
-  camDistT=Math.max(2.6, Math.min(11, camDistT + e.deltaY*0.0016));
+  camDistT=Math.max(2.6, Math.min(24, camDistT + e.deltaY*0.0016));
 },{passive:false});
 
 // Show the spell legend while Shift is held
