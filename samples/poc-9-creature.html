@@ -1720,6 +1720,9 @@ function fireBolt(){
     if(d < r && d < bestD){ bestD=d; target={kind:'proj',card}; impact=_tmpV.clone(); } } }
   if(secActive){ for(const it of secItems){ if(!it.onHit) continue; it.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     const r=Math.max(0.55, it.w*(it.curScale||1)*0.6); if(d < r && d < bestD){ bestD=d; target={kind:'sec',it}; impact=_tmpV.clone(); } } }
+  if(gameState.enabled){ for(const t of gameState.threats){ if(t.p.length()>gameState.rangeMax) continue;   // beyond engage range → not targetable (RANGE booster raises it)
+    t.obj.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
+    if(d < Math.max(t.rad*1.7, 0.45) && d < bestD){ bestD=d; target={kind:'threat',t}; impact=_tmpV.clone(); } } }
   for(const c of fly){ c.obj.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     if(d < c.rad && d < bestD){ bestD=d; target={kind:'fly',c}; impact=_tmpV.clone(); } }
   for(const p of planets){ p.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
@@ -1727,7 +1730,8 @@ function fireBolt(){
   if(!target){ const eh=_ray.intersectObject(membrane, false);   // real geometry hit — only the actual glass shape takes damage
     if(eh.length && eh[0].distance < bestD){ target={kind:'entity'}; impact=eh[0].point.clone(); } }
   // SHIELD — if the shot is aimed at NaN and the dot-ring is still up, the nearest dots intercept the bolt instead.
-  if(target && target.kind==='entity' && !shieldDown()){
+  // (In game mode NaN is yours to protect — your own bolts never spend its shield.)
+  if(target && target.kind==='entity' && !shieldDown() && !gameState.enabled){
     const meet=impact.clone().multiplyScalar(1.12);     // block point: just OUTSIDE the surface, facing the incoming bolt
     shieldBlock(meet); target={kind:'blocked'}; impact=meet;
   }
@@ -1767,6 +1771,10 @@ function resolveHit(target, at){
   if(target.kind==='proj'){ if(projActive && projCards.includes(target.card)) toggleProjCard(target.card); return; }   // expand/collapse a project card
   if(target.kind==='secfx'){ spawnExplosion(at, 0x9ff6ff, 0.5); return; }                                            // section-holo item already activated at fire-time
   if(target.kind==='sec'){ if(secActive && secItems.includes(target.it)) secHit(target.it); return; }                 // (fallback) activate a section-holo item
+  if(target.kind==='threat'){ const t=target.t; if(!gameState.threats.includes(t)) return;   // already gone
+    t.hp-=1; try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffd0a0, 0.55); }catch(e){}
+    if(t.hp<=0) destroyThreat(t, true);   // scored kill → points + combo
+    return; }
   if(target.kind==='fly'){ const c=target.c, idx=fly.indexOf(c);
     if(idx>=0){ c.obj.getWorldPosition(_tmpV); spawnExplosion(_tmpV, c.type==='comet'?0x88e0ff:0xffaa55, c.type==='comet'?1.1:1.5); removeFlyby(c); fly.splice(idx,1); }
     return; }
@@ -2569,7 +2577,16 @@ function destroyThreat(t, scored){
       const tail=t.obj.userData.tail; if(tail){ threatGroup.remove(tail.mesh); tail.geo.dispose(); tail.mesh.material.dispose(); } } }
   if(scored) onThreatKilled(t);   // Phase 3
 }
-function onThreatKilled(t){ /* scoring — Phase 3 */ }
+function onThreatKilled(t){
+  const P=gameState;
+  P.combo++; P.comboTimer=2.5; P.comboMult=1+Math.min(4, Math.floor(P.combo/5)*0.5);   // streak within 2.5s ramps the multiplier (max 5×)
+  P.score += Math.round(t.points*P.comboMult);
+  P.killCount++; P.killedThisWave=(P.killedThisWave||0)+1;
+  try{ spawnExplosion(t.p.clone(), t.kind==='comet'?0x9fd0ff:0xffaa55, 1.25); }catch(e){}
+  try{ playSound('eject'); }catch(e){}
+  maybeDropPickup(t);   // Phase 4
+}
+function maybeDropPickup(t){ /* booster drops — Phase 4 */ }
 function damageEntity(n, at){
   const P=gameState;
   if(P.boosts.shieldAbsorbCharges>0){ P.boosts.shieldAbsorbCharges--; try{ spawnExplosion(at,0x66ffd0,1.3); }catch(e){} return; }
@@ -2610,6 +2627,7 @@ function enterGameOver(){
   try{ triggerNova(); }catch(e){}   // the core dies → existing supernova→black-hole sequence (game-over card added in Phase 6)
 }
 window.__spawnThreat=spawnThreat; window.__game=gameState; window.__enterGame=enterDefendMode; window.__startRun=startRun; window.__exitGame=exitDefendMode;   // debug
+window.__killNearest=()=>{ if(gameState.threats[0]) destroyThreat(gameState.threats[0], true); return {score:gameState.score, combo:gameState.combo, mult:+gameState.comboMult.toFixed(2)}; };   // QA: scored kill
 
 // ── MAIN LOOP ─────────────────────────────────────────────────
 function animate(){
