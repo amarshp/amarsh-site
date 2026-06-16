@@ -1787,6 +1787,7 @@ function onShieldBlock(){
   }
 }
 function onEntityShot(){
+  if(gameState.enabled){ try{ spawnExplosion(creatureMesh.getWorldPosition(_tmpV).clone(), 0x66ffd0, 0.5); }catch(e){} return; }   // in game mode NaN is YOURS to protect — a stray bolt never provokes the nova
   lastAttackT=performance.now();
   attackDmg += 1; warp=Math.max(warp,0.25); stimPoke=Math.min(1,stimPoke+0.5);
   nanFeel(attackDmg>=3?'fight':'scared', 9);
@@ -1800,6 +1801,12 @@ function onEntityShot(){
   if(attackDmg>=NOVA_DMG_THRESH && !novaActive){ triggerNova(); attackDmg=0; }   // many more hits now — rage escalates first
 }
 window.addEventListener('keydown',e=>{ if(e.code==='Space'){ e.preventDefault(); fireBolt(); } });
+window.addEventListener('keydown',e=>{                                  // game-mode keys
+  if(!gameState.enabled) return;
+  if(/^(INPUT|TEXTAREA)$/.test((e.target||{}).tagName)) return;
+  if(e.key==='Escape'){ e.preventDefault(); togglePause(); }
+  else if(e.key==='q'||e.key==='Q'){ e.preventDefault(); exitDefendMode(); }
+});
 window.__fire=fireBolt; // debug hook (time-based behaviour can't be seen in a single screenshot)
 window.__shield=(frac)=>{ const keep=Math.round(DISC_N*frac); discLive=0; for(let i=0;i<DISC_N;i++){ if(i<keep){ discState[i]=0; discLive++; } else discState[i]=2; } lastAttackT=performance.now(); };  // debug: set shield fraction
 window.__atk=()=>({dmg:+attackDmg.toFixed(2), shieldPct:Math.round(discFrac()*100), down:shieldDown(), charge:+novaCharge.toFixed(2)});  // debug: attack/shield state
@@ -1998,6 +2005,7 @@ const NAV=[
   {lbl:'PROJECTS', ang:0,          sec:'s-projects', col:'#00eeff'},
   {lbl:'SKILLS',   ang:Math.PI,    sec:'s-skills',   col:'#ff6bff'},
   {lbl:'CONTACT',  ang:Math.PI/2,  sec:'s-contact',  col:'#ff9966'},
+  {lbl:'DEFEND',   ang:-Math.PI*0.75, sec:'game',    col:'#ff3b6b', game:true},   // 5th node → enter the arcade game mode
 ];
 
 // ── RESIZE ────────────────────────────────────────────────────
@@ -2080,6 +2088,7 @@ function classifyGesture(pts){
   return ndy<0 ? 'up' : 'down';
 }
 function runGesture(pts){
+  if(gameState.enabled) return;                 // no section gestures while the game is running
   const g=classifyGesture(pts);
   if(!g) return;
   stimGesture = 1; idleClock = 0; // casting a spell excites/wakes the creature
@@ -2149,7 +2158,10 @@ window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
   if(dragMoved){ dragMoved=false; return; }   // that "click" was actually a drag-to-rotate → don't poke/select
-  if(hovNav>=0){ const sec=NAV[hovNav].sec; if(activeSec===sec) closePanel(); else openSection(sec); return; }   // active node = close
+  if(hovNav>=0){ const nd=NAV[hovNav];
+    if(nd.game){ if(gameState.enabled) exitDefendMode(); else enterDefendMode(); return; }   // DEFEND node toggles the game
+    if(gameState.enabled) return;                                              // no section nav while the game is running
+    if(activeSec===nd.sec) closePanel(); else openSection(nd.sec); return; }   // active node = close
   if(projActive){                                   // click a hologram project card to expand / collapse it
     _ndc.set((e.clientX/W)*2-1, -(e.clientY/H)*2+1); _ray.setFromCamera(_ndc, camera);
     let hit=null, bd=1e9;
@@ -2431,6 +2443,96 @@ function updateTelemetry(){
   if(_ssGrav){ _ssGrav.textContent=fmtG(g); _ssGrav.style.color = g>1000 ? '#ff5544' : ''; }
 }
 
+// ══════════ DEFEND NaN — arcade game mode ══════════
+// Asteroids/comets home toward NaN; player shoots them; NaN's dot-ring shields it; boosters drop; score; core HP→0 = nova.
+const HS_KEY='portfolio.defendNaN.highScore.v1';
+const gameState={
+  enabled:false, phase:'IDLE', paused:false,                       // IDLE(start screen)/STARTING/WAVE_ACTIVE/WAVE_CLEAR/GAME_OVER
+  wave:0, score:0, highScore:+(localStorage.getItem(HS_KEY)||0)||0,
+  entityHP:4, entityHPMax:4,
+  threats:[], pickups:[],
+  combo:0, comboMult:1, comboTimer:0,
+  boosts:{rangeUntil:0, autoUntil:0, shieldAbsorbCharges:0},
+  rangeBase:8, rangeMax:8, rangeBoost:14,
+  survAccum:0, phaseT:0, killCount:0, runStartMs:0,
+};
+function gamePlaying(){ return gameState.enabled && (gameState.phase==='WAVE_ACTIVE'||gameState.phase==='WAVE_CLEAR') && !gameState.paused; }
+// start-screen + game-over DOM overlays
+const gOverlay=document.createElement('div');
+gOverlay.style.cssText='position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;pointer-events:none;font-family:Orbitron,monospace;';
+gOverlay.innerHTML='<div style="pointer-events:auto;text-align:center;background:rgba(4,10,18,.85);border:1px solid rgba(255,59,107,.5);border-radius:10px;padding:34px 46px;box-shadow:0 0 50px rgba(255,59,107,.25);backdrop-filter:blur(4px);">'
+  +'<div style="font-size:11px;letter-spacing:6px;color:#ff8aa6;">DARK-MATTER SIEGE</div>'
+  +'<div style="font-size:34px;letter-spacing:4px;color:#fff;margin:8px 0 4px;font-weight:900;">DEFEND <span style="color:#ff3b6b;">NaN</span></div>'
+  +'<div style="font-size:11px;letter-spacing:.5px;color:rgba(190,225,245,.72);line-height:1.9;max-width:380px;margin:10px auto 6px;">Asteroids &amp; comets are inbound to destroy NaN. SHOOT them [SPACE] before they breach the shield. Grab boosters. Keep the core alive.</div>'
+  +'<div id="g-hs" style="font-size:11px;letter-spacing:2px;color:#ffd24d;margin:10px 0;">HIGH SCORE · 0</div>'
+  +'<button id="g-start-btn" style="pointer-events:auto;font-family:Orbitron;font-weight:700;font-size:13px;letter-spacing:3px;background:#ff3b6b;color:#fff;border:none;padding:12px 40px;cursor:pointer;border-radius:4px;margin-top:6px;">START ▸</button>'
+  +'<div style="font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.3);margin-top:14px;">[SPACE] FIRE · ESC PAUSE · Q QUIT</div></div>';
+document.body.appendChild(gOverlay);
+const gOver=document.createElement('div');
+gOver.style.cssText='position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;pointer-events:none;font-family:Orbitron,monospace;';
+document.body.appendChild(gOver);
+function saveHighScore(){ if(gameState.score>gameState.highScore){ gameState.highScore=gameState.score; try{ localStorage.setItem(HS_KEY, ''+gameState.highScore); }catch(e){} } }
+function enterDefendMode(){
+  if(gameState.enabled || activeSec || novaActive) return;
+  gameState.enabled=true; gameState.phase='IDLE'; gameState.paused=false;
+  document.getElementById('g-hs').textContent='HIGH SCORE · '+gameState.highScore.toLocaleString();
+  gOverlay.style.display='flex'; gOver.style.display='none';
+  document.body.classList.add('game-on');
+}
+function startRun(){
+  const P=gameState;
+  P.phase='STARTING'; P.phaseT=0; P.wave=0; P.score=0; P.combo=0; P.comboMult=1; P.comboTimer=0;
+  P.killCount=0; P.entityHP=P.entityHPMax; P.survAccum=0;
+  P.boosts={rangeUntil:0,autoUntil:0,shieldAbsorbCharges:0}; P.rangeMax=P.rangeBase; P.runStartMs=performance.now();
+  gOverlay.style.display='none'; gOver.style.display='none';
+  try{ resetShield(); }catch(e){}
+  try{ nanReply("They're coming. Don't let them reach me.", 'fight', 4); }catch(e){}
+}
+function exitDefendMode(){
+  for(let i=gameState.threats.length-1;i>=0;i--){ try{ destroyThreat(gameState.threats[i], false); }catch(e){} }
+  for(let i=gameState.pickups.length-1;i>=0;i--){ try{ destroyPickup(gameState.pickups[i]); }catch(e){} }
+  gameState.threats.length=0; gameState.pickups.length=0;
+  saveHighScore();
+  gameState.enabled=false; gameState.phase='IDLE'; gameState.paused=false;
+  gOverlay.style.display='none'; gOver.style.display='none';
+  document.body.classList.remove('game-on');
+  try{ resetShield(); }catch(e){}
+}
+function togglePause(){ if(!gameState.enabled || gameState.phase==='IDLE' || gameState.phase==='GAME_OVER') return; gameState.paused=!gameState.paused; }
+// stubs — filled in later phases
+function destroyThreat(t, scored){ if(t&&t.obj&&t.obj.parent) t.obj.parent.remove(t.obj); }
+function destroyPickup(p){ if(p&&p.obj&&p.obj.parent) p.obj.parent.remove(p.obj); }
+function updateGame(dt){
+  if(!gameState.enabled) return;
+  const P=gameState;
+  if(P.phase==='STARTING'){ P.phaseT+=dt; if(P.phaseT>=2){ P.phase='WAVE_ACTIVE'; P.wave=1; P.phaseT=0; } return; }
+  if(P.paused || P.phase==='GAME_OVER' || P.phase==='IDLE') return;
+  if(P.phase==='WAVE_ACTIVE'){
+    P.survAccum += dt*10; if(P.survAccum>=1){ const a=Math.floor(P.survAccum); P.score+=a; P.survAccum-=a; }   // +10/s survival
+    if(P.comboTimer>0){ P.comboTimer-=dt; if(P.comboTimer<=0){ P.combo=0; P.comboMult=1; } }
+    // threats / wave-spawner / pickups added in later phases
+  }
+}
+function drawDefendHUD(){
+  if(!gameState.enabled) return;
+  const P=gameState; ctx.save(); ctx.textAlign='left';
+  const x=74, y=H*0.30;
+  ctx.font='700 22px Orbitron, monospace'; ctx.fillStyle='#ff3b6b'; ctx.shadowColor='#ff3b6b'; ctx.shadowBlur=10;
+  ctx.fillText('DEFEND NaN', x, y); ctx.shadowBlur=0;
+  ctx.font='10px "Share Tech Mono"'; ctx.fillStyle='rgba(255,170,190,.8)'; ctx.fillText('WAVE '+String(P.wave).padStart(2,'0'), x, y+24);
+  ctx.font='700 26px Orbitron, monospace'; ctx.fillStyle='#fff'; ctx.fillText(String(P.score).padStart(6,'0'), x, y+56);
+  ctx.font='10px "Share Tech Mono"'; ctx.fillStyle='rgba(190,225,245,.75)'; ctx.fillText('HIGH '+P.highScore.toLocaleString(), x, y+74);
+  ctx.fillStyle='#ff5a6e'; let hx=x;
+  for(let i=0;i<P.entityHPMax;i++){ ctx.globalAlpha=i<P.entityHP?1:0.22; ctx.fillText('◆', hx, y+100); hx+=17; }
+  ctx.globalAlpha=1; ctx.font='9px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.4)'; ctx.fillText('CORE INTEGRITY', x, y+116);
+  if(P.comboMult>1){ ctx.font='700 16px Orbitron, monospace'; ctx.fillStyle='#aaff00'; ctx.fillText('×'+P.comboMult.toFixed(1)+' COMBO', x, y+144); }
+  if(P.phase==='STARTING'){ ctx.textAlign='center'; ctx.font='700 30px Orbitron'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText('WAVE 1 INCOMING…', W/2, H*0.42); }
+  if(P.paused){ ctx.textAlign='center'; ctx.font='700 42px Orbitron'; ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fillText('PAUSED', W/2, H/2); ctx.font='11px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText('ESC RESUME · Q QUIT', W/2, H/2+30); }
+  ctx.restore();
+}
+document.getElementById('g-start-btn').addEventListener('click', startRun);
+window.__game=gameState; window.__enterGame=enterDefendMode; window.__startRun=startRun; window.__exitGame=exitDefendMode;   // debug
+
 // ── MAIN LOOP ─────────────────────────────────────────────────
 function animate(){
   requestAnimationFrame(animate);
@@ -2452,9 +2554,10 @@ function animate(){
   if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.0014); worldQuat.premultiply(_qDy); }
   world.quaternion.copy(worldQuat);   // the drag is the ONLY thing that orients the view — cursor-lean removed (it slid the scene like a sheet on hover)
 
-  // comets / asteroids drift past now and then
-  flyClock += dt; if(flyClock > flyNext){ flyClock=0; flyNext=14+Math.random()*16; spawnFlyby(); }
+  // comets / asteroids drift past now and then — suppressed during the game (threats replace them)
+  flyClock += dt; if(!gameState.enabled && flyClock > flyNext){ flyClock=0; flyNext=14+Math.random()*16; spawnFlyby(); }
   updateFlybys(dt);
+  updateGame(dt);
   updateExplosions(dt);
   updateProjHolo(dt, t);
   updateSecHolo(dt, t);
@@ -2596,7 +2699,8 @@ function animate(){
   drawCoreExpandRings(eCX, eCY);
   drawRipples();
   drawGestureTrail();
-  if(!secActive && !projActive) drawAffect();   // hide the affect readout while any section hologram occupies the field
+  if(!secActive && !projActive && !gameState.enabled) drawAffect();   // hide the affect readout while a hologram or the game occupies the field
+  drawDefendHUD();
 
   // Cursor state
   if(hovCore) { document.body.classList.add('core-hover'); document.body.classList.remove('nav-hover'); }
@@ -3503,7 +3607,7 @@ setTimeout(()=>{
 // ── proactive nudge: stir from idle and re-engage ────────────
 let nanLastNudge=0;
 setInterval(()=>{
-  if(document.hidden || activeSec || tourActive || nanSpeaking) return;
+  if(document.hidden || activeSec || tourActive || nanSpeaking || gameState.enabled) return;
   const now=performance.now();
   if(idleClock>15 && now-nanLastNudge>40000){
     nanLastNudge=now;
