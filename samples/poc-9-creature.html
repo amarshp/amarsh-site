@@ -645,7 +645,7 @@ function playSound(type) {
 let W = innerWidth, H = innerHeight;
 const scene = new THREE.Scene();
 const camera = new THREE.PerspectiveCamera(50, W/H, 0.1, 2000); // far enough for the distant star sphere
-camera.position.set(0, 0, 5.2);
+camera.position.set(0, 0, 6.6);
 
 const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 renderer.setSize(W, H);
@@ -1737,6 +1737,7 @@ function fireBolt(){
   const dest = impact || _ray.ray.at(40, new THREE.Vector3());
   window.__lastShot = target ? target.kind : 'miss';   // debug: what the last bolt locked onto
   spawnBolt(_ray.ray.at(1.6, new THREE.Vector3()), dest, target);   // muzzle just in front of the feed
+  if((secActive||projActive) && !(target && (target.kind==='secfx'||target.kind==='proj'))){ closePanel(); }   // shot missed the holo items → dismiss the section
   try{ playSound('eject'); }catch(e){}
 }
 function spawnBolt(from, to, target){
@@ -2044,7 +2045,7 @@ window.addEventListener('mouseup',()=>{
 });
 
 // ── SCROLL = dolly in/out (move through 3D toward/around the creature) ──
-let camDist=5.2, camDistT=5.2;
+let camDist=6.6, camDistT=6.6;   // start a little zoomed out (was 5.2) so NaN sits in more space on load
 renderer.domElement.addEventListener('wheel',e=>{
   e.preventDefault(); lastInteractT=performance.now();
   camDistT=Math.max(2.6, Math.min(24, camDistT + e.deltaY*0.0016));
@@ -2164,6 +2165,7 @@ renderer.domElement.addEventListener('click',e=>{
       const r=Math.max(0.5, it.w*(it.curScale||1)*0.6); if(d<r && d<bd){ bd=d; hit=it; } }
     if(hit){ secHit(hit); return; }
   }
+  if(secActive || projActive){ closePanel(); return; }   // clicked empty space while a section hologram is open → dismiss it
   // NOTE: clicking does NOT attack NaN — only SPACE-fired dark-matter bolts can. A click on the core is just a gentle,
   // non-damaging tap: NaN notices (a small startle) but takes no damage and it never provokes a nova.
   if(hovCore){
