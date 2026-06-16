@@ -86,6 +86,7 @@ body.core-hover #cur{background:#ccff00;}
 .ch{font-size:8px;padding:3px 8px;background:rgba(139,92,246,.1);border:1px solid rgba(139,92,246,.3);color:#b09ff8;}
 .plink{font-size:8px;letter-spacing:1.5px;color:rgba(204,255,0,.35);border:1px solid rgba(204,255,0,.15);padding:2px 8px;text-decoration:none;transition:all .2s;margin-left:auto;}
 .plink:hover{color:#ccff00;border-color:rgba(204,255,0,.5);}
+.ppriv{font-size:8px;letter-spacing:1.5px;color:rgba(255,255,255,.34);border:1px solid rgba(255,255,255,.14);padding:2px 8px;margin-left:auto;white-space:nowrap;}
 
 .sk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px;}
 .sk-cat-hd{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;color:rgba(204,255,0,.55);border-bottom:1px solid rgba(204,255,0,.18);padding-bottom:5px;margin-bottom:10px;}
@@ -355,31 +356,31 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
       </div>
       <div class="prow">
         <div class="pitem">
-          <div class="pid">PRJ-001 <span class="pst-d">● DEPLOYED</span><a class="plink" href="#" target="_blank">◈ GITHUB ↗</a></div>
+          <div class="pid">PRJ-001 <span class="pst-d">● DEPLOYED</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
           <div class="pn">MULTI-AGENT RAG ORCHESTRATOR</div>
           <div class="pd">LangGraph pipeline with 8 specialized agents, LLM-as-Judge + RAGAS evaluation. <span class="phl">73% hallucination reduction</span> across 200K+ daily queries in production.</div>
           <div class="chips"><span class="ch">LANGGRAPH</span><span class="ch">RAG</span><span class="ch">RAGAS</span><span class="ch">BEDROCK</span><span class="ch">LANGSMITH</span></div>
         </div>
         <div class="pitem">
-          <div class="pid">PRJ-002 <span class="pst-a">● ACTIVE</span><a class="plink" href="#" target="_blank">◈ GITHUB ↗</a></div>
+          <div class="pid">PRJ-002 <span class="pst-a">● ACTIVE</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
           <div class="pn">MCP TOOL-CALLING FRAMEWORK</div>
           <div class="pd">Production MCP server with A2A protocol bridges. <span class="phl">50K+ tool calls/day</span> at sub-200ms p99 latency with zero-downtime deployments.</div>
           <div class="chips"><span class="ch">MCP</span><span class="ch">A2A</span><span class="ch">LANGCHAIN</span><span class="ch">FASTAPI</span></div>
         </div>
         <div class="pitem">
-          <div class="pid">PRJ-003 <span class="pst-p">● PROD</span><a class="plink" href="#" target="_blank">◈ GITHUB ↗</a></div>
+          <div class="pid">PRJ-003 <span class="pst-p">● PROD</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
           <div class="pn">NEURAL EVAL PIPELINE</div>
           <div class="pd">LangSmith + custom judge models monitoring <span class="phl">15+ production endpoints</span>. Drift alerting with automated rollback cuts MTTR by 80%.</div>
           <div class="chips"><span class="ch">LANGSMITH</span><span class="ch">LLM-JUDGE</span><span class="ch">SAGEMAKER</span><span class="ch">PYTHON</span></div>
         </div>
         <div class="pitem">
-          <div class="pid">PRJ-004 <span class="pst-d">● DEPLOYED</span><a class="plink" href="#" target="_blank">◈ GITHUB ↗</a></div>
+          <div class="pid">PRJ-004 <span class="pst-d">● DEPLOYED</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
           <div class="pn">CONVERSATIONAL AGENT PLATFORM</div>
           <div class="pd">Enterprise conversational AI with persistent memory, multi-tool use. Handles <span class="phl">10K+ concurrent users</span> at 99.9% SLA.</div>
           <div class="chips"><span class="ch">LANGCHAIN</span><span class="ch">OPENAI API</span><span class="ch">BEDROCK</span><span class="ch">REDIS</span></div>
         </div>
         <div class="pitem">
-          <div class="pid">PRJ-005 <span class="pst-a">● ACTIVE</span><a class="plink" href="#" target="_blank">◈ GITHUB ↗</a></div>
+          <div class="pid">PRJ-005 <span class="pst-a">● ACTIVE</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
           <div class="pn">AUTONOMOUS RESEARCH AGENT</div>
           <div class="pd">Self-directed ReAct agent synthesizing multi-source data into structured reports. <span class="phl">85% time reduction</span> vs manual research across enterprise teams.</div>
           <div class="chips"><span class="ch">REACT</span><span class="ch">MCP</span><span class="ch">LANGGRAPH</span><span class="ch">PYTHON</span></div>
@@ -444,12 +445,12 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
           <div style="font-size:8px;letter-spacing:2px;color:#00eeff;border:1px solid rgba(0,238,255,.35);padding:5px 12px;font-family:'Orbitron',sans-serif;">CONNECT ↗</div>
         </a>
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px;">
-          <div><label class="fl">SENDER</label><input class="ci" placeholder="Your name"></div>
-          <div><label class="fl">EMAIL</label><input class="ci" type="email" placeholder="your@email.com"></div>
+          <div><label class="fl">SENDER</label><input id="cf-name" class="ci" placeholder="Your name"></div>
+          <div><label class="fl">EMAIL</label><input id="cf-email" class="ci" type="email" placeholder="your@email.com"></div>
         </div>
         <label class="fl">MESSAGE</label>
-        <textarea class="ci" style="resize:none;height:44px;" placeholder="Your message..."></textarea>
-        <button class="cbtn">TRANSMIT →</button>
+        <textarea id="cf-msg" class="ci" style="resize:none;height:44px;" placeholder="Your message..."></textarea>
+        <button id="cf-send" class="cbtn">TRANSMIT →</button>
         <div class="clinks">
           <a class="clink" href="mailto:pedapatiamarsh@gmail.com">✉ EMAIL</a>
           <a class="clink" href="https://github.com/amarshpedapati" target="_blank">◈ GITHUB</a>
@@ -3284,6 +3285,21 @@ setTimeout(()=>{
     else if(e.key==='Escape' && panel.classList.contains('open')) toggle(false);
   });
   keyEl.textContent=CMDS[0][0]; dEl.textContent=CMDS[0][1]; start();
+})();
+
+// ── CONTACT FORM — TRANSMIT opens a pre-filled email (no backend) ────────────
+(function wireContact(){
+  const btn=document.getElementById('cf-send'); if(!btn) return;
+  btn.addEventListener('click', e=>{
+    e.preventDefault();
+    const v=id=>(document.getElementById(id)?.value||'').trim();
+    const nm=v('cf-name'), em=v('cf-email'), ms=v('cf-msg');
+    const subject=`Portfolio contact — ${nm||'visitor'}`;
+    const body=`${ms||''}\n\n— ${nm||''}${em?`  ·  ${em}`:''}`;
+    window.location.href=`mailto:pedapatiamarsh@gmail.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    const old=btn.textContent; btn.textContent='OPENING MAIL…';                 // brief feedback so the click feels acknowledged
+    setTimeout(()=>{ btn.textContent=old; }, 1800);
+  });
 })();
 
 // ── proactive nudge: stir from idle and re-engage ────────────
