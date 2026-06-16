@@ -705,7 +705,10 @@ scene.add(galaxy);
 // (real MW = countless unresolved stars + dark dust rifts, NOT a painted white smear). Warm cream near
 // the bulge, cooler in the arms, mottled into star-clouds, with a meandering dark dust lane carved out.
 (function buildBandStars(){
-  const N=16000, R=312, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+  // Denser, FINER grain (more points, smaller) so the band reads as a true "river of unresolved stars" rather than a
+  // smear; DARK structure (deep dust lanes + scattered obscuring patches) does the heavy lifting, not extra glow.
+  const N=27000, R=312, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+  const frand=(x,y)=>{ const s=Math.sin(x*12.9898+y*78.233)*43758.5453; return s-Math.floor(s); };  // cheap hash for patchy dust
   for(let i=0;i<N;i++){
     const lon=Math.random()*Math.PI*2;
     const lat=(Math.random()+Math.random()+Math.random()-1.5)*0.22;        // thin gaussian band (galactic latitude)
@@ -715,9 +718,11 @@ scene.add(galaxy);
     const bulge=Math.exp(-(dl*dl)/(2*0.5))*Math.exp(-(lat*lat)/(2*0.02));   // bright warm core
     const clump=0.5+0.5*Math.sin(lon*7+Math.cos(lon*3));                    // star-cloud mottling along the band
     const rift =Math.exp(-(((lat-(0.10+0.035*Math.sin(lon*3)))/0.04)**2)/2); // meandering dust lane, kept OFF-centre (centreline stays bright)
-    let b=Math.min(1, 0.22+0.6*clump+1.05*bulge) * (1-rift*0.72) * (0.5+0.5*Math.random());
-    const warm=Math.min(1, bulge*1.7+0.18);                                 // warm cream at core, cool-white in arms
-    col[i*3]=b*(0.85+warm*0.15); col[i*3+1]=b*(0.82+warm*0.06); col[i*3+2]=b*(0.95-warm*0.32);
+    const patch=Math.max(0, frand(Math.floor(lon*9), Math.floor(lat*60+5))-0.55)/0.45; // scattered dark obscuring clouds
+    let b=Math.min(1, 0.30+0.7*clump+1.15*bulge) * (1-rift*0.9) * (1-0.7*patch) * (0.62+0.38*Math.random());
+    if(b<0.02) continue;                                                    // dust lanes fully obscure → leave them truly dark
+    const warm=Math.min(1, bulge*1.7+0.18);                                 // warm cream at core, cool-blue in the arms
+    col[i*3]=b*(0.86+warm*0.14); col[i*3+1]=b*(0.80+warm*0.08); col[i*3+2]=b*(1.0-warm*0.40);
   }
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
@@ -1282,9 +1287,9 @@ function spawnFlyby(){
   const target=new THREE.Vector3((Math.random()-0.5)*7,(Math.random()-0.5)*7,(Math.random()-0.5)*7);
   const v=target.sub(start).normalize().multiplyScalar(1.3+Math.random()*1.1);
   if(Math.random()<0.45){ // ASTEROID — real lit rock, tumbling, shootable (small bodies → modest size vs the planets)
-    const m=makeAsteroid(0.12+Math.random()*0.11);
+    const m=makeAsteroid(0.06+Math.random()*0.08);   // smaller rocks → read as distant debris, not toy props when they pass near camera
     m.position.copy(start); flybys.add(m);
-    fly.push({type:'rock', obj:m, rad:0.30, p:start.clone(), v, spin:new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(1.1), life:0, maxLife:14});
+    fly.push({type:'rock', obj:m, rad:0.20, p:start.clone(), v, spin:new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(1.1), life:0, maxLife:14});
     return;
   }
   // comets ride an eccentric path that swings close past NaN (perihelion) so the brightening + tails read
@@ -1629,7 +1634,7 @@ function updateShieldHUD(frac){            // frac = live-dot fraction (0..1)
 // (self-contained, no external assets) but read as real worlds: gas bands, cratered rock, ice, lava, ocean.
 const planetGroup = new THREE.Group(); world.add(planetGroup);
 const planets=[];
-const MAX_PLANETS=6, PLANET_BASE=22, PLANET_SLOW=34;   // first ~22s, then +34s per existing planet
+const MAX_PLANETS=5, PLANET_BASE=22, PLANET_SLOW=34;   // fewer worlds, each farther out → each reads as its own planet, not clutter
 let planetClock=14, planetNext=PLANET_BASE;            // first arrival a touch sooner so it's seen early
 const PLANET_TYPES=['gas','rocky','ice','lava','ocean'];
 function _fbm(x,y){ let v=0,a=0.5,fx=x,fy=y; for(let o=0;o<5;o++){ v+=a*(Math.sin(fx*1.7+Math.cos(fy*1.3))*0.5+Math.sin(fy*2.1+fx*0.6)*0.5); fx*=2.03; fy*=2.07; a*=0.5; } return v*0.5+0.5; }
@@ -1669,7 +1674,7 @@ function proceduralPlanetCanvas(type){
 }
 function spawnPlanet(){
   const type=PLANET_TYPES[(Math.random()*PLANET_TYPES.length)|0];
-  const rad=0.06+Math.random()*0.14, orbitR=2.8+Math.random()*3.8;   // small worlds beside the entity-sun
+  const rad=0.05+Math.random()*0.12, orbitR=3.8+Math.random()*5.4;   // smaller worlds, orbits pushed out (3.8–9.2) so they clear the disc and don't hug the entity
   const geo=new THREE.SphereGeometry(rad, 32, 24);
   const mat=new THREE.MeshStandardMaterial({map:planetTexture(type), roughness:type==='ice'?0.5:0.95, metalness:0.0});
   if(type==='lava'){ mat.emissive=new THREE.Color(0xff4400); mat.emissiveMap=mat.map; mat.emissiveIntensity=0.6; }
