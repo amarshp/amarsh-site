@@ -2499,9 +2499,7 @@ function exitDefendMode(){
   try{ resetShield(); }catch(e){}
 }
 function togglePause(){ if(!gameState.enabled || gameState.phase==='IDLE' || gameState.phase==='GAME_OVER') return; gameState.paused=!gameState.paused; }
-// stubs — filled in later phases
-function destroyThreat(t, scored){ if(t&&t.obj&&t.obj.parent) t.obj.parent.remove(t.obj); }
-function destroyPickup(p){ if(p&&p.obj&&p.obj.parent) p.obj.parent.remove(p.obj); }
+function destroyPickup(p){ if(p&&p.obj&&p.obj.parent) p.obj.parent.remove(p.obj); }   // stub — Phase 4
 function updateGame(dt){
   if(!gameState.enabled) return;
   const P=gameState;
@@ -2510,8 +2508,10 @@ function updateGame(dt){
   if(P.phase==='WAVE_ACTIVE'){
     P.survAccum += dt*10; if(P.survAccum>=1){ const a=Math.floor(P.survAccum); P.score+=a; P.survAccum-=a; }   // +10/s survival
     if(P.comboTimer>0){ P.comboTimer-=dt; if(P.comboTimer<=0){ P.combo=0; P.comboMult=1; } }
-    // threats / wave-spawner / pickups added in later phases
+    P.spawnT=(P.spawnT||0)+dt;                                                  // TEMP spawner (Phase 5 replaces with waves)
+    if(P.spawnT>1.4 && P.threats.length<8){ P.spawnT=0; spawnThreat(Math.random()<0.6?'asteroid':'comet'); }
   }
+  updateThreats(dt);   // threats keep homing across WAVE_ACTIVE/WAVE_CLEAR
 }
 function drawDefendHUD(){
   if(!gameState.enabled) return;
@@ -2531,7 +2531,85 @@ function drawDefendHUD(){
   ctx.restore();
 }
 document.getElementById('g-start-btn').addEventListener('click', startRun);
-window.__game=gameState; window.__enterGame=enterDefendMode; window.__startRun=startRun; window.__exitGame=exitDefendMode;   // debug
+
+// ── THREATS (Phase 2) — asteroids/comets home toward NaN; hit the shield, then the core ──
+const threatGroup=new THREE.Group(); world.add(threatGroup);   // inside `world` so threats orbit with the scene
+let _threatId=0;
+const _thA=new THREE.Vector3(), _thB=new THREE.Vector3(), _thCam=new THREE.Vector3();
+function getWaveParams(w){ w=Math.max(1,w); return { astSpeed:1.25+w*0.06, astHP:Math.ceil(1+w/4), cometSpeed:2.0+w*0.08, cometHP:1+Math.floor(w/7) }; }
+function spawnThreat(kind){
+  const wp=getWaveParams(gameState.wave);
+  const a=Math.random()*Math.PI*2, el=(Math.random()-0.5)*1.5, R=13;
+  const p=new THREE.Vector3(Math.cos(a)*Math.cos(el), Math.sin(el), Math.sin(a)*Math.cos(el)).multiplyScalar(R);
+  const v=p.clone().multiplyScalar(-1).normalize().multiplyScalar(kind==='comet'?wp.cometSpeed:wp.astSpeed);
+  let obj, rad, hp, speed, points, turnRate;
+  if(kind==='comet'){
+    rad=0.20+Math.random()*0.13; hp=wp.cometHP; speed=wp.cometSpeed; points=175; turnRate=1.3;
+    obj=new THREE.Group();
+    const head=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0x9fe0ff,transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false})); head.scale.setScalar(rad*3.6);
+    const nuc=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0xffffff,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false})); nuc.scale.setScalar(rad*1.3);
+    obj.add(head); obj.add(nuc);
+    const tail=makeTailRibbon(14, 0x9fd0ff, rad*1.7, 0.30); threatGroup.add(tail.mesh); obj.userData.tail=tail;
+  } else {
+    rad=0.30+Math.random()*0.26; hp=wp.astHP; speed=wp.astSpeed; points=100; turnRate=0.8;
+    obj=makeAsteroid(rad);
+  }
+  obj.position.copy(p); threatGroup.add(obj);
+  const t={ id:_threatId++, kind, obj, p:p.clone(), v, hp, hpMax:hp, rad, speed, points, turnRate, hitShield:false,
+    spin: kind==='asteroid' ? new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(1.5) : null };
+  gameState.threats.push(t); gameState.spawnedThisWave=(gameState.spawnedThisWave||0)+1;
+  return t;
+}
+function destroyThreat(t, scored){
+  if(!t) return;
+  const idx=gameState.threats.indexOf(t); if(idx>=0) gameState.threats.splice(idx,1);
+  if(t.obj){ threatGroup.remove(t.obj);
+    if(t.kind==='asteroid'){ if(t.obj.geometry)t.obj.geometry.dispose(); if(t.obj.material)t.obj.material.dispose(); }
+    else { t.obj.children.forEach(o=>{ if(o.material)o.material.dispose(); });
+      const tail=t.obj.userData.tail; if(tail){ threatGroup.remove(tail.mesh); tail.geo.dispose(); tail.mesh.material.dispose(); } } }
+  if(scored) onThreatKilled(t);   // Phase 3
+}
+function onThreatKilled(t){ /* scoring — Phase 3 */ }
+function damageEntity(n, at){
+  const P=gameState;
+  if(P.boosts.shieldAbsorbCharges>0){ P.boosts.shieldAbsorbCharges--; try{ spawnExplosion(at,0x66ffd0,1.3); }catch(e){} return; }
+  P.entityHP-=n; P.combo=0; P.comboMult=1;
+  try{ discEject(0.9); }catch(e){}
+  try{ spawnExplosion(creatureMesh.getWorldPosition(_tmpV).clone(), 0xff4466, 1.7); }catch(e){}
+  warp=Math.max(warp,0.45);
+  try{ nanReply(nanPick(["Argh — core breach!","That one got through!","I'm taking damage — cover me!"]), 'scared', 3); }catch(e){}
+  if(P.entityHP<=0) enterGameOver();
+}
+function handleThreatImpact(t){
+  if(t.hitShield) return; t.hitShield=true;
+  const at=t.p.clone();
+  if(!shieldDown()){ try{ shieldBlock(at); }catch(e){} try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffaa66, 1.0); }catch(e){} destroyThreat(t,false); }
+  else { destroyThreat(t,false); damageEntity(1, at); }
+}
+function updateThreats(dt){
+  const P=gameState; if(!P.threats.length) return;
+  threatGroup.worldToLocal(_thCam.copy(camera.position));
+  for(let i=P.threats.length-1;i>=0;i--){ const t=P.threats[i];
+    if(!t) continue;                                                           // a core-breach can empty the list mid-loop (enterGameOver)
+    _thA.copy(t.p).multiplyScalar(-1).normalize().multiplyScalar(t.speed);     // desired velocity = toward NaN at origin
+    t.v.lerp(_thA, 1-Math.exp(-t.turnRate*dt));
+    t.p.addScaledVector(t.v, dt); t.obj.position.copy(t.p);
+    if(t.kind==='asteroid'){ t.obj.rotation.x+=t.spin.x*dt; t.obj.rotation.y+=t.spin.y*dt; }
+    else if(t.obj.userData.tail){ _thB.copy(t.v).normalize();
+      updateTailRibbon(t.obj.userData.tail, t.p, _thA.copy(_thB).multiplyScalar(-1), _thB, 0.0, _thCam);
+      t.obj.userData.tail.mesh.material.uniforms.uOpacity.value=0.82; }
+    if(t.p.length()<=2.0) handleThreatImpact(t);                                // reached the shield boundary
+  }
+}
+function enterGameOver(){
+  const P=gameState; if(P.phase==='GAME_OVER') return;
+  P.phase='GAME_OVER'; P.paused=false; saveHighScore();
+  for(let i=P.threats.length-1;i>=0;i--) destroyThreat(P.threats[i], false); P.threats.length=0;
+  P.restartArmedMs=performance.now()+20500;
+  try{ collapseShield(); }catch(e){}
+  try{ triggerNova(); }catch(e){}   // the core dies → existing supernova→black-hole sequence (game-over card added in Phase 6)
+}
+window.__spawnThreat=spawnThreat; window.__game=gameState; window.__enterGame=enterDefendMode; window.__startRun=startRun; window.__exitGame=exitDefendMode;   // debug
 
 // ── MAIN LOOP ─────────────────────────────────────────────────
 function animate(){
