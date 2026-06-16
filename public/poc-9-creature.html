@@ -658,18 +658,41 @@ const sunLight = new THREE.PointLight(0xffe2b0, 3.0, 80, 1.1); sunLight.position
 const fillLight = new THREE.DirectionalLight(0x35507a, 0.35); fillLight.position.set(-5, 3, 6); scene.add(fillLight);
 
 // ── STARFIELD ─────────────────────────────────────────────────
-const starCount = 1800;
+// Catalog-completion "dust" between the bright HYG stars: fixed at infinity (sphere shell → no parallax, which is
+// correct for a probe camera), each star given a REAL stellar COLOUR (blackbody by spectral type, magnitude-limited
+// visible-sky proportions) and a power-law MAGNITUDE → size/brightness so it reads "few bright, many faint" like an
+// actual sky photo. Kept dim (most below the bloom threshold) so the black stays black instead of greying out.
+const starCount = 2600, _starR = 290;
 const starPositions = new Float32Array(starCount * 3);
-const starSpeeds = new Float32Array(starCount);
+const starColors = new Float32Array(starCount * 3);
+const starSizes = new Float32Array(starCount);
+// visible-sky colour mix (magnitude-limited, not the local red-dwarf census): mostly white→orange, rare blue, rare deep red
+function _starColour(){ const r=Math.random();
+  if(r<0.02) return [0.61,0.69,1.0];   // blue (O/B) — rare
+  if(r<0.10) return [0.75,0.82,1.0];   // blue-white (A)
+  if(r<0.40) return [0.96,0.97,1.0];   // white (A/F) — dominant impression
+  if(r<0.65) return [1.0,0.94,0.82];   // yellow-white (F/G, Sun-like)
+  if(r<0.90) return [1.0,0.82,0.63];   // orange (K)
+  return [1.0,0.60,0.42];              // red-orange (M) — rare, not neon
+}
 for (let i = 0; i < starCount; i++) {
-  starPositions[i*3]   = (Math.random() - 0.5) * 80;
-  starPositions[i*3+1] = (Math.random() - 0.5) * 60;
-  starPositions[i*3+2] = (Math.random() - 0.5) * 40 - 8;
-  starSpeeds[i] = 0.2 + Math.random() * 0.8;
+  const u1=Math.random()*2-1, ph=Math.random()*Math.PI*2, rr=Math.sqrt(1-u1*u1);   // uniform on the unit sphere
+  starPositions[i*3]=rr*Math.cos(ph)*_starR; starPositions[i*3+1]=u1*_starR; starPositions[i*3+2]=rr*Math.sin(ph)*_starR;
+  const f=Math.sqrt(Math.random());                    // faint-biased: ~9% read as "bright", the rest recede
+  const inten=0.13+(1-f)*0.74, c=_starColour();        // brightness ∝ magnitude; deep-red kept dim so it never neons
+  starColors[i*3]=c[0]*inten; starColors[i*3+1]=c[1]*inten; starColors[i*3+2]=c[2]*inten;
+  starSizes[i]=0.9+(1-f)*2.6;                           // 0.9 → 3.5 px (few large, many tiny)
 }
 const starGeo = new THREE.BufferGeometry();
 starGeo.setAttribute('position', new THREE.BufferAttribute(starPositions, 3));
-const starMat = new THREE.PointsMaterial({color: 0xffffff, size: 0.06, transparent: true, opacity: 0.55, sizeAttenuation: true});
+starGeo.setAttribute('aColor', new THREE.BufferAttribute(starColors, 3));
+starGeo.setAttribute('aSize', new THREE.BufferAttribute(starSizes, 1));
+const starMat = new THREE.ShaderMaterial({ transparent:true, depthWrite:false, blending:THREE.AdditiveBlending,
+  uniforms:{ uDpr:{value:Math.min(2, window.devicePixelRatio||1)} },
+  vertexShader:`attribute float aSize; attribute vec3 aColor; varying vec3 vC; uniform float uDpr;
+    void main(){ vC=aColor; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); gl_PointSize=aSize*uDpr; }`,
+  fragmentShader:`varying vec3 vC;
+    void main(){ vec2 d=gl_PointCoord-0.5; float a=smoothstep(0.5,0.05,length(d)); if(a<0.02) discard; gl_FragColor=vec4(vC,a); }` });
 const stars = new THREE.Points(starGeo, starMat);
 scene.add(stars);
 
@@ -769,7 +792,7 @@ const mwTex = (()=>{
 })();
 const mwBand = new THREE.Mesh(
   new THREE.SphereGeometry(300, 64, 40),
-  new THREE.MeshBasicMaterial({map:mwTex, transparent:true, opacity:0.16, side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false})
+  new THREE.MeshBasicMaterial({map:mwTex, transparent:true, opacity:0.07, side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false})  // faint underglow only — the 16k band POINTS carry the structure; a strong paint here just greys the sky
 );
 mwBand.rotation.set(0.38, 0.2, 0.35); // tilt the band into a diagonal night-sky arc across the view
 galaxy.add(mwBand);
@@ -1681,7 +1704,7 @@ window.__dbg={camera, planets, fly, get nPlanets(){return planets.length;}}; // 
 // ── POST-PROCESSING ───────────────────────────────────────────
 const composer = new EffectComposer(renderer);
 composer.addPass(new RenderPass(scene, camera));
-const bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H), 0.7, 0.55, 0.30);
+const bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H), 0.7, 0.55, 0.52);   // threshold 0.30→0.52: only bright sources bloom, so faint stars stay crisp & the sky stays black (no grey haze)
 composer.addPass(bloomPass);
 
 // ── HUD CANVAS ────────────────────────────────────────────────
