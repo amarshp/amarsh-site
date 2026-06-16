@@ -1491,11 +1491,116 @@ function updateProjHolo(dt, t){
     c.ray.material.opacity = Math.min(1, pr*3) * (beam + Math.sin(t*31 + c.bob)*0.08) * stut;
   }
 }
+
+// ══ SECTION HOLOGRAMS — ABOUT / SKILLS / CONTACT each get a UNIQUE in-scene 3D presentation (NO bottom panel) ══
+// All reuse the proven billboarded-canvas-plane + projection-beam tech, arranged/animated differently per section.
+const secGroup=new THREE.Group(); scene.add(secGroup); secGroup.visible=false;
+const secRays=new THREE.Group(); scene.add(secRays);
+const secExtra=[];                 // non-card decor (ring lines, triangle links) cleared with the holo
+const secItems=[]; let secActive=null;
+function clearSecHolo(){
+  for(const it of secItems){ secGroup.remove(it.mesh); it.mesh.geometry.dispose(); it.mesh.material.dispose(); if(it.tex) it.tex.dispose();
+    if(it.ray){ secRays.remove(it.ray); it.ray.geometry.dispose(); it.ray.material.dispose(); } }
+  secItems.length=0;
+  for(const o of secExtra){ (o.parent||secGroup).remove(o); if(o.geometry) o.geometry.dispose(); if(o.material) o.material.dispose(); }
+  secExtra.length=0; secGroup.visible=false; secActive=null;
+}
+// build one billboarded canvas card. o:{w,h,slot,from,t0,accent,paint,onHit,kind,data,beam}
+function _secAddItem(o){
+  const W=512, H=Math.max(64, Math.round(512*o.h/o.w));
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; o.paint(cv.getContext('2d'),W,H,o,false);
+  const tex=new THREE.CanvasTexture(cv); tex.colorSpace=THREE.SRGBColorSpace;
+  const mesh=new THREE.Mesh(new THREE.PlaneGeometry(o.w,o.h), new THREE.MeshBasicMaterial({map:tex,transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));
+  mesh.scale.setScalar(0.0001); secGroup.add(mesh);
+  let ray=null;
+  if(o.beam!==false){ ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), o.slot.clone()]),
+    new THREE.LineBasicMaterial({color:new THREE.Color(o.accent||0x00eaff),transparent:true,opacity:0,blending:THREE.AdditiveBlending,depthWrite:false})); secRays.add(ray); }
+  const it=Object.assign(o,{cv,W,H,mesh,tex,ray,age:0,expanded:false,bob:Math.random()*6,curScale:null,curZ:null});
+  secItems.push(it); return it;
+}
+function _secRepaint(it){                 // redraw canvas (e.g. on expand) and resize the plane if h changed
+  const H=Math.max(64, Math.round(512*it.h/it.w));
+  if(H!==it.H){ it.H=H; it.cv.height=H; }
+  it.cv.getContext('2d').clearRect(0,0,it.W,it.H);
+  it.paint(it.cv.getContext('2d'), it.W, it.H, it, it.expanded);
+  it.tex.dispose(); const tex=new THREE.CanvasTexture(it.cv); tex.colorSpace=THREE.SRGBColorSpace;
+  it.mesh.material.map=tex; it.mesh.material.needsUpdate=true; it.tex=tex;
+  it.mesh.geometry.dispose(); it.mesh.geometry=new THREE.PlaneGeometry(it.w,it.h);
+}
+function secHit(item){ if(item&&item.onHit) item.onHit(item); }
+function updateSecHolo(dt,t){
+  if(!secActive) return;
+  for(const o of secExtra){ if(o.userData.spin) o.rotation.z += dt*o.userData.spin; }
+  for(const it of secItems){ it.age+=dt;
+    const pr=Math.max(0,Math.min(1,(it.age-it.t0)/0.8)), e=1-Math.pow(1-pr,3);
+    it.mesh.quaternion.copy(camera.quaternion);
+    const yb=it.slot.y + Math.sin(t*1.1+it.bob)*0.04;
+    const px=it.from.x+(it.slot.x-it.from.x)*e, py=it.from.y+(yb-it.from.y)*e, pz=it.from.z+(it.slot.z-it.from.z)*e;
+    const baseS=(it.baseScale||1), tScale=(pr>=1)?(it.expanded?(it.expScale||1.5):baseS):baseS*(0.12+0.88*e);
+    it.curScale=(it.curScale==null)?baseS*(0.12+0.88*e):it.curScale+(tScale-it.curScale)*Math.min(1,dt*9);
+    const tZ=(pr>=1&&it.expanded)?0.6:0; it.curZ=(it.curZ==null)?0:it.curZ+(tZ-it.curZ)*Math.min(1,dt*9);
+    it.mesh.position.set(px,py,pz+it.curZ); it.mesh.scale.setScalar(it.curScale);
+    const stut=(Math.sin(t*19+it.bob*5)>0.975)?0.6:1;
+    it.mesh.material.opacity=Math.min(1,pr*2.4)*(0.9+Math.sin(t*6+it.bob*3)*0.05)*stut;
+    if(it.ray){ const rp=it.ray.geometry.attributes.position.array; rp[3]=px; rp[4]=py; rp[5]=pz+it.curZ; it.ray.geometry.attributes.position.needsUpdate=true;
+      it.ray.material.opacity=Math.min(1,pr*3)*((pr<1?0.5:0.18)+Math.sin(t*31+it.bob)*0.07)*stut; }
+  }
+}
+
+// ── ABOUT — "Accretion Career Ring" : career orbits NaN on a tilted accretion disk ──
+const ABOUT_TAGLINE='Designing autonomous multi-agent systems that solve enterprise-scale problems — LangGraph orchestration, production RAG, and LLM evaluation at scale.';
+const ABOUT_ROLES=[
+  {yr:'2024 — PRESENT', role:'SENIOR AGENTIC AI ENGINEER', co:'Stealth AI Startup · Hyderabad', det:'LangGraph orchestration · AWS Bedrock · A2A protocol design · LLM evaluation pipelines', sc:'#00ff88'},
+  {yr:'2022 — 2024', role:'AI ENGINEER', co:'Enterprise AI Consultancy · Remote', det:'Production RAG · LangChain · SageMaker · custom judge models · real-time drift monitoring', sc:'#00eeff'},
+  {yr:'2020 — 2022', role:'SOFTWARE ENGINEER', co:'Tech Startup · Hyderabad', det:'Python · FastAPI · cloud infrastructure · ML pipeline design · API architecture', sc:'#ff9966'},
+];
+const ABOUT_STATS=[{v:'4+',l:'YEARS'},{v:'12+',l:'AGENTS SHIPPED'},{v:'$2M+',l:'VALUE UNLOCKED'}];
+function paintTagline(g,W,H){ g.fillStyle='rgba(7,10,20,0.92)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
+  _rgb(g,'// IDENTITY · NEURAL CORE ACTIVE', 26, 40, '700 18px Orbitron, monospace', '#00eaff');
+  g.fillStyle='rgba(226,245,255,0.97)'; g.font='400 17px monospace'; _wrap(g, ABOUT_TAGLINE, 26, 74, W-52, 25); }
+function paintRole(g,W,H,it,exp){ g.fillStyle='rgba(7,10,20,0.92)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,it.data.sc);
+  const r=it.data;
+  _rgb(g, r.yr, 26, 40, '700 18px Orbitron, monospace', r.sc);
+  const ty=_rgbWrap(g, r.role, 26, 78, W-52, 30, '900 25px Orbitron, sans-serif', '#f2fbff');
+  g.fillStyle='rgba(150,210,235,0.92)'; g.font='400 16px monospace'; g.fillText(r.co, 26, ty+30);
+  if(exp){ g.fillStyle='rgba(224,244,255,0.95)'; g.font='400 17px monospace'; _wrap(g, r.det, 26, ty+62, W-52, 24);
+    g.fillStyle='rgba(255,42,140,0.62)'; g.font='400 12px monospace'; g.fillText('▸ CLICK TO CLOSE', W-168, 40); }
+  else { g.fillStyle='rgba(0,240,255,0.66)'; g.font='400 13px monospace'; g.fillText('▸ EXPAND', 26, H-18); } }
+function paintStat(g,W,H,it){ g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#aaff00');
+  g.textAlign='center'; _rgb(g, it.data.v, W/2, H*0.52, '900 60px Orbitron, sans-serif', '#eaffd0');
+  g.fillStyle='rgba(170,255,0,0.8)'; g.font='600 16px Orbitron, monospace'; g.fillText(it.data.l, W/2, H-26); g.textAlign='left'; }
+const ABOUT_R=2.6, ABOUT_TILT=0.40;        // near-face-on disk (tilted for depth) so cards clear NaN and stay readable
+const aboutPt=(a)=>new THREE.Vector3(Math.cos(a)*ABOUT_R, Math.sin(a)*ABOUT_R*Math.cos(ABOUT_TILT)-0.1, Math.sin(a)*ABOUT_R*Math.sin(ABOUT_TILT));
+function buildRingLine(){
+  const pts=[]; for(let i=0;i<=140;i++){ pts.push(aboutPt(i/140*Math.PI*2)); }
+  const ring=new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts),
+    new THREE.LineBasicMaterial({color:0x00eaff, transparent:true, opacity:0.3, blending:THREE.AdditiveBlending, depthWrite:false}));
+  secExtra.push(ring); secGroup.add(ring);
+}
+function expandRole(it){ const open=!it.expanded;
+  for(const o of secItems){ if(o.kind==='role' && o!==it && o.expanded){ o.expanded=false; o.h=0.66; o.expScale=1.0; _secRepaint(o); } }
+  it.expanded=open; it.h=open?1.06:0.66; it.expScale=open?1.5:1.0; _secRepaint(it);
+  try{ playSound(open?'panel_open':'panel_close'); }catch(e){}
+  try{ spawnExplosion(it.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(it.data.sc).getHex(), 0.4); }catch(e){} }
+function buildAbout(){
+  clearSecHolo(); secActive='s-home'; secGroup.visible=true;
+  const F=new THREE.Vector3(0,0,0.3), D=Math.PI/180;
+  buildRingLine();
+  // tagline floats above the disk (off-ring), wide header
+  _secAddItem({kind:'tagline', w:2.9,h:0.86, slot:new THREE.Vector3(0,2.0,-0.2), from:F.clone(), t0:0.15, accent:0x00eaff, paint:paintTagline, baseScale:1});
+  // roles run DOWN the left arc (2024→2020), stats DOWN the right arc; top stays clear for the tagline, bottom for the nav node
+  const roleA=[150*D, 180*D, 210*D];
+  ABOUT_ROLES.forEach((r,i)=>{ _secAddItem({kind:'role', data:r, w:1.6,h:0.66, slot:aboutPt(roleA[i]), from:F.clone(), t0:0.5+i*0.2, accent:new THREE.Color(r.sc).getHex(), paint:paintRole, onHit:expandRole, baseScale:1}); });
+  const statA=[30*D, 0*D, 330*D];
+  ABOUT_STATS.forEach((s,i)=>{ _secAddItem({kind:'stat', data:s, w:0.94,h:0.66, slot:aboutPt(statA[i]), from:F.clone(), t0:0.95+i*0.14, accent:0xaaff00, paint:paintStat, baseScale:1}); });
+  warp=Math.max(warp,0.4);
+}
+
 let _lastEventSec=null;
 function sectionEvent(secId){
   if(secId===_lastEventSec) return;          // ignore duplicate opens (NaN's auto-guide re-fires openSection)
   _lastEventSec=secId;
-  clearProjHolo();
+  clearProjHolo(); clearSecHolo();
   const C=new THREE.Vector3(0,0,0);                             // the entity/core sits at the world origin
   if(secId==='s-projects'){ buildProjHolo(); warp=Math.max(warp,0.35);          // entity projects its mission holograms
     try{ nanReply(nanPick([
@@ -1506,8 +1611,8 @@ function sectionEvent(secId){
     for(let i=0;i<3;i++) coreExpandRings.push({r:0.2,maxR:2.4,alpha:1,t:i*0.12}); discEject(2.6); warp=Math.max(warp,0.5); }
   else if(secId==='s-skills'){                                                  // systems booting — scan pulses
     for(let i=0;i<4;i++) coreExpandRings.push({r:0.2,maxR:1.9,alpha:1,t:i*0.18}); discEject(0.8); }
-  else if(secId==='s-home'){ warp=Math.max(warp,1.0);                           // ABOUT — timeline warp-in
-    coreExpandRings.push({r:0.2,maxR:2.0,alpha:1,t:0}); }
+  else if(secId==='s-home'){ buildAbout();                                       // ABOUT — accretion career ring
+    for(let i=0;i<2;i++) coreExpandRings.push({r:0.2,maxR:2.2,alpha:1,t:i*0.12}); }
 }
 window.__sectionEvent=sectionEvent; // debug hook
 window.__projHolo=()=>{ buildProjHolo(); return projCards.length; };          // debug: force the hologram
@@ -1533,6 +1638,8 @@ function fireBolt(){
   if(projActive){ for(const card of projCards){ card.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     const r=Math.max(0.8, card.mesh.geometry.parameters.height*0.6);
     if(d < r && d < bestD){ bestD=d; target={kind:'proj',card}; impact=_tmpV.clone(); } } }
+  if(secActive){ for(const it of secItems){ if(!it.onHit) continue; it.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
+    const r=Math.max(0.55, it.w*(it.curScale||1)*0.6); if(d < r && d < bestD){ bestD=d; target={kind:'sec',it}; impact=_tmpV.clone(); } } }
   for(const c of fly){ c.obj.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     if(d < c.rad && d < bestD){ bestD=d; target={kind:'fly',c}; impact=_tmpV.clone(); } }
   for(const p of planets){ p.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
@@ -1574,6 +1681,7 @@ function resolveHit(target, at){
   if(target.kind==='blocked'){ spawnHexShield(at);                            // hex barrier flares the instant the bolt reaches the converged dots
     try{ spawnExplosion(at, 0x66ffd0, 1.2); }catch(e){} return; }             // bolt shatters on the shield — no damage to NaN
   if(target.kind==='proj'){ if(projActive && projCards.includes(target.card)) toggleProjCard(target.card); return; }   // expand/collapse a project card
+  if(target.kind==='sec'){ if(secActive && secItems.includes(target.it)) secHit(target.it); return; }                 // activate a section-holo item
   if(target.kind==='fly'){ const c=target.c, idx=fly.indexOf(c);
     if(idx>=0){ c.obj.getWorldPosition(_tmpV); spawnExplosion(_tmpV, c.type==='comet'?0x88e0ff:0xffaa55, c.type==='comet'?1.1:1.5); removeFlyby(c); fly.splice(idx,1); }
     return; }
@@ -1965,6 +2073,13 @@ renderer.domElement.addEventListener('click',e=>{
       if(d<r && d<bd){ bd=d; hit=card; } }
     if(hit){ toggleProjCard(hit); return; }
   }
+  if(secActive){                                    // click a section-holo item (role card / satellite / pod)
+    _ndc.set((e.clientX/W)*2-1, -(e.clientY/H)*2+1); _ray.setFromCamera(_ndc, camera);
+    let hit=null, bd=1e9;
+    for(const it of secItems){ if(!it.onHit) continue; it.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
+      const r=Math.max(0.5, it.w*(it.curScale||1)*0.6); if(d<r && d<bd){ bd=d; hit=it; } }
+    if(hit){ secHit(hit); return; }
+  }
   // NOTE: clicking does NOT attack NaN — only SPACE-fired dark-matter bolts can. A click on the core is just a gentle,
   // non-damaging tap: NaN notices (a small startle) but takes no damage and it never provokes a nova.
   if(hovCore){
@@ -2256,6 +2371,7 @@ function animate(){
   updateFlybys(dt);
   updateExplosions(dt);
   updateProjHolo(dt, t);
+  updateSecHolo(dt, t);
   updateProjectiles(dt);
   ammo = Math.min(AMMO_MAX, ammo + AMMO_RATE*dt);   // satellite recharges bolts from dark-matter flux
   attackDmg = Math.max(0, attackDmg - dt*0.25);      // assault pressure bleeds off if you stop firing
@@ -2363,7 +2479,8 @@ function animate(){
 
   // Camera shift
   panelOffset+=(targetPOffset-panelOffset)*0.07;
-  targetProjY = (activeSec && activeSec!=='s-projects') ? -0.52 : 0;   // PROJECTS keeps the entity fixed (hologram is in-scene)
+  // in-scene holograms wrap around NaN → keep it centred; only the (legacy) bottom-panel sections drop it down
+  targetProjY = (activeSec && activeSec!=='s-projects' && activeSec!=='s-home') ? -0.52 : 0;
   projY+=(targetProjY-projY)*0.07;
   camera.position.y = projY;
   camDist += (camDistT - camDist) * 0.12;            // smooth scroll-zoom
@@ -2641,8 +2758,8 @@ window.openSection = function(secId){
   document.getElementById('hint').style.opacity='0';
   document.getElementById('drag-hint').style.opacity='0';
   playSound('panel_open');
-  // PROJECTS shows its hologram in-scene — NO bottom panel ("the dock"). Just the close affordance.
-  if(secId==='s-projects'){ return; }   // no bottom panel and no #xbtn — the PROJECTS node turns into an ✕ to close
+  // These sections present in-scene as holograms — NO bottom panel. The node turns into an ✕ to close.
+  if(secId==='s-projects' || secId==='s-home'){ return; }
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById(secId)?.classList.add('on');
   const panel=document.getElementById('panel');
@@ -2661,7 +2778,7 @@ window.closePanel = function(){
   document.getElementById('hint').style.opacity='';
   document.getElementById('drag-hint').style.opacity='';
   targetPOffset=0;
-  clearProjHolo(); _lastEventSec=null;   // power down the hologram; allow the event to re-fire on next open
+  clearProjHolo(); clearSecHolo(); _lastEventSec=null;   // power down the holograms; allow the event to re-fire on next open
   playSound('panel_close');
 };
 
