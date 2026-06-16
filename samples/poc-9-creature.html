@@ -1721,10 +1721,11 @@ hud.width = W; hud.height = H;
 let mx=W/2, my=H/2, crx=W/2, cry=H/2;
 let tRX=0, tRY=0, lagRX=0, lagRY=0, autoRY=0;
 let manualRX=0, manualRY=0, isDragging=false, dragX=0, dragY=0, dRX=0, dRY=0, dragMoved=false, lastInteractT=0;
-let worldYaw=0, worldPitch=0;            // derived from worldQuat each frame, only for background parallax
 const worldQuat=new THREE.Quaternion();  // free-orbit trackball rotation (no axis clamp)
-const _qDx=new THREE.Quaternion(), _qDy=new THREE.Quaternion(), _qLean=new THREE.Quaternion();
-const _AXX=new THREE.Vector3(1,0,0), _AXY=new THREE.Vector3(0,1,0), _wEul=new THREE.Euler(0,0,0,'YXZ');
+// fixed tilt of the galactic band on the celestial sphere (the band rotates 1:1 with the orbit on top of this)
+const _galaxyBase=new THREE.Quaternion().setFromEuler(new THREE.Euler(-0.62,0,0.6,'XYZ'));
+const _qDx=new THREE.Quaternion(), _qDy=new THREE.Quaternion();
+const _AXX=new THREE.Vector3(1,0,0), _AXY=new THREE.Vector3(0,1,0);
 let lastDragX=0, lastDragY=0;
 let hovNav=-1, hovCore=false, activeSec=null;
 let panelOffset=0, targetPOffset=0;
@@ -2236,10 +2237,7 @@ function animate(){
   // and a subtle cursor-lean on top. HUD stays centered.
   // idle yaw drift — only AFTER you've stopped interacting for a few seconds, so it never fights your drag
   if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.0014); worldQuat.premultiply(_qDy); }
-  world.quaternion.copy(worldQuat);
-  _qLean.setFromAxisAngle(_AXX, lagRX*0.16); world.quaternion.multiply(_qLean);            // very gentle cursor parallax (was 0.5 → felt like the view moved on its own)
-  _qLean.setFromAxisAngle(_AXY, lagRY*0.16); world.quaternion.multiply(_qLean);
-  _wEul.setFromQuaternion(worldQuat, 'YXZ'); worldYaw=_wEul.y; worldPitch=_wEul.x;        // feed background parallax
+  world.quaternion.copy(worldQuat);   // the drag is the ONLY thing that orients the view — cursor-lean removed (it slid the scene like a sheet on hover)
 
   // comets / asteroids drift past now and then
   flyClock += dt; if(flyClock > flyNext){ flyClock=0; flyNext=14+Math.random()*16; spawnFlyby(); }
@@ -2338,11 +2336,10 @@ function animate(){
   disc2.rotation.y = -t * 0.18;
 
   // Background follows the drag-orbit (reduced = parallax depth) + faint drift + warp swirl
-  stars.rotation.y = t * 0.002 + worldYaw * 0.5;
-  stars.rotation.x = worldPitch * 0.5;
-  stars.rotation.z += warp * 0.05;
-  galaxy.rotation.y = worldYaw * 0.6;
-  galaxy.rotation.x = -0.62 + worldPitch * 0.4;
+  // background rotates 1:1 with the orbit (stars at infinity) — turning the object+sky together IS a camera orbit, so
+  // the sky sweeps correctly as you "orbit your view", perfectly smooth at any angle (no euler wrap, no slerp flip).
+  stars.quaternion.copy(worldQuat); stars.rotateY(t*0.002);
+  galaxy.quaternion.copy(worldQuat).multiply(_galaxyBase);
 
   // Time-warp — gesture dives the camera through to the section
   warp *= 0.93; if(warp < 0.001) warp = 0;
