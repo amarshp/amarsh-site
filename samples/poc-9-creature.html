@@ -2596,7 +2596,7 @@ function animate(){
   drawCoreExpandRings(eCX, eCY);
   drawRipples();
   drawGestureTrail();
-  if(!secActive) drawAffect();   // hide the affect readout while a section hologram occupies the field
+  if(!secActive && !projActive) drawAffect();   // hide the affect readout while any section hologram occupies the field
 
   // Cursor state
   if(hovCore) { document.body.classList.add('core-hover'); document.body.classList.remove('nav-hover'); }
@@ -2715,22 +2715,16 @@ function drawNavDiamonds(t, cx, cy){
     ctx.fillStyle=active?nd.col+'15':'rgba(0,0,0,0.45)'; ctx.fill();
     ctx.strokeStyle=active?nd.col:(hit?nd.col+'88':'rgba(255,255,255,0.18)');
     ctx.lineWidth=active?2:1; ctx.stroke();
-    const s2=sz*.4;
-    if(activeSec===nd.sec){                                   // the open section's node IS the close button — draw an ✕
-      ctx.strokeStyle='#ff5a6e'; ctx.lineWidth=2.6; const xr=sz*0.5;
-      ctx.beginPath(); ctx.moveTo(-xr,-xr); ctx.lineTo(xr,xr); ctx.moveTo(xr,-xr); ctx.lineTo(-xr,xr); ctx.stroke();
-    } else {
-      ctx.beginPath(); ctx.moveTo(0,-s2); ctx.lineTo(s2,0); ctx.lineTo(0,s2); ctx.lineTo(-s2,0); ctx.closePath();
-      ctx.fillStyle=active?nd.col:(hit?nd.col+'60':'rgba(255,255,255,0.2)'); ctx.fill();
-    }
+    const s2=sz*.4;                                          // active node keeps its normal diamond+label (auto-close handles dismissal — no ✕ button)
+    ctx.beginPath(); ctx.moveTo(0,-s2); ctx.lineTo(s2,0); ctx.lineTo(0,s2); ctx.lineTo(-s2,0); ctx.closePath();
+    ctx.fillStyle=active?nd.col:(hit?nd.col+'60':'rgba(255,255,255,0.2)'); ctx.fill();
     const lx=Math.cos(nd.ang)*32, ly=Math.sin(nd.ang)*32;
     const vOff=Math.abs(Math.sin(nd.ang))>.5?(Math.sin(nd.ang)>0?19:-15):4;
     ctx.font=`${active?'700':'400'} ${active?11:10}px "Orbitron",sans-serif`;
     ctx.fillStyle=active?nd.col:(hit?nd.col+'cc':'rgba(255,255,255,0.38)');
     ctx.textAlign='center';
-    if(active||hit){ctx.shadowColor=activeSec===nd.sec?'#ff5a6e':nd.col; ctx.shadowBlur=8;}
-    if(activeSec===nd.sec) ctx.fillStyle='#ff8a96';
-    ctx.fillText(activeSec===nd.sec?'✕ CLOSE':nd.lbl, lx, ly+vOff);
+    if(active||hit){ctx.shadowColor=nd.col; ctx.shadowBlur=8;}
+    ctx.fillText(nd.lbl, lx, ly+vOff);
     ctx.shadowBlur=0;
     ctx.restore();
   });
