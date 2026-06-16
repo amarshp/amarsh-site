@@ -1731,6 +1731,9 @@ function fireBolt(){
     const meet=impact.clone().multiplyScalar(1.12);     // block point: just OUTSIDE the surface, facing the incoming bolt
     shieldBlock(meet); target={kind:'blocked'}; impact=meet;
   }
+  // activate a section-holo item NOW (still inside the SPACE keypress) — else window.open (LinkedIn/GitHub) is popup-blocked
+  // when the bolt resolves ~0.4s later. The bolt then just sparks on the card.
+  if(target && target.kind==='sec'){ try{ secHit(target.it); }catch(e){} target={kind:'secfx'}; }
   const dest = impact || _ray.ray.at(40, new THREE.Vector3());
   window.__lastShot = target ? target.kind : 'miss';   // debug: what the last bolt locked onto
   spawnBolt(_ray.ray.at(1.6, new THREE.Vector3()), dest, target);   // muzzle just in front of the feed
@@ -1761,7 +1764,8 @@ function resolveHit(target, at){
   if(target.kind==='blocked'){ spawnHexShield(at);                            // hex barrier flares the instant the bolt reaches the converged dots
     try{ spawnExplosion(at, 0x66ffd0, 1.2); }catch(e){} return; }             // bolt shatters on the shield — no damage to NaN
   if(target.kind==='proj'){ if(projActive && projCards.includes(target.card)) toggleProjCard(target.card); return; }   // expand/collapse a project card
-  if(target.kind==='sec'){ if(secActive && secItems.includes(target.it)) secHit(target.it); return; }                 // activate a section-holo item
+  if(target.kind==='secfx'){ spawnExplosion(at, 0x9ff6ff, 0.5); return; }                                            // section-holo item already activated at fire-time
+  if(target.kind==='sec'){ if(secActive && secItems.includes(target.it)) secHit(target.it); return; }                 // (fallback) activate a section-holo item
   if(target.kind==='fly'){ const c=target.c, idx=fly.indexOf(c);
     if(idx>=0){ c.obj.getWorldPosition(_tmpV); spawnExplosion(_tmpV, c.type==='comet'?0x88e0ff:0xffaa55, c.type==='comet'?1.1:1.5); removeFlyby(c); fly.splice(idx,1); }
     return; }
