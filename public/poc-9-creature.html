@@ -2511,19 +2511,52 @@ function exitDefendMode(){
   try{ resetShield(); }catch(e){}
 }
 function togglePause(){ if(!gameState.enabled || gameState.phase==='IDLE' || gameState.phase==='GAME_OVER') return; gameState.paused=!gameState.paused; }
+// ── WAVES (Phase 5) ──
+function waveCount(w){ return 6+w*2; }
+function waveInterval(w){ return Math.max(0.45, 1.35-w*0.06); }
+function waveLiveCap(w){ return Math.min(16, 4+Math.floor(w*1.2)); }
+function isSwarmWave(w){ return w%5===0; }
+function isBossWave(w){ return w%10===0; }
+function startWave(w){
+  const P=gameState; P.wave=w; P.phase='WAVE_ACTIVE'; P.phaseT=0;
+  P.waveTargetCount=waveCount(w); P.spawnedThisWave=0; P.killedThisWave=0; P.spawnedBoss=0; P.spawnT=0;
+  try{ nanReply(isBossWave(w)?("Wave "+w+" — heavy contacts inbound!"):isSwarmWave(w)?("Wave "+w+" — comet swarm!"):("Wave "+w+" inbound."), 'fight', 2); }catch(e){}
+}
+function spawnBoss(){
+  const t=spawnThreat('asteroid'); const w=gameState.wave;
+  t.hp=8+w; t.hpMax=t.hp; t.points=1000; t.isBoss=true;
+  t.speed*=0.55; t.v.multiplyScalar(0.55); t.rad*=2.3; t.obj.scale.setScalar(2.3);
+  if(t.obj.material){ t.obj.material.color.setHex(0x8a5a4a); t.obj.material.emissive=new THREE.Color(0x3a0e08); }
+}
+function updateWaveSpawner(dt){
+  const P=gameState;
+  if(P.spawnedThisWave>=P.waveTargetCount) return;
+  if(P.threats.length>=waveLiveCap(P.wave)) return;
+  P.spawnT+=dt;
+  if(P.spawnT>=waveInterval(P.wave)){ P.spawnT=0;
+    if(isBossWave(P.wave) && P.spawnedBoss<2 && P.spawnedThisWave>=P.waveTargetCount-2){ spawnBoss(); P.spawnedBoss++; }
+    else { const comet = isSwarmWave(P.wave) ? Math.random()<0.7 : Math.random()<0.4; spawnThreat(comet?'comet':'asteroid'); }
+  }
+}
+function completeWave(){
+  const P=gameState;
+  P.lastBonus = P.wave*250 + Math.round(P.entityHP/P.entityHPMax*500) + discLive*2;   // wave + core-health + shield bonus
+  P.score += P.lastBonus; P.phase='WAVE_CLEAR'; P.phaseT=0;
+  try{ nanReply(nanPick(["Wave clear — nicely done!","We held them. Next wave incoming.","Still standing. Keep it up."]), 'happy', 3); }catch(e){}
+}
 function updateGame(dt){
   if(!gameState.enabled) return;
-  const P=gameState;
-  if(P.phase==='STARTING'){ P.phaseT+=dt; if(P.phaseT>=2){ P.phase='WAVE_ACTIVE'; P.wave=1; P.phaseT=0; } return; }
+  const P=gameState; const now=performance.now();
+  if(P.phase==='STARTING'){ P.phaseT+=dt; if(P.phaseT>=2) startWave(1); return; }
   if(P.paused || P.phase==='GAME_OVER' || P.phase==='IDLE') return;
-  const now=performance.now();
   if(P.boosts.rangeUntil && now>P.boosts.rangeUntil){ P.boosts.rangeUntil=0; P.rangeMax=P.rangeBase; }   // RANGE booster expired
+  if(P.phase==='WAVE_CLEAR'){ P.phaseT+=dt; if(P.phaseT>=2.5) startWave(P.wave+1); }
   if(P.phase==='WAVE_ACTIVE'){
     P.survAccum += dt*10; if(P.survAccum>=1){ const a=Math.floor(P.survAccum); P.score+=a; P.survAccum-=a; }   // +10/s survival
     if(P.comboTimer>0){ P.comboTimer-=dt; if(P.comboTimer<=0){ P.combo=0; P.comboMult=1; } }
-    P.spawnT=(P.spawnT||0)+dt;                                                  // TEMP spawner (Phase 5 replaces with waves)
-    if(P.spawnT>1.4 && P.threats.length<8){ P.spawnT=0; spawnThreat(Math.random()<0.6?'asteroid':'comet'); }
+    updateWaveSpawner(dt);
     if(P.boosts.autoUntil>now){ P.autoFireT=(P.autoFireT||0)+dt; if(P.autoFireT>=0.45){ P.autoFireT=0; autoFireNearest(); } }   // AUTO-TARGET
+    if(P.spawnedThisWave>=P.waveTargetCount && P.threats.length===0) completeWave();
   }
   updateThreats(dt);   // threats keep homing across WAVE_ACTIVE/WAVE_CLEAR
   updatePickups(dt);
@@ -2550,6 +2583,10 @@ function drawDefendHUD(){
   if(P.boosts.autoUntil>nowB) chip('◎ AUTO-AIM '+Math.ceil((P.boosts.autoUntil-nowB)/1000)+'s', '#aaff00');
   if(P.boosts.shieldAbsorbCharges>0) chip('✦ ABSORB ×'+P.boosts.shieldAbsorbCharges, '#ffd24d');
   if(P.phase==='STARTING'){ ctx.textAlign='center'; ctx.font='700 30px Orbitron'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText('WAVE 1 INCOMING…', W/2, H*0.42); }
+  if(P.phase==='WAVE_CLEAR'){ ctx.textAlign='center'; ctx.font='900 34px Orbitron'; ctx.fillStyle='#aaff00'; ctx.shadowColor='#aaff00'; ctx.shadowBlur=14;
+    ctx.fillText('WAVE '+P.wave+' CLEAR', W/2, H*0.40); ctx.shadowBlur=0;
+    ctx.font='700 18px Orbitron'; ctx.fillStyle='#fff'; ctx.fillText('+'+(P.lastBonus||0)+' BONUS', W/2, H*0.40+30);
+    ctx.font='11px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText('WAVE '+(P.wave+1)+' INCOMING…', W/2, H*0.40+54); }
   if(P.paused){ ctx.textAlign='center'; ctx.font='700 42px Orbitron'; ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fillText('PAUSED', W/2, H/2); ctx.font='11px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText('ESC RESUME · Q QUIT', W/2, H/2+30); }
   ctx.restore();
 }
