@@ -3016,10 +3016,12 @@ function drawNavDiamonds(t, cx, cy){
     const nx=cx+Math.cos(nd.ang)*nodeR;
     const ny=cy+Math.sin(nd.ang)*nodeR;
     navPos[nd.sec]={x:nx,y:ny};
-    const hit=Math.sqrt((mx-nx)**2+(my-ny)**2)<36;
+    const disabled = gameState.enabled && !nd.game;     // section nodes are disabled (greyed) while the game runs
+    const hit = !disabled && Math.sqrt((mx-nx)**2+(my-ny)**2)<36;
     if(hit) hovNav=i;
-    const active=hit||(activeSec===nd.sec);
+    const active = !disabled && (hit || (activeSec===nd.sec) || (nd.game && gameState.enabled));   // DEFEND stays lit while playing
     ctx.save(); ctx.translate(nx,ny);
+    if(disabled) ctx.globalAlpha=0.28;
     const sz=active?19:13;
     if(active){
       const g=ctx.createRadialGradient(0,0,0,0,0,52);
