@@ -2494,7 +2494,7 @@ function enterDefendMode(){
 function startRun(){
   const P=gameState;
   P.phase='STARTING'; P.phaseT=0; P.wave=0; P.score=0; P.combo=0; P.comboMult=1; P.comboTimer=0;
-  P.killCount=0; P.entityHP=P.entityHPMax; P.survAccum=0;
+  P.killCount=0; P.entityHP=P.entityHPMax; P.survAccum=0; P.cardShown=false;
   P.boosts={rangeUntil:0,autoUntil:0,shieldAbsorbCharges:0}; P.rangeMax=P.rangeBase; P.runStartMs=performance.now();
   gOverlay.style.display='none'; gOver.style.display='none';
   try{ resetShield(); }catch(e){}
@@ -2548,7 +2548,8 @@ function updateGame(dt){
   if(!gameState.enabled) return;
   const P=gameState; const now=performance.now();
   if(P.phase==='STARTING'){ P.phaseT+=dt; if(P.phaseT>=2) startWave(1); return; }
-  if(P.paused || P.phase==='GAME_OVER' || P.phase==='IDLE') return;
+  if(P.phase==='GAME_OVER'){ if(!novaActive && !P.cardShown && now>=P.restartArmedMs) showGameOverCard(); return; }   // card appears once the black-hole sequence ends
+  if(P.paused || P.phase==='IDLE') return;
   if(P.boosts.rangeUntil && now>P.boosts.rangeUntil){ P.boosts.rangeUntil=0; P.rangeMax=P.rangeBase; }   // RANGE booster expired
   if(P.phase==='WAVE_CLEAR'){ P.phaseT+=dt; if(P.phaseT>=2.5) startWave(P.wave+1); }
   if(P.phase==='WAVE_ACTIVE'){
@@ -2723,15 +2724,36 @@ function updateThreats(dt){
 }
 function enterGameOver(){
   const P=gameState; if(P.phase==='GAME_OVER') return;
-  P.phase='GAME_OVER'; P.paused=false; saveHighScore();
+  P.newHigh = P.score>P.highScore; saveHighScore();
+  P.phase='GAME_OVER'; P.paused=false; P.cardShown=false;
   for(let i=P.threats.length-1;i>=0;i--) destroyThreat(P.threats[i], false); P.threats.length=0;
-  P.restartArmedMs=performance.now()+20500;
+  for(let i=P.pickups.length-1;i>=0;i--) destroyPickup(P.pickups[i]); P.pickups.length=0;
+  P.restartArmedMs=performance.now()+20500;   // ~nova duration — card shown once the black-hole sequence ends
   try{ collapseShield(); }catch(e){}
-  try{ triggerNova(); }catch(e){}   // the core dies → existing supernova→black-hole sequence (game-over card added in Phase 6)
+  try{ triggerNova(); }catch(e){}             // the core dies → existing supernova→black-hole sequence
 }
+function showGameOverCard(){
+  const P=gameState; P.cardShown=true;
+  const survS=Math.round((performance.now()-P.runStartMs)/1000);
+  gOver.innerHTML='<div style="pointer-events:auto;text-align:center;background:rgba(8,4,10,.9);border:1px solid rgba(255,59,107,.55);border-radius:10px;padding:30px 48px;box-shadow:0 0 60px rgba(255,59,107,.3);backdrop-filter:blur(5px);">'
+   +'<div style="font-size:12px;letter-spacing:6px;color:#ff8aa6;">CORE LOST</div>'
+   +'<div style="font-size:30px;letter-spacing:3px;color:#fff;margin:6px 0 14px;font-weight:900;">NaN COLLAPSED</div>'
+   +'<div style="font-size:42px;font-weight:900;color:#fff;letter-spacing:2px;">'+P.score.toLocaleString()+'</div>'
+   +'<div style="font-size:10px;letter-spacing:3px;color:'+(P.newHigh?'#ffd24d':'rgba(190,225,245,.6)')+';margin:2px 0 16px;">'+(P.newHigh?'★ NEW HIGH SCORE ★':'HIGH '+P.highScore.toLocaleString())+'</div>'
+   +'<div style="display:flex;gap:30px;justify-content:center;font-size:10px;letter-spacing:1px;color:rgba(200,225,245,.75);margin-bottom:20px;font-family:\'Share Tech Mono\',monospace;">'
+     +'<div>WAVE<br><b style="font-size:18px;color:#fff;">'+P.wave+'</b></div>'
+     +'<div>KILLS<br><b style="font-size:18px;color:#fff;">'+P.killCount+'</b></div>'
+     +'<div>SURVIVED<br><b style="font-size:18px;color:#fff;">'+survS+'s</b></div></div>'
+   +'<button id="g-again" style="pointer-events:auto;font-family:Orbitron;font-weight:700;font-size:13px;letter-spacing:3px;background:#ff3b6b;color:#fff;border:none;padding:11px 32px;cursor:pointer;border-radius:4px;margin:0 6px;">PLAY AGAIN</button>'
+   +'<button id="g-exit" style="pointer-events:auto;font-family:Orbitron;font-weight:700;font-size:12px;letter-spacing:2px;background:transparent;color:#9fb3c8;border:1px solid rgba(159,179,200,.4);padding:11px 26px;cursor:pointer;border-radius:4px;margin:0 6px;">EXIT</button></div>';
+  gOver.style.display='flex';
+  document.getElementById('g-again').addEventListener('click', restartDefend);
+  document.getElementById('g-exit').addEventListener('click', exitDefendMode);
+}
+function restartDefend(){ gameState.cardShown=false; gOver.style.display='none'; startRun(); }
 window.__spawnThreat=spawnThreat; window.__game=gameState; window.__enterGame=enterDefendMode; window.__startRun=startRun; window.__exitGame=exitDefendMode;   // debug
 window.__killNearest=()=>{ if(gameState.threats[0]) destroyThreat(gameState.threats[0], true); return {score:gameState.score, combo:gameState.combo, mult:+gameState.comboMult.toFixed(2)}; };   // QA: scored kill
-window.__applyPickup=applyPickup; window.__damageEntity=damageEntity;   // QA: booster + damage paths
+window.__applyPickup=applyPickup; window.__damageEntity=damageEntity; window.__gameOver=enterGameOver; window.__showCard=showGameOverCard;   // QA
 
 // ── MAIN LOOP ─────────────────────────────────────────────────
 function animate(){
