@@ -1720,7 +1720,7 @@ hud.width = W; hud.height = H;
 // ── STATE ─────────────────────────────────────────────────────
 let mx=W/2, my=H/2, crx=W/2, cry=H/2;
 let tRX=0, tRY=0, lagRX=0, lagRY=0, autoRY=0;
-let manualRX=0, manualRY=0, isDragging=false, dragX=0, dragY=0, dRX=0, dRY=0;
+let manualRX=0, manualRY=0, isDragging=false, dragX=0, dragY=0, dRX=0, dRY=0, dragMoved=false, lastInteractT=0;
 let worldYaw=0, worldPitch=0;            // derived from worldQuat each frame, only for background parallax
 const worldQuat=new THREE.Quaternion();  // free-orbit trackball rotation (no axis clamp)
 const _qDx=new THREE.Quaternion(), _qDy=new THREE.Quaternion(), _qLean=new THREE.Quaternion();
@@ -1823,6 +1823,8 @@ document.addEventListener('mousemove',e=>{
   curEl.style.left=mx+'px'; curEl.style.top=my+'px';
   if(!isDragging){tRX=(my-H/2)/(H/2)*.18; tRY=(mx-W/2)/(W/2)*.18;}
   else{ const dx=e.clientX-lastDragX, dy=e.clientY-lastDragY; lastDragX=e.clientX; lastDragY=e.clientY;
+    if(Math.abs(e.clientX-dragX)+Math.abs(e.clientY-dragY)>4) dragMoved=true;   // it's a real drag, not a tap → suppress the click action
+    lastInteractT=performance.now();
     _qDy.setFromAxisAngle(_AXY, dx*0.008); _qDx.setFromAxisAngle(_AXX, dy*0.008);
     worldQuat.premultiply(_qDx).premultiply(_qDy); }   // free trackball — drag rotates in ALL directions, no axis limit
 });
@@ -1835,8 +1837,10 @@ renderer.domElement.addEventListener('mousedown',e=>{
     document.body.classList.add('spell-mode');
     return;
   }
-  if(hovNav>=0||hovCore)return;
-  isDragging=true; dragX=e.clientX; dragY=e.clientY; lastDragX=e.clientX; lastDragY=e.clientY;
+  // Start a drag from ANYWHERE (including on NaN) so grab-to-rotate works. A tap that doesn't move still fires the
+  // 'click' below (poke the core / select a nav node); only a real drag rotates and suppresses that click.
+  isDragging=true; dragMoved=false; lastInteractT=performance.now();
+  dragX=e.clientX; dragY=e.clientY; lastDragX=e.clientX; lastDragY=e.clientY;
   document.body.classList.add('drag-mode');
 });
 renderer.domElement.addEventListener('mousemove',e=>{ if(gesturing) gPts.push({x:e.clientX,y:e.clientY}); });
@@ -1848,7 +1852,7 @@ window.addEventListener('mouseup',()=>{
 // ── SCROLL = dolly in/out (move through 3D toward/around the creature) ──
 let camDist=5.2, camDistT=5.2;
 renderer.domElement.addEventListener('wheel',e=>{
-  e.preventDefault();
+  e.preventDefault(); lastInteractT=performance.now();
   camDistT=Math.max(2.6, Math.min(24, camDistT + e.deltaY*0.0016));
 },{passive:false});
 
@@ -1949,6 +1953,7 @@ window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).
 
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
+  if(dragMoved){ dragMoved=false; return; }   // that "click" was actually a drag-to-rotate → don't poke/select
   if(hovNav>=0){ const sec=NAV[hovNav].sec; if(activeSec===sec) closePanel(); else openSection(sec); return; }   // active node = close
   if(projActive){                                   // click a hologram project card to expand / collapse it
     _ndc.set((e.clientX/W)*2-1, -(e.clientY/H)*2+1); _ray.setFromCamera(_ndc, camera);
@@ -2229,10 +2234,11 @@ function animate(){
 
   // Free-orbit trackball — drag rotates the world in ANY direction (no axis clamp). Plus slow idle drift
   // and a subtle cursor-lean on top. HUD stays centered.
-  if(!isDragging){ _qDy.setFromAxisAngle(_AXY, 0.0016); worldQuat.premultiply(_qDy); }   // idle yaw drift
+  // idle yaw drift — only AFTER you've stopped interacting for a few seconds, so it never fights your drag
+  if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.0014); worldQuat.premultiply(_qDy); }
   world.quaternion.copy(worldQuat);
-  _qLean.setFromAxisAngle(_AXX, lagRX*0.5); world.quaternion.multiply(_qLean);            // gentle lean toward the cursor
-  _qLean.setFromAxisAngle(_AXY, lagRY*0.5); world.quaternion.multiply(_qLean);
+  _qLean.setFromAxisAngle(_AXX, lagRX*0.16); world.quaternion.multiply(_qLean);            // very gentle cursor parallax (was 0.5 → felt like the view moved on its own)
+  _qLean.setFromAxisAngle(_AXY, lagRY*0.16); world.quaternion.multiply(_qLean);
   _wEul.setFromQuaternion(worldQuat, 'YXZ'); worldYaw=_wEul.y; worldPitch=_wEul.x;        // feed background parallax
 
   // comets / asteroids drift past now and then
