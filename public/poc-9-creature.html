@@ -2062,6 +2062,8 @@ function updateNova(dt, t){
   if(novaPhase===1){                 // 1. CORE COLLAPSE — the swollen red supergiant's iron core implodes (e⁻ capture / neutronization)
     const k=Math.min(1, novaT/1.3);
     creatureMesh.scale.multiplyScalar(1 - Math.min(0.5, dt*(1.6+k*5)));       // the whole body is sucked inward
+    const ringIn=Math.pow(1-k,1.4);                                           // the orbiting ring (dots + glow torus) is dragged INTO the collapse, not left hanging
+    disc.scale.setScalar(novaOrig.disc*ringIn); disc2.scale.setScalar(novaOrig.disc2*ringIn);
     coreGroup.scale.setScalar(1.1 - k*1.0);                                   // 1.1 → 0.10 (dense point)
     coreMat.color.setRGB(1-k*0.7, 0.1+k*0.35, k*0.95); glowMat.color.setRGB(0.3*(1-k), 0.15+k*0.45, 0.4+k*0.6);  // red supergiant → electric-blue neutronisation
     bloomPass.strength = 0.8 + k*1.2;                                         // 0.8 → 2.0
