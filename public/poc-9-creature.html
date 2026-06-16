@@ -159,6 +159,9 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 #mic.on{color:#ff4466;text-shadow:0 0 10px #ff4466;}
 #mic.listening{animation:micpulse .9s ease-in-out infinite;}
 @keyframes micpulse{0%,100%{text-shadow:0 0 6px #ff4466;}50%{text-shadow:0 0 18px #ff4466,0 0 30px #ff4466;color:#ff88aa;}}
+/* while a section hologram fills the field, the ambient instrument HUD recedes so the content has room */
+body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.sec-holo #sat-traj, body.sec-holo #sat-blueprint{opacity:.12;transition:opacity .45s ease;}
+#sat-stats,#sat-feed,#weapon,#sat-traj,#sat-blueprint{transition:opacity .45s ease;}
 /* ── satellite-display overlay: scanlines, vignette, corner brackets, live-feed tag ── */
 #satframe{position:fixed;inset:0;z-index:53;pointer-events:none;background:repeating-linear-gradient(rgba(120,220,255,.045) 0 1px, transparent 1px 3px);box-shadow:inset 0 0 170px rgba(0,0,0,.92), inset 0 0 46px rgba(0,40,60,.35);}
 #satframe::before{content:'';position:absolute;inset:14px;border:1px solid rgba(127,224,255,.16);border-radius:7px;}
@@ -1534,15 +1537,19 @@ function updateSecHolo(dt,t){
   for(const it of secItems){ it.age+=dt;
     const pr=Math.max(0,Math.min(1,(it.age-it.t0)/0.8)), e=1-Math.pow(1-pr,3);
     it.mesh.quaternion.copy(camera.quaternion);
-    const yb=it.slot.y + Math.sin(t*1.1+it.bob)*0.04;
-    const px=it.from.x+(it.slot.x-it.from.x)*e, py=it.from.y+(yb-it.from.y)*e, pz=it.from.z+(it.slot.z-it.from.z)*e;
+    // expanded items pull toward centre + stop bobbing so they have room to grow without clipping the screen edge
+    const tx = it.expanded ? it.slot.x*0.55 : it.slot.x;
+    const ty = it.expanded ? it.slot.y*0.78 : it.slot.y + Math.sin(t*1.1+it.bob)*0.04;
+    const px=it.from.x+(tx-it.from.x)*e, py=it.from.y+(ty-it.from.y)*e, pz=it.from.z+(it.slot.z-it.from.z)*e;
+    it.cx=(it.cx==null)?px:it.cx+(px-it.cx)*Math.min(1,dt*9);
+    it.cy=(it.cy==null)?py:it.cy+(py-it.cy)*Math.min(1,dt*9);
     const baseS=(it.baseScale||1), tScale=(pr>=1)?(it.expanded?(it.expScale||1.5):baseS):baseS*(0.12+0.88*e);
     it.curScale=(it.curScale==null)?baseS*(0.12+0.88*e):it.curScale+(tScale-it.curScale)*Math.min(1,dt*9);
     const tZ=(pr>=1&&it.expanded)?0.6:0; it.curZ=(it.curZ==null)?0:it.curZ+(tZ-it.curZ)*Math.min(1,dt*9);
-    it.mesh.position.set(px,py,pz+it.curZ); it.mesh.scale.setScalar(it.curScale);
+    it.mesh.position.set(it.cx,it.cy,pz+it.curZ); it.mesh.scale.setScalar(it.curScale);
     const stut=(Math.sin(t*19+it.bob*5)>0.975)?0.6:1;
     it.mesh.material.opacity=Math.min(1,pr*2.4)*(0.9+Math.sin(t*6+it.bob*3)*0.05)*stut;
-    if(it.ray){ const rp=it.ray.geometry.attributes.position.array; rp[3]=px; rp[4]=py; rp[5]=pz+it.curZ; it.ray.geometry.attributes.position.needsUpdate=true;
+    if(it.ray){ const rp=it.ray.geometry.attributes.position.array; rp[3]=it.cx; rp[4]=it.cy; rp[5]=pz+it.curZ; it.ray.geometry.attributes.position.needsUpdate=true;
       it.ray.material.opacity=Math.min(1,pr*3)*((pr<1?0.5:0.18)+Math.sin(t*31+it.bob)*0.07)*stut; }
   }
 }
@@ -1596,6 +1603,43 @@ function buildAbout(){
   warp=Math.max(warp,0.4);
 }
 
+// ── SKILLS — "Orbital Instrument Cluster" : 4 diagnostic pods with proficiency gauges flank NaN ──
+const SKILL_CATS=[
+  {cat:'ORCHESTRATION', sc:'#00eaff', skills:[['LANGGRAPH',95],['LANGCHAIN',90],['MCP',88],['A2A PROTO',78],['RAG',93]]},
+  {cat:'CLOUD & INFRA', sc:'#ffb347', skills:[['AWS BEDROCK',87],['SAGEMAKER',80],['FASTAPI',84],['DOCKER',72],['OPENAI API',91]]},
+  {cat:'EVALUATION', sc:'#ff2a8c', skills:[['RAGAS',90],['LANGSMITH',88],['LLM-JUDGE',75]]},
+  {cat:'LANGUAGES', sc:'#aaff00', skills:[['PYTHON',97],['TYPESCRIPT',62]]},
+];
+function _lvl(n){ return n>=90?['EXPERT','#aaff00']:n>=75?['ADVANCED','#00eaff']:['INTERMEDIATE','rgba(220,235,255,0.6)']; }
+function paintPod(g,W,H,it,exp){ const d=it.data; g.fillStyle='rgba(7,10,20,0.93)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,d.sc);
+  _rgb(g, d.cat, 24, 44, '700 22px Orbitron, monospace', d.sc);
+  let y=86; g.textAlign='left';
+  d.skills.forEach(([nm,lv])=>{ const L=_lvl(lv);
+    g.fillStyle='rgba(228,246,255,0.96)'; g.font='600 17px Orbitron, monospace'; g.fillText(nm, 24, y);
+    g.fillStyle=L[1]; g.font='600 12px Orbitron, monospace'; g.textAlign='right'; g.fillText(L[0]+' · '+lv, W-24, y); g.textAlign='left';
+    const bx=24, by=y+11, bw=W-48, bh=9;
+    g.fillStyle='rgba(255,255,255,0.09)'; g.fillRect(bx,by,bw,bh);
+    g.fillStyle=L[1]; g.fillRect(bx,by,bw*lv/100,bh);
+    g.fillStyle='rgba(255,255,255,0.5)'; for(let t=bx;t<bx+bw;t+=bw/10) g.fillRect(t,by,1,bh);   // tick marks
+    y+=44; });
+  g.fillStyle='rgba(0,240,255,0.55)'; g.font='400 12px monospace'; g.fillText(exp?'▸ CLICK TO CLOSE':'▸ INSPECT', 24, H-15); }
+function paintSkillHead(g,W,H){ g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
+  g.textAlign='center'; _rgb(g,'18 CORE MODULES ONLINE · PRIMARY: PYTHON', W/2, H*0.62, '700 18px Orbitron, monospace', '#bdf0ff'); g.textAlign='left'; }
+function expandPod(it){ const open=!it.expanded;
+  for(const o of secItems){ if(o.kind==='pod'&&o!==it&&o.expanded){ o.expanded=false; o.expScale=1.0; _secRepaint(o); } }
+  it.expanded=open; it.expScale=open?1.5:1.0; _secRepaint(it);
+  try{ playSound(open?'panel_open':'panel_close'); }catch(e){}
+  try{ spawnExplosion(it.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(it.data.sc).getHex(), 0.45); }catch(e){} }
+function buildSkills(){
+  clearSecHolo(); secActive='s-skills'; secGroup.visible=true;
+  const F=new THREE.Vector3(0,0,0.3);
+  _secAddItem({kind:'shead', w:2.7,h:0.42, slot:new THREE.Vector3(0,1.78,-0.2), from:F.clone(), t0:0.15, accent:0x00eaff, paint:paintSkillHead, baseScale:1, beam:false});
+  const pos=[[-2.8,0.92],[2.8,0.92],[-2.8,-1.28],[2.8,-1.28]];   // 4 quadrant pods
+  SKILL_CATS.forEach((d,i)=>{ const n=d.skills.length, w=1.72, h=(86+n*44+30)/512*w;
+    _secAddItem({kind:'pod', data:d, w, h, slot:new THREE.Vector3(pos[i][0],pos[i][1],0), from:F.clone(), t0:0.4+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintPod, onHit:expandPod, baseScale:1}); });
+  warp=Math.max(warp,0.4);
+}
+
 let _lastEventSec=null;
 function sectionEvent(secId){
   if(secId===_lastEventSec) return;          // ignore duplicate opens (NaN's auto-guide re-fires openSection)
@@ -1609,8 +1653,8 @@ function sectionEvent(secId){
       "My mission log. Click any project to expand it — click it again to close it."]), 'happy', 5); }catch(e){} }
   else if(secId==='s-contact'){ spawnExplosion(C,0x66ddff,2.2);                 // beacon detonation
     for(let i=0;i<3;i++) coreExpandRings.push({r:0.2,maxR:2.4,alpha:1,t:i*0.12}); discEject(2.6); warp=Math.max(warp,0.5); }
-  else if(secId==='s-skills'){                                                  // systems booting — scan pulses
-    for(let i=0;i<4;i++) coreExpandRings.push({r:0.2,maxR:1.9,alpha:1,t:i*0.18}); discEject(0.8); }
+  else if(secId==='s-skills'){ buildSkills();                                    // SKILLS — orbital instrument cluster
+    for(let i=0;i<4;i++) coreExpandRings.push({r:0.2,maxR:1.9,alpha:1,t:i*0.18}); }
   else if(secId==='s-home'){ buildAbout();                                       // ABOUT — accretion career ring
     for(let i=0;i<2;i++) coreExpandRings.push({r:0.2,maxR:2.2,alpha:1,t:i*0.12}); }
 }
@@ -2510,7 +2554,7 @@ function animate(){
   drawCoreExpandRings(eCX, eCY);
   drawRipples();
   drawGestureTrail();
-  drawAffect();
+  if(!secActive) drawAffect();   // hide the affect readout while a section hologram occupies the field
 
   // Cursor state
   if(hovCore) { document.body.classList.add('core-hover'); document.body.classList.remove('nav-hover'); }
@@ -2759,7 +2803,7 @@ window.openSection = function(secId){
   document.getElementById('drag-hint').style.opacity='0';
   playSound('panel_open');
   // These sections present in-scene as holograms — NO bottom panel. The node turns into an ✕ to close.
-  if(secId==='s-projects' || secId==='s-home'){ return; }
+  if(secId==='s-projects' || secId==='s-home' || secId==='s-skills'){ document.body.classList.add('sec-holo'); return; }
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById(secId)?.classList.add('on');
   const panel=document.getElementById('panel');
@@ -2773,6 +2817,7 @@ window.openSection = function(secId){
 
 window.closePanel = function(){
   activeSec=null;
+  document.body.classList.remove('sec-holo');
   document.getElementById('panel').classList.remove('open');
   document.getElementById('xbtn').classList.remove('vis');
   document.getElementById('hint').style.opacity='';
