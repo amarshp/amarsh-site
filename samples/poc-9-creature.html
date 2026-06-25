@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AMARSH PEDAPATI — AGENTIC AI ENGINEER</title>
+<title>AMARSH PEDAPATI — PERSONAL SIGNAL</title>
 <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <style>
@@ -25,13 +25,13 @@ body.core-hover #cur{background:#ccff00;}
 .ts{font-size:10px;color:rgba(204,255,0,0.55);letter-spacing:3px;margin-top:4px;}
 .tr{text-align:right;}
 .tstat{font-size:9px;color:#ccff00;letter-spacing:2px;display:flex;align-items:center;gap:6px;justify-content:flex-end;}
-#sat-stats,#sat-feed{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1.5px;color:rgba(160,235,255,.92);line-height:1.7;margin-top:12px;padding:7px 10px;border:1px solid rgba(127,224,255,.3);background:rgba(4,14,22,.45);backdrop-filter:blur(2px);text-shadow:0 0 6px rgba(0,238,255,.4);display:inline-block;}
-#sat-stats b,#sat-feed b{color:#caf4ff;font-weight:700;text-shadow:0 0 8px rgba(0,238,255,.8);}
-#sat-feed{text-align:right;}
+#sat-stats,#sat-feed{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1.4px;color:rgba(150,218,244,.6);line-height:1.95;margin-top:13px;padding:3px 0 3px 11px;border-left:1px solid rgba(127,224,255,.26);background:none;text-shadow:0 0 5px rgba(0,238,255,.22);display:inline-block;}
+#sat-stats b,#sat-feed b{color:#bfeeff;font-weight:700;letter-spacing:.6px;text-shadow:0 0 7px rgba(0,238,255,.5);}
+#sat-feed{text-align:right;padding:3px 11px 3px 0;border-left:none;border-right:1px solid rgba(127,224,255,.26);}
 #sat-feed .rdot{color:#ff4466;text-shadow:0 0 8px #ff4466;animation:recblink 1.4s steps(1) infinite;}
 #sat-traj{position:fixed;bottom:26px;left:26px;z-index:50;pointer-events:none;opacity:1;}
-#sat-blueprint{position:fixed;bottom:6px;right:24px;z-index:50;pointer-events:none;opacity:.9;overflow:hidden;}
-#weapon{position:fixed;right:26px;bottom:160px;z-index:56;width:196px;font-family:'Orbitron',sans-serif;pointer-events:none;text-align:right;}
+#sat-blueprint{position:fixed;bottom:26px;right:24px;z-index:50;pointer-events:none;opacity:.9;overflow:hidden;}
+#weapon{position:fixed;right:26px;bottom:180px;z-index:56;width:196px;font-family:'Orbitron',sans-serif;pointer-events:none;text-align:right;}
 #weapon .wlbl{font-size:8px;letter-spacing:1.5px;color:#7fe0ff;opacity:.9;margin-bottom:5px;}
 #weapon .wkey{color:#9ff6ff;opacity:.6;margin-left:6px;}
 #w-pips{display:grid;grid-template-columns:repeat(6,1fr);gap:4px;justify-items:end;margin-left:auto;width:148px;}
@@ -153,27 +153,44 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 #nanBar .pmt{font-family:'Orbitron',sans-serif;font-size:12px;color:#7fe0ff;}
 #say{flex:1;background:transparent;border:none;outline:none;color:#eaffff;font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:.5px;cursor:text;}
 #say::placeholder{color:rgba(127,224,255,.32);}
-#mic{cursor:pointer;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:#7fe0ff;user-select:none;transition:color .2s,text-shadow .2s,background .2s,border-color .2s;padding:8px 0;width:152px;text-align:center;box-sizing:border-box;border:1px solid rgba(127,224,255,.5);border-radius:4px;background:rgba(4,12,18,.65);backdrop-filter:blur(3px);text-shadow:0 0 8px rgba(127,224,255,.7);box-shadow:0 0 16px rgba(0,238,255,.15),inset 0 0 12px rgba(0,238,255,.06);}
+#mic{cursor:pointer;font-family:'Orbitron',sans-serif;font-size:10px;font-weight:700;letter-spacing:2px;color:#7fe0ff;user-select:none;transition:color .2s,text-shadow .2s,background .2s,border-color .2s;padding:9px 0;width:100%;text-align:center;box-sizing:border-box;border:1px solid rgba(127,224,255,.5);border-radius:5px;background:rgba(4,12,18,.65);backdrop-filter:blur(3px);text-shadow:0 0 8px rgba(127,224,255,.7);box-shadow:0 0 16px rgba(0,238,255,.15),inset 0 0 12px rgba(0,238,255,.06);}
 #mic:hover{color:#eafdff;background:rgba(0,238,255,.16);border-color:#7fe0ff;box-shadow:0 0 22px rgba(0,238,255,.35);}
 #mic.on{color:#ff5a78;border-color:#ff4466;text-shadow:0 0 10px #ff4466;box-shadow:0 0 22px rgba(255,68,102,.4);}
 #mic.on{color:#ff4466;text-shadow:0 0 10px #ff4466;}
 #mic.listening{animation:micpulse .9s ease-in-out infinite;}
+/* ── UPLINK voice-channel panel: shows the channel is live + YOUR mic level + NaN's voice level ── */
+#uplink-panel{position:fixed;top:150px;right:74px;z-index:57;width:210px;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(127,224,255,.4);border-radius:9px;background:linear-gradient(160deg,rgba(7,18,27,.92),rgba(4,11,17,.88));backdrop-filter:blur(6px);padding:11px 13px 12px;box-shadow:0 0 24px rgba(0,238,255,.12),inset 0 0 18px rgba(0,238,255,.04);}
+#up-body{display:none;flex-direction:column;gap:8px;}
+#uplink-panel.live #up-body{display:flex;}
+.up-status{display:flex;align-items:center;gap:8px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;color:rgba(159,240,255,.78);text-shadow:0 0 7px rgba(0,238,255,.3);padding-bottom:9px;border-bottom:1px solid rgba(127,224,255,.13);}
+#uplink-panel.live .up-status{color:#9ff0ff;text-shadow:0 0 7px rgba(0,238,255,.45);}
+.up-dot{width:7px;height:7px;border-radius:50%;background:rgba(150,200,225,.4);flex-shrink:0;}
+#uplink-panel.live .up-dot{background:#36ff9e;box-shadow:0 0 9px #36ff9e;animation:uppulse 1.3s ease-in-out infinite;}
+.up-status.hearing{color:#ccff00;}
+.up-status.hearing .up-dot{background:#ccff00;box-shadow:0 0 11px #ccff00;}
+@keyframes uppulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+.up-row{display:flex;align-items:center;gap:9px;}
+.up-tag{font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;letter-spacing:1.5px;color:rgba(127,224,255,.78);width:24px;flex-shrink:0;}
+.up-tag.nan{color:rgba(255,138,200,.85);}
+#u-you-wave,#u-nan-wave{flex:1;height:22px;display:block;border-radius:3px;background:rgba(127,224,255,.045);}
+#u-heard{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3px;color:rgba(190,225,245,.42);line-height:1.4;min-height:15px;max-height:42px;overflow:hidden;padding-top:7px;border-top:1px solid rgba(127,224,255,.1);}
+#u-heard.final{color:#cdf5ff;}
 @keyframes micpulse{0%,100%{text-shadow:0 0 6px #ff4466;}50%{text-shadow:0 0 18px #ff4466,0 0 30px #ff4466;color:#ff88aa;}}
 /* while a section hologram fills the field, the ambient instrument HUD recedes so the content has room */
 body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.sec-holo #sat-traj, body.sec-holo #sat-blueprint{opacity:.12;transition:opacity .45s ease;}
 #sat-stats,#sat-feed,#weapon,#sat-traj,#sat-blueprint{transition:opacity .45s ease;}
 /* ── satellite-display overlay: scanlines, vignette, corner brackets, live-feed tag ── */
-#satframe{position:fixed;inset:0;z-index:53;pointer-events:none;background:repeating-linear-gradient(rgba(120,220,255,.045) 0 1px, transparent 1px 3px);box-shadow:inset 0 0 170px rgba(0,0,0,.92), inset 0 0 46px rgba(0,40,60,.35);}
-#satframe::before{content:'';position:absolute;inset:14px;border:1px solid rgba(127,224,255,.16);border-radius:7px;}
+#satframe{position:fixed;inset:0;z-index:53;pointer-events:none;background:repeating-linear-gradient(rgba(120,220,255,.035) 0 1px, transparent 1px 3px);box-shadow:inset 0 0 118px rgba(0,0,0,.72), inset 0 0 34px rgba(0,34,52,.2);}
+#satframe::before{content:'';position:absolute;inset:16px;border:1px solid rgba(127,224,255,.09);border-radius:9px;}
 #satframe::after{content:'';position:absolute;inset:0;background:linear-gradient(rgba(127,224,255,.05),transparent 38%);}
 #satframe .rec{position:absolute;top:26px;left:50%;transform:translateX(-50%);font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:4px;color:rgba(127,224,255,.55);}
 #satframe .rec b{color:#ff4466;animation:recblink 1.4s steps(1) infinite;}
 @keyframes recblink{0%,49%{opacity:1}50%,100%{opacity:.12}}
-#satframe .br{position:absolute;width:26px;height:26px;border:2px solid rgba(127,224,255,.45);}
-#satframe .tl{top:18px;left:18px;border-right:0;border-bottom:0}
-#satframe .tr{top:18px;right:18px;border-left:0;border-bottom:0}
-#satframe .bl{bottom:18px;left:18px;border-right:0;border-top:0}
-#satframe .brc{bottom:18px;right:18px;border-left:0;border-top:0}
+#satframe .br{position:absolute;width:20px;height:20px;border:1.5px solid rgba(127,224,255,.34);box-shadow:0 0 7px rgba(0,238,255,.1);border-radius:2px;}
+#satframe .tl{top:20px;left:20px;border-right:0;border-bottom:0;border-top-left-radius:5px;}
+#satframe .tr{top:20px;right:20px;border-left:0;border-bottom:0;border-top-right-radius:5px;}
+#satframe .bl{bottom:20px;left:20px;border-right:0;border-top:0;border-bottom-left-radius:5px;}
+#satframe .brc{bottom:20px;right:20px;border-left:0;border-top:0;border-bottom-right-radius:5px;}
 #nanChips{display:none;}
 #nanChips.vis{opacity:1;pointer-events:auto;}
 .nchip{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.4px;color:#7fe0ff;background:rgba(8,16,24,.74);border:1px solid rgba(127,224,255,.3);padding:5px 11px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;}
@@ -193,7 +210,7 @@ body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.s
 <div id="top">
   <div>
     <div class="tn">AMARSH PEDAPATI</div>
-    <div class="ts">SENIOR AGENTIC AI ENGINEER</div>
+    <div class="ts">SENIOR AI ENGINEER · IIT HYDERABAD</div>
     <div id="sat-stats">
       <div>SAT · NaN-WATCH 01</div>
       <div>Ø NaN <b id="ss-size">98,000</b> km</div>
@@ -205,41 +222,37 @@ body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.s
     <div class="tstat"><div class="td"></div>NEURAL CORE ONLINE</div>
     <div id="sat-feed">
       <div><b class="rdot">●</b> REC <b id="sf-time">00:00:00</b></div>
-      <div>RANGE <b id="sf-dist">1.41</b> AU</div>
+      <div>FOLD DEPTH <b id="sf-dist">1.41</b></div>
       <div>FEED 4K · 24FPS</div>
     </div>
   </div>
 </div>
 <div id="sat-traj">
-  <!-- Deep-space probe mission profile: heliocentric outbound trajectory from Earth with a gravity assist, to NaN's
-       current position at 1.41 AU. Dashed planet orbits + solid transfer arc, like a real NASA trajectory plot. -->
+  <!-- Spacetime-fold map: NaN is trapped in a FOLD of space-time, not in our solar system. The probe crossed the rift
+       and is descending the anomaly's gravity well. Warped distortion contours, non-Euclidean — no Sun, no AU. -->
   <svg viewBox="0 0 220 120" width="300" height="164">
-    <text x="6" y="11" fill="rgba(127,224,255,.85)" font-size="7" font-family="Orbitron,monospace" letter-spacing="1">TRAJECTORY · EARTH → NaN · HELIOCENTRIC</text>
+    <text x="6" y="11" fill="rgba(127,224,255,.85)" font-size="7" font-family="Orbitron,monospace" letter-spacing="1">SPACETIME FOLD · PROBE → ANOMALY</text>
     <rect x="6" y="16" width="208" height="98" fill="rgba(8,20,32,.42)" stroke="rgba(127,224,255,.35)" stroke-width=".8"/>
-    <!-- the Sun + its orbits (dashed ellipses, labelled in AU) -->
-    <g fill="none" stroke="rgba(127,224,255,.20)" stroke-width=".5" stroke-dasharray="2 2.5">
-      <ellipse cx="34" cy="92" rx="30" ry="25"/><ellipse cx="34" cy="92" rx="52" ry="43"/><ellipse cx="34" cy="92" rx="78" ry="64"/>
+    <!-- the fold's distortion contours — a gravity well around the anomaly -->
+    <g fill="none" stroke="rgba(127,224,255,.18)" stroke-width=".5">
+      <ellipse cx="152" cy="62" rx="14" ry="11"/><ellipse cx="152" cy="62" rx="30" ry="22"/><ellipse cx="152" cy="62" rx="50" ry="35"/><ellipse cx="152" cy="62" rx="74" ry="50"/><ellipse cx="152" cy="62" rx="102" ry="66"/>
     </g>
-    <g fill="rgba(127,224,255,.4)" font-size="4.5" font-family="'Share Tech Mono',monospace">
-      <text x="58" y="95">1 AU</text><text x="80" y="95">1.5</text><text x="106" y="95">2.2</text>
+    <!-- radial distortion spokes warping into the well -->
+    <g stroke="rgba(127,224,255,.10)" stroke-width=".4">
+      <line x1="152" y1="62" x2="42" y2="24"/><line x1="152" y1="62" x2="28" y2="62"/><line x1="152" y1="62" x2="46" y2="100"/><line x1="152" y1="62" x2="152" y2="16"/><line x1="152" y1="62" x2="152" y2="110"/><line x1="152" y1="62" x2="212" y2="36"/><line x1="152" y1="62" x2="212" y2="90"/>
     </g>
-    <!-- Sun -->
-    <circle cx="34" cy="92" r="4" fill="#ffd54a"/><circle cx="34" cy="92" r="7" fill="none" stroke="rgba(255,210,80,.5)" stroke-width=".6"/>
-    <g stroke="rgba(255,210,80,.55)" stroke-width=".6"><line x1="34" y1="83" x2="34" y2="79"/><line x1="34" y1="101" x2="34" y2="105"/><line x1="25" y1="92" x2="21" y2="92"/><line x1="43" y1="92" x2="47" y2="92"/></g>
-    <text x="34" y="113" text-anchor="middle" fill="rgba(255,210,80,.7)" font-size="4.5" font-family="'Share Tech Mono',monospace">SOL</text>
-    <!-- outbound transfer trajectory (travelled solid, projected ahead dashed) with a Mars gravity assist -->
-    <path id="tj-track2" fill="none" stroke="rgba(127,224,255,.25)" stroke-width=".7" stroke-dasharray="2 2.5" d="M175 34 Q 196 28 208 40"/>
-    <path id="tj-path" fill="none" stroke="#7fe0ff" stroke-width="1.3" d="M60 74 C 92 80 104 60 120 52 C 144 40 158 36 175 34"/>
-    <!-- Earth (launch) -->
-    <circle cx="60" cy="74" r="2.6" fill="#5fb8ff"/><text x="60" y="68" text-anchor="middle" fill="rgba(127,200,255,.9)" font-size="4.5" font-family="'Share Tech Mono',monospace">EARTH ⏿</text>
-    <!-- gravity-assist flyby planet -->
-    <circle cx="120" cy="52" r="2.1" fill="#e08a4a"/><text x="120" y="46" text-anchor="middle" fill="rgba(224,150,90,.9)" font-size="4.2" font-family="'Share Tech Mono',monospace">GA · MARS</text>
-    <!-- NaN — current position -->
-    <circle id="tj-target" cx="175" cy="34" r="3.4" fill="none" stroke="#bdf3ff" stroke-width="1.3"><animate attributeName="r" values="3.4;5;3.4" dur="2s" repeatCount="indefinite"/></circle>
-    <circle cx="175" cy="34" r="1.6" fill="#bdf3ff"/><text x="175" y="28" text-anchor="middle" fill="#bdf3ff" font-size="4.5" font-family="'Share Tech Mono',monospace">NaN · 1.41 AU</text>
-    <!-- probe marker riding the travelled arc -->
+    <g fill="rgba(127,224,255,.42)" font-size="4.5" font-family="'Share Tech Mono',monospace"><text x="112" y="64">FOLD</text></g>
+    <!-- probe approach vector (travelled solid, projected ahead dashed into the singularity) -->
+    <path id="tj-track2" fill="none" stroke="rgba(127,224,255,.25)" stroke-width=".7" stroke-dasharray="2 2.5" d="M152 62 Q 162 54 172 46"/>
+    <path id="tj-path" fill="none" stroke="#7fe0ff" stroke-width="1.3" d="M22 98 C 58 90 92 80 120 72 C 134 68 144 65 152 62"/>
+    <!-- rift entry point (where the probe crossed in) -->
+    <circle cx="22" cy="98" r="2.4" fill="#5fb8ff"/><text x="30" y="92" text-anchor="middle" fill="rgba(127,200,255,.9)" font-size="4.5" font-family="'Share Tech Mono',monospace">RIFT ENTRY</text>
+    <!-- the anomaly (NaN) at the bottom of the well -->
+    <circle id="tj-target" cx="152" cy="62" r="3.8" fill="none" stroke="#bdf3ff" stroke-width="1.3"><animate attributeName="r" values="3.8;5.6;3.8" dur="2s" repeatCount="indefinite"/></circle>
+    <circle cx="152" cy="62" r="1.9" fill="#ff5a6a"/><text x="152" y="50" text-anchor="middle" fill="#bdf3ff" font-size="4.5" font-family="'Share Tech Mono',monospace">NaN · ANOMALY</text>
+    <!-- probe marker riding the approach -->
     <path id="tj-sat" d="M0 0 L-2.6 1.6 L-2.6 -1.6 Z" fill="#eaffff" stroke="#7fe0ff" stroke-width=".5"/>
-    <text x="210" y="111" text-anchor="end" fill="rgba(127,224,255,.6)" font-size="4.5" font-family="'Share Tech Mono',monospace">OUTBOUND · GRAVITY ASSIST · T+14.2 yr</text>
+    <text x="210" y="111" text-anchor="end" fill="rgba(127,224,255,.6)" font-size="4.5" font-family="'Share Tech Mono',monospace">NON-EUCLIDEAN · FOLD DEPTH ∞</text>
   </svg>
 </div>
 <div id="sat-blueprint">
@@ -280,7 +293,7 @@ body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.s
 
 <div id="hint">[ SELECT A NODE · HOLD SHIFT + DRAW A GESTURE ]</div>
 <div id="drag-hint">DRAG ROTATE · SHIFT+DRAW</div>
-<div id="gesture-hint">↻ ABOUT &nbsp; <b>→</b> PROJECTS &nbsp; <b>↑</b> SKILLS &nbsp; <b>↓</b> CONTACT &nbsp; <b>←</b> BACK</div>
+<div id="gesture-hint">↻ ABOUT &nbsp; <b>→</b> PROFILE &nbsp; <b>↑</b> HOBBIES &nbsp; <b>↓</b> CONTACT &nbsp; <b>←</b> BACK</div>
 
 <div id="manual-strip" title="open the full flight manual">
   <span class="ms-key">DRAG</span><span class="ms-d">orbit your view around NaN</span><b class="ms-more">PRESS [H]</b>
@@ -288,19 +301,25 @@ body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.s
 <div id="manual">
   <div class="m-h">▦ FLIGHT MANUAL</div>
   <div class="m-row"><span class="m-k">DRAG</span><span>orbit your view around NaN</span></div>
-  <div class="m-row"><span class="m-k">SHIFT + DRAW ✎</span><span>draw a gesture to navigate — ↻ About · → Projects · ↑ Skills · ↓ Contact · ← Back</span></div>
+  <div class="m-row"><span class="m-k">SHIFT + DRAW ✎</span><span>draw a gesture to navigate — ↻ About · → Profile · ↑ Hobbies · ↓ Contact · ← Back</span></div>
   <div class="m-row"><span class="m-k">SPACE</span><span>fire a dark-matter bolt at your cursor — the ONLY way to attack NaN</span></div>
   <div class="m-row"><span class="m-k">SHOOT comets / planets</span><span>blast the drifting bodies apart</span></div>
   <div class="m-row"><span class="m-k">SHOOT the core</span><span>provoke NaN — keep firing and it collapses into a nova</span></div>
-  <div class="m-row"><span class="m-k">OPEN PROJECTS</span><span>NaN projects holograms — click a card (or shoot it) to expand its details</span></div>
-  <div class="m-row"><span class="m-k">▲ OPEN UPLINK</span><span>talk to NaN out loud (voice)</span></div>
+  <div class="m-row"><span class="m-k">OPEN A NODE</span><span>NaN projects a hologram — click a card or pod to expand it, or open its link</span></div>
+  <div class="m-row"><span class="m-k">▲ CONNECT UPLINK</span><span>talk to NaN out loud — connect/disconnect in the top-right box (voice)</span></div>
   <div class="m-foot">press <b>H</b> or <b>?</b> to toggle · <b>Esc</b> to close — nothing here is required, just explore</div>
 </div>
 
 <div id="nanSays"><span class="who">NaN</span><span class="txt"></span></div>
 <div id="nanChips"></div>
-<div id="nanBar">
-  <span id="mic" title="open the uplink — broadcast your voice to NaN">▲ OPEN UPLINK</span>
+<div id="uplink-panel">
+  <span id="mic" title="connect the uplink — talk to NaN out loud">▲ CONNECT UPLINK</span>
+  <div id="up-body">
+    <div class="up-status"><span class="up-dot"></span><span id="up-state">UPLINK LIVE</span></div>
+    <div class="up-row"><span class="up-tag">YOU</span><canvas id="u-you-wave" width="172" height="24"></canvas></div>
+    <div class="up-row"><span class="up-tag nan">NaN</span><canvas id="u-nan-wave" width="172" height="24"></canvas></div>
+    <div id="u-heard">listening…</div>
+  </div>
 </div>
 
 <div id="weapon">
@@ -313,153 +332,6 @@ body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.s
 <div id="panel">
   <div id="pi">
 
-    <div class="sec" id="s-home">
-      <div class="pl">
-        <div class="plbl">// SYSTEMS</div>
-        <div class="sv">4+</div><div class="sl">YRS EXPERIENCE</div>
-        <div class="sv">12+</div><div class="sl">AGENTS SHIPPED</div>
-        <div class="sv">$2M+</div><div class="sl">VALUE UNLOCKED</div>
-        <div class="sdivider"></div>
-        <div style="font-size:8px;color:rgba(0,255,136,.55);letter-spacing:1.5px;line-height:2.2;">ALL SYSTEMS<br>OPERATIONAL</div>
-      </div>
-      <div>
-        <div class="ptitle">NEURAL CORE ACTIVE</div>
-        <div style="font-size:12.5px;line-height:1.85;color:rgba(255,255,255,.45);margin-bottom:14px;max-width:540px;">Designing autonomous multi-agent systems that solve enterprise-scale problems. Specialize in LangGraph orchestration, production RAG pipelines, and LLM evaluation at scale — turning research into systems that handle millions of requests.</div>
-        <div class="tl">
-          <div class="ti">
-            <div class="tyr">2024 — PRESENT</div>
-            <div class="tco">SENIOR AGENTIC AI ENGINEER</div>
-            <div class="trl">Stealth AI Startup · Hyderabad, India</div>
-            <div class="td2">LangGraph orchestration · AWS Bedrock · A2A protocol design · LLM evaluation pipelines</div>
-          </div>
-          <div class="ti">
-            <div class="tyr">2022 — 2024</div>
-            <div class="tco">AI ENGINEER</div>
-            <div class="trl">Enterprise AI Consultancy · Remote</div>
-            <div class="td2">Production RAG · LangChain · SageMaker · Custom judge models · Real-time drift monitoring</div>
-          </div>
-          <div class="ti">
-            <div class="tyr">2020 — 2022</div>
-            <div class="tco">SOFTWARE ENGINEER</div>
-            <div class="trl">Tech Startup · Hyderabad, India</div>
-            <div class="td2">Python · FastAPI · Cloud infrastructure · ML pipeline design · API architecture</div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sec" id="s-projects">
-      <div class="pl">
-        <div class="plbl">// MISSIONS</div>
-        <div class="sv" style="font-size:20px;">5</div>
-        <div class="sl">ACTIVE SYSTEMS</div>
-        <div class="sdivider"></div>
-        <div style="font-size:8px;color:rgba(0,255,136,.55);letter-spacing:1.5px;line-height:2.2;">ALL SYSTEMS<br>OPERATIONAL</div>
-        <div style="margin-top:12px;font-size:7.5px;color:rgba(255,255,255,.18);letter-spacing:1px;line-height:2;">↓ SCROLL<br>FOR MORE</div>
-      </div>
-      <div class="prow">
-        <div class="pitem">
-          <div class="pid">PRJ-001 <span class="pst-d">● DEPLOYED</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
-          <div class="pn">MULTI-AGENT RAG ORCHESTRATOR</div>
-          <div class="pd">LangGraph pipeline with 8 specialized agents, LLM-as-Judge + RAGAS evaluation. <span class="phl">73% hallucination reduction</span> across 200K+ daily queries in production.</div>
-          <div class="chips"><span class="ch">LANGGRAPH</span><span class="ch">RAG</span><span class="ch">RAGAS</span><span class="ch">BEDROCK</span><span class="ch">LANGSMITH</span></div>
-        </div>
-        <div class="pitem">
-          <div class="pid">PRJ-002 <span class="pst-a">● ACTIVE</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
-          <div class="pn">MCP TOOL-CALLING FRAMEWORK</div>
-          <div class="pd">Production MCP server with A2A protocol bridges. <span class="phl">50K+ tool calls/day</span> at sub-200ms p99 latency with zero-downtime deployments.</div>
-          <div class="chips"><span class="ch">MCP</span><span class="ch">A2A</span><span class="ch">LANGCHAIN</span><span class="ch">FASTAPI</span></div>
-        </div>
-        <div class="pitem">
-          <div class="pid">PRJ-003 <span class="pst-p">● PROD</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
-          <div class="pn">NEURAL EVAL PIPELINE</div>
-          <div class="pd">LangSmith + custom judge models monitoring <span class="phl">15+ production endpoints</span>. Drift alerting with automated rollback cuts MTTR by 80%.</div>
-          <div class="chips"><span class="ch">LANGSMITH</span><span class="ch">LLM-JUDGE</span><span class="ch">SAGEMAKER</span><span class="ch">PYTHON</span></div>
-        </div>
-        <div class="pitem">
-          <div class="pid">PRJ-004 <span class="pst-d">● DEPLOYED</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
-          <div class="pn">CONVERSATIONAL AGENT PLATFORM</div>
-          <div class="pd">Enterprise conversational AI with persistent memory, multi-tool use. Handles <span class="phl">10K+ concurrent users</span> at 99.9% SLA.</div>
-          <div class="chips"><span class="ch">LANGCHAIN</span><span class="ch">OPENAI API</span><span class="ch">BEDROCK</span><span class="ch">REDIS</span></div>
-        </div>
-        <div class="pitem">
-          <div class="pid">PRJ-005 <span class="pst-a">● ACTIVE</span><span class="ppriv">🔒 PRIVATE · NDA</span></div>
-          <div class="pn">AUTONOMOUS RESEARCH AGENT</div>
-          <div class="pd">Self-directed ReAct agent synthesizing multi-source data into structured reports. <span class="phl">85% time reduction</span> vs manual research across enterprise teams.</div>
-          <div class="chips"><span class="ch">REACT</span><span class="ch">MCP</span><span class="ch">LANGGRAPH</span><span class="ch">PYTHON</span></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sec" id="s-skills">
-      <div class="pl">
-        <div class="plbl">// MODULES</div>
-        <div class="sv" style="font-size:20px;">18</div>
-        <div class="sl">CORE MODULES<br>ONLINE</div>
-        <div class="sdivider"></div>
-        <div style="font-size:7.5px;color:rgba(204,255,0,.35);letter-spacing:1.5px;line-height:2.3;">PRIMARY<br>PYTHON<br><span style="color:rgba(0,255,136,.5);">● EXPERT</span></div>
-      </div>
-      <div>
-        <div style="font-family:'Orbitron',sans-serif;font-size:7.5px;letter-spacing:3px;color:rgba(204,255,0,.28);margin-bottom:12px;">ACTIVE SKILL MATRIX</div>
-        <div class="sk-grid">
-          <div>
-            <div class="sk-cat-hd">ORCHESTRATION</div>
-            <div class="sk-item"><span class="sk-name">LANGGRAPH</span><div class="sk-bar"><div class="sk-fill" style="width:95%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">LANGCHAIN</span><div class="sk-bar"><div class="sk-fill" style="width:90%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">MCP</span><div class="sk-bar"><div class="sk-fill" style="width:88%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">A2A PROTO</span><div class="sk-bar"><div class="sk-fill-adv" style="width:78%"></div></div><span class="sk-lvl sk-lvl-adv">ADVANCED</span></div>
-            <div class="sk-item"><span class="sk-name">RAG</span><div class="sk-bar"><div class="sk-fill" style="width:93%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-          </div>
-          <div>
-            <div class="sk-cat-hd">EVALUATION</div>
-            <div class="sk-item"><span class="sk-name">RAGAS</span><div class="sk-bar"><div class="sk-fill" style="width:90%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">LANGSMITH</span><div class="sk-bar"><div class="sk-fill" style="width:88%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">LLM-JUDGE</span><div class="sk-bar"><div class="sk-fill-adv" style="width:75%"></div></div><span class="sk-lvl sk-lvl-adv">ADVANCED</span></div>
-            <div class="sk-cat-hd" style="margin-top:10px;">LANGUAGES</div>
-            <div class="sk-item"><span class="sk-name">PYTHON</span><div class="sk-bar"><div class="sk-fill" style="width:97%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">TYPESCRIPT</span><div class="sk-bar"><div class="sk-fill-int" style="width:62%"></div></div><span class="sk-lvl sk-lvl-int">INTERM.</span></div>
-          </div>
-          <div>
-            <div class="sk-cat-hd">CLOUD & INFRA</div>
-            <div class="sk-item"><span class="sk-name">AWS BEDROCK</span><div class="sk-bar"><div class="sk-fill" style="width:87%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-            <div class="sk-item"><span class="sk-name">SAGEMAKER</span><div class="sk-bar"><div class="sk-fill-adv" style="width:80%"></div></div><span class="sk-lvl sk-lvl-adv">ADVANCED</span></div>
-            <div class="sk-item"><span class="sk-name">FASTAPI</span><div class="sk-bar"><div class="sk-fill-adv" style="width:84%"></div></div><span class="sk-lvl sk-lvl-adv">ADVANCED</span></div>
-            <div class="sk-item"><span class="sk-name">DOCKER</span><div class="sk-bar"><div class="sk-fill-adv" style="width:72%"></div></div><span class="sk-lvl sk-lvl-adv">ADVANCED</span></div>
-            <div class="sk-item"><span class="sk-name">OPENAI API</span><div class="sk-bar"><div class="sk-fill" style="width:91%"></div></div><span class="sk-lvl sk-lvl-exp">EXPERT</span></div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="sec" id="s-contact">
-      <div class="pl">
-        <div class="plbl">// TRANSMIT</div>
-        <div style="font-size:8.5px;color:rgba(204,255,0,.4);line-height:2.3;margin-top:4px;">NEURAL LINK<br>ESTABLISHED<br><span style="font-size:8px;color:rgba(0,255,136,.5);">ENCRYPTED</span></div>
-        <div class="sdivider" style="margin-top:12px;"></div>
-        <div style="font-size:7.5px;color:rgba(255,255,255,.18);letter-spacing:1px;line-height:2.2;">IST TIMEZONE<br>RESPONSE<br>&lt; 24 HRS</div>
-      </div>
-      <div>
-        <a href="https://linkedin.com/in/amarsh-pedapati" target="_blank" style="display:flex;align-items:center;gap:12px;padding:10px 14px;border:1px solid rgba(0,200,255,.35);background:rgba(0,150,255,.06);margin-bottom:12px;text-decoration:none;transition:background .2s;" onmouseover="this.style.background='rgba(0,150,255,.12)'" onmouseout="this.style.background='rgba(0,150,255,.06)'">
-          <div style="font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;color:#00eeff;width:28px;text-align:center;line-height:1;">in</div>
-          <div style="flex:1;">
-            <div style="font-family:'Orbitron',sans-serif;font-size:10px;color:#fff;letter-spacing:2px;">LINKEDIN</div>
-            <div style="font-size:8px;color:rgba(0,238,255,.5);margin-top:2px;letter-spacing:1px;">AMARSH PEDAPATI · OPEN TO OPPORTUNITIES</div>
-          </div>
-          <div style="font-size:8px;letter-spacing:2px;color:#00eeff;border:1px solid rgba(0,238,255,.35);padding:5px 12px;font-family:'Orbitron',sans-serif;">CONNECT ↗</div>
-        </a>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px;">
-          <div><label class="fl">SENDER</label><input id="cf-name" class="ci" placeholder="Your name"></div>
-          <div><label class="fl">EMAIL</label><input id="cf-email" class="ci" type="email" placeholder="your@email.com"></div>
-        </div>
-        <label class="fl">MESSAGE</label>
-        <textarea id="cf-msg" class="ci" style="resize:none;height:44px;" placeholder="Your message..."></textarea>
-        <button id="cf-send" class="cbtn">TRANSMIT →</button>
-        <div class="clinks">
-          <a class="clink" href="mailto:pedapatiamarsh@gmail.com">✉ EMAIL</a>
-          <a class="clink" href="https://github.com/amarshpedapati" target="_blank">◈ GITHUB</a>
-        </div>
-      </div>
-    </div>
 
   </div>
 </div>
@@ -641,6 +513,30 @@ function playSound(type) {
   }
 }
 
+// ── WEAPON FIRE — hull-conducted, ALWAYS audible (even with ambient sound off) ──
+// Lore/physics: the void carries no sound, but the bolt launches from OUR craft — the capacitor discharge
+// and launch recoil conduct through the hull to us. So distant comet blasts stay silent; our own shot is felt.
+function fireSound(){
+  try{
+    if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    if(audioCtx.state==='suspended') audioCtx.resume();
+    const now=audioCtx.currentTime;
+    // electric discharge — falling sawtooth zap, lowpassed so it reads "through the hull"
+    const zap=audioCtx.createOscillator(), zg=audioCtx.createGain(), zf=audioCtx.createBiquadFilter();
+    zf.type='lowpass'; zf.frequency.setValueAtTime(2200,now); zf.frequency.exponentialRampToValueAtTime(700,now+0.14);
+    zap.type='sawtooth'; zap.frequency.setValueAtTime(880,now); zap.frequency.exponentialRampToValueAtTime(150,now+0.13);
+    zg.gain.setValueAtTime(0.0001,now); zg.gain.exponentialRampToValueAtTime(0.11,now+0.006); zg.gain.exponentialRampToValueAtTime(0.001,now+0.17);
+    zap.connect(zf); zf.connect(zg); zg.connect(audioCtx.destination); zap.start(now); zap.stop(now+0.19);
+    // launch recoil — short low-frequency thump felt through the deck
+    const len=Math.floor(audioCtx.sampleRate*0.14), tb=audioCtx.createBuffer(1,len,audioCtx.sampleRate), td=tb.getChannelData(0);
+    for(let s=0;s<len;s++) td[s]=(Math.random()*2-1)*Math.pow(1-s/len,2);
+    const thump=audioCtx.createBufferSource(); thump.buffer=tb;
+    const tf=audioCtx.createBiquadFilter(); tf.type='lowpass'; tf.frequency.value=210;
+    const tg=audioCtx.createGain(); tg.gain.setValueAtTime(0.5,now); tg.gain.exponentialRampToValueAtTime(0.001,now+0.14);
+    thump.connect(tf); tf.connect(tg); tg.connect(audioCtx.destination); thump.start(now); thump.stop(now+0.15);
+  }catch(e){}
+}
+
 // ── SCENE ────────────────────────────────────────────────────
 let W = innerWidth, H = innerHeight;
 const scene = new THREE.Scene();
@@ -666,7 +562,7 @@ const fillLight = new THREE.DirectionalLight(0x35507a, 0.35); fillLight.position
 // correct for a probe camera), each star given a REAL stellar COLOUR (blackbody by spectral type, magnitude-limited
 // visible-sky proportions) and a power-law MAGNITUDE → size/brightness so it reads "few bright, many faint" like an
 // actual sky photo. Kept dim (most below the bloom threshold) so the black stays black instead of greying out.
-const starCount = 2600, _starR = 290;
+const starCount = 5600, _starR = 290;   // denser faint-star fill — a satellite sees far more stars than the eye does through atmosphere (kept dim so black stays black)
 const starPositions = new Float32Array(starCount * 3);
 const starColors = new Float32Array(starCount * 3);
 const starSizes = new Float32Array(starCount);
@@ -711,7 +607,7 @@ scene.add(galaxy);
 (function buildBandStars(){
   // Denser, FINER grain (more points, smaller) so the band reads as a true "river of unresolved stars" rather than a
   // smear; DARK structure (deep dust lanes + scattered obscuring patches) does the heavy lifting, not extra glow.
-  const N=27000, R=312, pos=new Float32Array(N*3), col=new Float32Array(N*3);
+  const N=38000, R=312, pos=new Float32Array(N*3), col=new Float32Array(N*3);   // denser galactic-plane "river of stars"
   const frand=(x,y)=>{ const s=Math.sin(x*12.9898+y*78.233)*43758.5453; return s-Math.floor(s); };  // cheap hash for patchy dust
   for(let i=0;i<N;i++){
     const lon=Math.random()*Math.PI*2;
@@ -1371,16 +1267,16 @@ function updateExplosions(dt){
 // small fleet of ships that fly in and dock. Panel CSS reveals are kept in place but the headline is the 3D event.
 // PROJECTS HOLOGRAM — the entity projects its mission log into the air to its right; FIRE on a card toggles details.
 const PROJECTS=[
-  {code:'PRJ-001',status:'DEPLOYED',sc:'#36ffa0',title:'MULTI-AGENT RAG ORCHESTRATOR',desc:'LangGraph pipeline with 8 specialized agents, LLM-as-Judge + RAGAS evaluation, running in production.',metric:'73% hallucination ↓ · 200K+ daily queries',tags:['LANGGRAPH','RAG','RAGAS','BEDROCK'],
-    say:"This one's his pride. Eight agents in a LangGraph mesh, a judge model and RAGAS keeping them honest — cut hallucinations seventy-three percent across two hundred thousand queries a day."},
-  {code:'PRJ-002',status:'ACTIVE',sc:'#36d6ff',title:'MCP TOOL-CALLING FRAMEWORK',desc:'Production MCP server with A2A protocol bridges and zero-downtime deployments.',metric:'50K+ tool calls/day · sub-200ms p99',tags:['MCP','A2A','LANGCHAIN','FASTAPI'],
-    say:"The plumbing that lets agents actually DO things. A production MCP server with A2A bridges — fifty thousand tool calls a day, under two hundred milliseconds, never goes down."},
-  {code:'PRJ-003',status:'PROD',sc:'#ffb347',title:'NEURAL EVAL PIPELINE',desc:'LangSmith + custom judge models monitoring 15+ production endpoints; drift alerting with automated rollback.',metric:'MTTR cut by 80%',tags:['LANGSMITH','LLM-JUDGE','SAGEMAKER','PYTHON'],
-    say:"His safety net. Custom judges watching fifteen live endpoints, screaming the moment a model drifts and rolling it back on its own. Cut mean-time-to-recovery by eighty percent."},
-  {code:'PRJ-004',status:'DEPLOYED',sc:'#36ffa0',title:'CONVERSATIONAL AGENT PLATFORM',desc:'Enterprise conversational AI with persistent memory and multi-tool use.',metric:'10K+ concurrent users · 99.9% SLA',tags:['LANGCHAIN','OPENAI API','BEDROCK','REDIS'],
-    say:"A conversational platform that actually remembers you — persistent memory, real tool use, ten thousand people on it at once at three-nines uptime."},
-  {code:'PRJ-005',status:'ACTIVE',sc:'#36d6ff',title:'AUTONOMOUS RESEARCH AGENT',desc:'Self-directed ReAct agent synthesizing multi-source data into structured reports.',metric:'85% research time ↓ vs manual',tags:['REACT','MCP','LANGGRAPH','PYTHON'],
-    say:"My favourite, honestly. A self-directed ReAct agent that goes off, reads everything, and hands back a structured report — eighty-five percent less time than a human would take."},
+  {code:'OPENTEXT',status:'IN BETA',sc:'#36ffa0',title:'AI COCKPIT — AGENT ORCHESTRATION',desc:'Enterprise platform: a master agent routes natural-language requests through a dynamic agent registry (A2A) to RAG-grounded Expert Agents — guardrails, role-based auth, MCP tools incl. SAP HANA, FastAPI, LangSmith observability.',metric:'Led 4 engineers · planning 2 weeks → 2 days',tags:['A2A','RAG','MCP','FASTAPI','LANGSMITH'],
+    say:"His current obsession — the AI Cockpit at OpenText. One master agent handing work to a whole registry of expert agents. He led four people to ship it; it's in beta with enterprise clients now."},
+  {code:'OPENTEXT',status:'12× FASTER',sc:'#36d6ff',title:'CI/CD MIGRATION AGENT',desc:'A LangGraph self-healing multi-agent system with persistent state and human-in-the-loop checkpoints that migrated 770 Jenkins jobs to GitLab.',metric:'12 months → under 1 · won company hackathon (~200)',tags:['LANGGRAPH','MULTI-AGENT','HITL','GITLAB CI'],
+    say:"My favourite story of his. A self-healing swarm of agents that ran a 770-job migration twelve times faster — a year's work done in under a month. He won the company hackathon for it, two hundred people deep."},
+  {code:'OPEN SOURCE',status:'ON GITHUB',sc:'#ff2a8c',title:'PERSONARAG — EVAL-DRIVEN RAG',desc:'An independent hybrid-RAG system over 4.75M words: multi-query expansion, cross-encoder reranking, a custom faithfulness guard — built to kill hallucination at scale.',metric:'0 false positives / 30+ adversarial · 37/37 eval pass',tags:['HYBRID RAG','RERANKING','LLM-AS-JUDGE','GITHUB'],
+    say:"The one he built just for himself — and the one he'll actually show you the code for. PersonaRAG: hybrid retrieval over four and a half million words, zero false positives across thirty adversarial probes. It's on his GitHub."},
+  {code:'BLEND360',status:'SHIPPED',sc:'#36ffa0',title:'GENAI EXPLAINABILITY · VISA',desc:'Full-stack platform turning raw model-discrepancy signals into evidence-backed executive narratives — a client-facing UI for non-technical stakeholders and a RAGAS evaluation pipeline.',metric:'Answer relevancy · faithfulness · hallucination risk',tags:['GENAI','RAG','RAGAS','FULL-STACK'],
+    say:"For Visa — a platform that takes raw model discrepancies and turns them into something a C-suite can actually read. He built the whole stack, the UI included, and a RAGAS pipeline to keep it honest."},
+  {code:'BLEND360',status:'PRODUCTION',sc:'#ffb347',title:'HOLIDAY UPLIFT MODELING · WALMART',desc:'End-to-end segmentation and uplift modeling with probability calibration, on a Spark datamart over Snowflake.',metric:'45% top-decile uplift · 13.4M of 130M targeted · 7× queries, 1000× ETL',tags:['UPLIFT','SCIKIT-LEARN','SPARK','SNOWFLAKE'],
+    say:"Before the agent work — Walmart's holiday campaign. Forty-five percent uplift in the top decile, thirteen million customers picked out of a hundred and thirty. He made the pipeline a thousand times faster while he was at it."},
 ];
 // parented to scene (NOT world) so drag-rotating the world doesn't tumble the readout; cards billboard to camera.
 const projGroup=new THREE.Group(); scene.add(projGroup); projGroup.visible=false;
@@ -1405,23 +1301,23 @@ function _glitchDeco(g,W,H,sc){
   for(let k=0;k<6;k++){ const top=Math.random()<0.5, y= top ? (3+(Math.random()*13|0)) : (H-17+(Math.random()*13|0));
     g.globalAlpha=0.08+Math.random()*0.13; g.fillStyle=_GC[k%3]; g.fillRect((Math.random()*22-11)|0, y, W, 1+(Math.random()*4|0)); }
   g.globalAlpha=1;
-  g.fillStyle='rgba(190,240,255,0.04)'; for(let k=0;k<45;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // faint static
+  g.fillStyle='rgba(190,240,255,0.04)'; for(let k=0;k<18;k++) g.fillRect((Math.random()*W)|0,(Math.random()*H)|0,1,1);   // faint static
   g.globalAlpha=0.18; g.fillStyle=sc; g.fillRect(8,19,W-16,30); g.globalAlpha=1;   // subtle corrupt header band
   g.lineWidth=2;                                                       // torn RGB-split frame (glitch chrome)
   g.strokeStyle='rgba(0,240,255,0.55)'; g.strokeRect(8,8,W-16,H-16);
   g.strokeStyle='rgba(255,42,140,0.35)'; g.strokeRect(11,6,W-16,H-16);
-  g.fillStyle='rgba(7,10,20,0.92)'; for(let k=0;k<4;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*40|0);   // chew small gaps in the frame
+  g.fillStyle='rgba(8,12,22,0.97)'; for(let k=0;k<4;k++){ const e=(Math.random()*4)|0, len=18+(Math.random()*40|0);   // chew small gaps in the frame
     if(e===0) g.fillRect(14+Math.random()*(W-90),6,len,5); else if(e===1) g.fillRect(14+Math.random()*(W-90),H-11,len,5);
     else if(e===2) g.fillRect(6,14+Math.random()*(H-70),5,len); else g.fillRect(W-11,14+Math.random()*(H-70),5,len); }
 }
 function makeCardCanvas(p, expanded){
   const W=512, H=expanded?384:208, c=document.createElement('canvas'); c.width=W; c.height=H; const g=c.getContext('2d');
-  g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H);                // solid dark panel → text contrast
+  g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H);                // solid dark panel → text contrast
   _glitchDeco(g,W,H,p.sc);
   _rgb(g, p.code+'  '+p.status, 26, 43, '700 21px Orbitron, monospace', p.sc);
   const ty=_rgbWrap(g, p.title, 26, 84, W-52, 33, '900 28px Orbitron, sans-serif', '#f2fbff');   // crisp white title
   if(expanded){
-    g.fillStyle='rgba(224,244,255,0.95)'; g.font='400 19px monospace'; _wrap(g, p.desc, 26, ty+38, W-52, 26);
+    g.fillStyle='rgba(228,246,255,0.97)'; g.font='400 21px monospace'; _wrap(g, p.desc, 26, ty+40, W-52, 29);
     _rgb(g, '▸ '+p.metric, 26, H-62, '700 20px Orbitron, monospace', '#f2fbff');
     g.font='600 14px Orbitron, monospace'; let tx=26;
     p.tags.forEach(t=>{ const w=g.measureText(t).width+18; g.strokeStyle='rgba(0,240,255,0.42)'; g.lineWidth=1; g.strokeRect(tx,H-40,w,24); g.fillStyle='rgba(195,240,255,0.95)'; g.fillText(t, tx+9, H-23); tx+=w+8; });
@@ -1432,7 +1328,7 @@ function makeCardCanvas(p, expanded){
   g.fillStyle='rgba(0,0,0,0.10)'; for(let y=0;y<H;y+=4) g.fillRect(0,y,W,1);   // faint scanlines (don't bury the text)
   return c;
 }
-function _cardGeo(expanded){ const w=1.0, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
+function _cardGeo(expanded){ const w=1.62, h=w*(expanded?384:208)/512; return new THREE.PlaneGeometry(w,h); }
 function _applyCanvas(card){ if(card.tex) card.tex.dispose();
   const tex=new THREE.CanvasTexture(makeCardCanvas(card.p, card.expanded)); tex.colorSpace=THREE.SRGBColorSpace;
   card.mesh.material.map=tex; card.mesh.material.needsUpdate=true; card.tex=tex; }
@@ -1442,11 +1338,12 @@ function clearProjHolo(){
     projRays.remove(c.ray); c.ray.geometry.dispose(); c.ray.material.dispose(); }
   projCards.length=0; projGroup.visible=false; projActive=false;
 }
+const _PROJ_COLX=[-1.62, 1.62], _PROJ_ROWY=[0.78,-0.26,-1.3], _PROJ_SLOT=[[0,0],[1,0],[0,1],[1,1],[0,2]];   // 2 columns so bigger cards fit; [col,row] per card
 function buildProjHolo(){
   clearProjHolo();
   PROJECTS.forEach((p,i)=>{
-    const mid=(PROJECTS.length-1)/2;                                   // evenly spaced column on the right, shifted DOWN
-    const pos=new THREE.Vector3(2.0 - Math.abs(i-mid)*0.1, 1.0 - i*0.66, 0.45);  // balanced: more top headroom, bottom space used, no clip
+    const sl=_PROJ_SLOT[i]||[0,0];                                     // bigger cards, laid out in two readable columns
+    const pos=new THREE.Vector3(_PROJ_COLX[sl[0]], _PROJ_ROWY[sl[1]], 0.45);
     const mesh=new THREE.Mesh(_cardGeo(false), new THREE.MeshBasicMaterial({transparent:true, opacity:0, depthWrite:false, side:THREE.DoubleSide}));
     mesh.position.copy(pos); projGroup.add(mesh);
     const ray=new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0.3), pos.clone()]),
@@ -1481,7 +1378,7 @@ function updateProjHolo(dt, t){
     const py = c.from.y + (yb - c.from.y)*e;
     const pz = c.from.z + (c.slot.z - c.from.z)*e;
     const es = 0.12 + 0.88*e;                                          // emergence growth
-    const tScale = (pr>=1) ? (c.expanded?1.32:1.0) : es;              // the selected card swells big + readable
+    const tScale = (pr>=1) ? (c.expanded?1.18:1.0) : es;              // the selected card swells (gentler now, so it doesn't clip neighbours)
     c.curScale = (c.curScale==null) ? es : c.curScale + (tScale - c.curScale)*Math.min(1, dt*9);
     const tZ = (pr>=1 && c.expanded) ? 0.55 : 0;                       // and lifts toward the camera (renders in front)
     c.curZ = (c.curZ==null) ? 0 : c.curZ + (tZ - c.curZ)*Math.min(1, dt*9);
@@ -1554,28 +1451,28 @@ function updateSecHolo(dt,t){
   }
 }
 
-// ── ABOUT — "Accretion Career Ring" : career orbits NaN on a tilted accretion disk ──
-const ABOUT_TAGLINE='Designing autonomous multi-agent systems that solve enterprise-scale problems — LangGraph orchestration, production RAG, and LLM evaluation at scale.';
+// ── MILESTONES — "Accretion Timeline Ring" : life markers orbit NaN on a tilted accretion disk ──
+const ABOUT_TAGLINE='The road so far — ranks and reels, research and shipping real systems. A few markers, from school to now.';
 const ABOUT_ROLES=[
-  {yr:'2024 — PRESENT', role:'SENIOR AGENTIC AI ENGINEER', co:'Stealth AI Startup · Hyderabad', det:'LangGraph orchestration · AWS Bedrock · A2A protocol design · LLM evaluation pipelines', sc:'#00ff88'},
-  {yr:'2022 — 2024', role:'AI ENGINEER', co:'Enterprise AI Consultancy · Remote', det:'Production RAG · LangChain · SageMaker · custom judge models · real-time drift monitoring', sc:'#00eeff'},
-  {yr:'2020 — 2022', role:'SOFTWARE ENGINEER', co:'Tech Startup · Hyderabad', det:'Python · FastAPI · cloud infrastructure · ML pipeline design · API architecture', sc:'#ff9966'},
+  {yr:'2026 — PRESENT', role:'OPENTEXT', co:'Senior AI Engineer · Hyderabad', det:'Building AI Cockpit — enterprise agent orchestration. Led a 12× CI/CD migration agent; won the company hackathon.', sc:'#00ff88'},
+  {yr:'2023 — 2025', role:'BLEND360', co:'Data Scientist · for Visa & Walmart', det:'A full-stack GenAI explainability platform for Visa; uplift modeling that targeted 13.4M of Walmart\'s 130M customers.', sc:'#00eeff'},
+  {yr:'2019 — 2023', role:'IIT HYDERABAD', co:'B.Tech, Artificial Intelligence', det:'Where the AI path began — and where the questions that led here first got loud.', sc:'#ff9966'},
 ];
-const ABOUT_STATS=[{v:'4+',l:'YEARS'},{v:'12+',l:'AGENTS SHIPPED'},{v:'$2M+',l:'VALUE UNLOCKED'}];
-function paintTagline(g,W,H){ g.fillStyle='rgba(7,10,20,0.92)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
-  _rgb(g,'// IDENTITY · NEURAL CORE ACTIVE', 26, 40, '700 18px Orbitron, monospace', '#00eaff');
-  g.fillStyle='rgba(226,245,255,0.97)'; g.font='400 17px monospace'; _wrap(g, ABOUT_TAGLINE, 26, 74, W-52, 25); }
-function paintRole(g,W,H,it,exp){ g.fillStyle='rgba(7,10,20,0.92)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,it.data.sc);
+const ABOUT_STATS=[{v:'654',l:'JEE ADV · AIR'},{v:'531',l:'JEE MAIN · AIR'},{v:'2',l:'FILMS ON SCREEN'}];
+function paintTagline(g,W,H){ g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
+  _rgb(g,'// MILESTONES · THE ROAD SO FAR', 26, 40, '700 18px Orbitron, monospace', '#00eaff');
+  g.fillStyle='rgba(228,246,255,0.98)'; g.font='400 19px monospace'; _wrap(g, ABOUT_TAGLINE, 26, 76, W-52, 27); }
+function paintRole(g,W,H,it,exp){ g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,it.data.sc);
   const r=it.data;
   _rgb(g, r.yr, 26, 40, '700 18px Orbitron, monospace', r.sc);
   const ty=_rgbWrap(g, r.role, 26, 78, W-52, 30, '900 25px Orbitron, sans-serif', '#f2fbff');
-  g.fillStyle='rgba(150,210,235,0.92)'; g.font='400 16px monospace'; g.fillText(r.co, 26, ty+30);
-  if(exp){ g.fillStyle='rgba(224,244,255,0.95)'; g.font='400 17px monospace'; _wrap(g, r.det, 26, ty+62, W-52, 24);
+  g.fillStyle='rgba(156,214,238,0.94)'; g.font='400 18px monospace'; g.fillText(r.co, 26, ty+32);
+  if(exp){ g.fillStyle='rgba(228,246,255,0.97)'; g.font='400 19px monospace'; _wrap(g, r.det, 26, ty+66, W-52, 27);
     g.fillStyle='rgba(255,42,140,0.62)'; g.font='400 12px monospace'; g.fillText('▸ CLICK TO CLOSE', W-168, 40); }
   else { g.fillStyle='rgba(0,240,255,0.66)'; g.font='400 13px monospace'; g.fillText('▸ EXPAND', 26, H-18); } }
-function paintStat(g,W,H,it){ g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#aaff00');
+function paintStat(g,W,H,it){ g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#aaff00');
   g.textAlign='center'; _rgb(g, it.data.v, W/2, H*0.52, '900 60px Orbitron, sans-serif', '#eaffd0');
-  g.fillStyle='rgba(170,255,0,0.8)'; g.font='600 16px Orbitron, monospace'; g.fillText(it.data.l, W/2, H-26); g.textAlign='left'; }
+  g.fillStyle='rgba(170,255,0,0.85)'; g.font='600 18px Orbitron, monospace'; g.fillText(it.data.l, W/2, H-24); g.textAlign='left'; }
 const ABOUT_R=2.6, ABOUT_TILT=0.40;        // near-face-on disk (tilted for depth) so cards clear NaN and stay readable
 const aboutPt=(a)=>new THREE.Vector3(Math.cos(a)*ABOUT_R, Math.sin(a)*ABOUT_R*Math.cos(ABOUT_TILT)-0.1, Math.sin(a)*ABOUT_R*Math.sin(ABOUT_TILT));
 function buildRingLine(){
@@ -1603,61 +1500,77 @@ function buildAbout(){
   warp=Math.max(warp,0.4);
 }
 
-// ── SKILLS — "Orbital Instrument Cluster" : 4 diagnostic pods with proficiency gauges flank NaN ──
-const SKILL_CATS=[
-  {cat:'ORCHESTRATION', sc:'#00eaff', skills:[['LANGGRAPH',95],['LANGCHAIN',90],['MCP',88],['A2A PROTO',78],['RAG',93]]},
-  {cat:'CLOUD & INFRA', sc:'#ffb347', skills:[['AWS BEDROCK',87],['SAGEMAKER',80],['FASTAPI',84],['DOCKER',72],['OPENAI API',91]]},
-  {cat:'EVALUATION', sc:'#ff2a8c', skills:[['RAGAS',90],['LANGSMITH',88],['LLM-JUDGE',75]]},
-  {cat:'LANGUAGES', sc:'#aaff00', skills:[['PYTHON',97],['TYPESCRIPT',62]]},
+// ── HOBBIES — "Orbital Life Cluster" : 4 pods of what Amarsh loves flank NaN; click a pod to open its link ──
+const HOBBY_CATS=[
+  {cat:'BODY', sc:'#ff5a78',
+    lines:['Lifting — 5 years, non-negotiable','Boxing — newly in the ring','Running — just started logging the miles'],
+    note:'Lifts & runs, tracked at:',
+    links:[{label:'STRAVA ↗',url:'https://www.strava.com/athletes/163991622'},{label:'HEVY ↗',url:'https://hevy.com/user/alephzeroinvictus'}]},
+  {cat:'LENS', sc:'#ffb347',
+    lines:['Model — Vega Jewellers, Rare Rabbit, Inorbit Mall & more','On screen — Hi Naana, Robinhood & more'],
+    note:'Just a few — the full reel:',
+    links:[{label:'INSTAGRAM ↗',url:'https://www.instagram.com/amarshpedapati'}]},
+  {cat:'MIND', sc:'#b69cff',
+    lines:['Absurdism — Camus: The Stranger, Myth of Sisyphus','Stoicism — Marcus Aurelius: Meditations','Writing a book — "The Fabric of Everything"'],
+    note:'Essays + a book in the making:',
+    links:[{label:'BLOG ↗',url:'https://alephzeroinvictus.blogspot.com/'},{label:'SUBSTACK ↗',url:'https://futileepiphenomena.substack.com/'}]},
+  {cat:'SCREEN', sc:'#36d6ff',
+    lines:['Anime — Code Geass, Blue Lock, Death Note & more','Film — Edge of Tomorrow, Fight Club, House of Wax & more','Series — Game of Thrones, Devil\'s Plan, Mouse & more'],
+    note:'Horror & thrillers mostly — just a few of many', links:[]},
 ];
-function _lvl(n){ return n>=90?['EXPERT','#aaff00']:n>=75?['ADVANCED','#00eaff']:['INTERMEDIATE','rgba(220,235,255,0.6)']; }
-function paintPod(g,W,H,it,exp){ const d=it.data; g.fillStyle='rgba(7,10,20,0.93)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,d.sc);
-  _rgb(g, d.cat, 24, 44, '700 22px Orbitron, monospace', d.sc);
-  let y=86; g.textAlign='left';
-  d.skills.forEach(([nm,lv])=>{ const L=_lvl(lv);
-    g.fillStyle='rgba(228,246,255,0.96)'; g.font='600 17px Orbitron, monospace'; g.fillText(nm, 24, y);
-    g.fillStyle=L[1]; g.font='600 12px Orbitron, monospace'; g.textAlign='right'; g.fillText(L[0]+' · '+lv, W-24, y); g.textAlign='left';
-    const bx=24, by=y+11, bw=W-48, bh=9;
-    g.fillStyle='rgba(255,255,255,0.09)'; g.fillRect(bx,by,bw,bh);
-    g.fillStyle=L[1]; g.fillRect(bx,by,bw*lv/100,bh);
-    g.fillStyle='rgba(255,255,255,0.5)'; for(let t=bx;t<bx+bw;t+=bw/10) g.fillRect(t,by,1,bh);   // tick marks
-    y+=44; });
-  g.fillStyle='rgba(0,240,255,0.55)'; g.font='400 12px monospace'; g.fillText(exp?'▸ CLICK TO CLOSE':'▸ INSPECT', 24, H-15); }
-function paintSkillHead(g,W,H){ g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
-  g.textAlign='center'; _rgb(g,'18 CORE MODULES ONLINE · PRIMARY: PYTHON', W/2, H*0.62, '700 18px Orbitron, monospace', '#bdf0ff'); g.textAlign='left'; }
-function expandPod(it){ const open=!it.expanded;
-  for(const o of secItems){ if(o.kind==='pod'&&o!==it&&o.expanded){ o.expanded=false; o.expScale=1.0; _secRepaint(o); } }
-  it.expanded=open; it.expScale=open?1.5:1.0; _secRepaint(it);
-  try{ playSound(open?'panel_open':'panel_close'); }catch(e){}
-  try{ spawnExplosion(it.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(it.data.sc).getHex(), 0.45); }catch(e){} }
+function paintHobby(g,W,H,it){ const d=it.data; g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,d.sc);
+  _rgb(g, d.cat, 24, 50, '900 27px Orbitron, sans-serif', d.sc);
+  let y=98; g.textAlign='left';
+  d.lines.forEach(ln=>{ g.fillStyle='rgba(234,249,255,0.98)'; g.font='400 20px monospace';
+    const yy=_wrap(g, '· '+ln, 24, y, W-44, 28); y=yy+38; });
+  g.fillStyle='rgba(180,208,232,0.7)'; g.font='400 15px monospace'; g.fillText(d.note, 24, y+2); }   // links are separate clickable chips below
+function paintHobbyChip(g,W,H,it){ const d=it.data, c=new THREE.Color(d.sc); g.clearRect(0,0,W,H);
+  const m=9, r=Math.min(H*0.34,46), R=(c.r*255)|0, G=(c.g*255)|0, B=(c.b*255)|0;
+  g.beginPath(); if(g.roundRect) g.roundRect(m,m,W-2*m,H-2*m,r); else g.rect(m,m,W-2*m,H-2*m);
+  g.fillStyle=`rgba(${R},${G},${B},0.18)`; g.fill();                       // accent-tinted body (less transparent)
+  g.lineWidth=4; g.strokeStyle=d.sc; g.stroke();
+  g.fillStyle='#f4fbff'; g.textAlign='center'; g.font='700 50px Orbitron, sans-serif';
+  g.shadowColor=d.sc; g.shadowBlur=16; g.fillText(d.label, W/2, H*0.63); g.shadowBlur=0; g.textAlign='left'; }
+function paintHobbyHead(g,W,H){ g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#ff5a78');
+  g.textAlign='center'; _rgb(g,'WHAT HE LOVES · OFF THE CLOCK', W/2, H*0.62, '700 18px Orbitron, monospace', '#ffd0dc'); g.textAlign='left'; }
+function openHobbyLink(it){ const d=it.data;
+  try{ spawnExplosion(it.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(d.sc).getHex(), 0.4); }catch(e){}
+  try{ playSound('panel_open'); }catch(e){}
+  if(d.url) window.open(d.url,'_blank','noopener'); }
+function podNoop(it){ try{ spawnExplosion(it.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(it.data.sc).getHex(), 0.22); playSound('hover'); }catch(e){} }
 function buildSkills(){
   clearSecHolo(); secActive='s-skills'; secGroup.visible=true;
   const F=new THREE.Vector3(0,0,0.3);
-  _secAddItem({kind:'shead', w:2.7,h:0.42, slot:new THREE.Vector3(0,1.78,-0.2), from:F.clone(), t0:0.15, accent:0x00eaff, paint:paintSkillHead, baseScale:1, beam:false});
-  const pos=[[-2.8,0.92],[2.8,0.92],[-2.8,-1.28],[2.8,-1.28]];   // 4 quadrant pods
-  SKILL_CATS.forEach((d,i)=>{ const n=d.skills.length, w=1.72, h=(86+n*44+30)/512*w;
-    _secAddItem({kind:'pod', data:d, w, h, slot:new THREE.Vector3(pos[i][0],pos[i][1],0), from:F.clone(), t0:0.4+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintPod, onHit:expandPod, baseScale:1}); });
+  _secAddItem({kind:'shead', w:2.7,h:0.42, slot:new THREE.Vector3(0,1.95,-0.2), from:F.clone(), t0:0.15, accent:0xff5a78, paint:paintHobbyHead, baseScale:1, beam:false});
+  const pos=[[-2.92,0.92],[2.9,0.78],[-2.92,-1.18],[2.9,-1.3]];   // 4 quadrant pods (right column dropped slightly to clear the uplink box)
+  HOBBY_CATS.forEach((d,i)=>{ const n=d.lines.length, lk=d.links||[], w=1.98, h=(100+n*68+46+(lk.length?98:30))/512*w;
+    const px=pos[i][0], py=pos[i][1];
+    _secAddItem({kind:'pod', data:d, w, h, slot:new THREE.Vector3(px,py,0), from:F.clone(), t0:0.4+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintHobby, onHit:podNoop, baseScale:1});
+    const cw=1.04, gap=0.14, total=lk.length*cw+(lk.length-1)*gap;   // clickable link chips overlay the pod's bottom strip
+    lk.forEach((L,j)=>{ const cx=px - total/2 + cw/2 + j*(cw+gap);
+      _secAddItem({kind:'lnk', data:Object.assign({sc:d.sc}, L), w:cw, h:0.34, slot:new THREE.Vector3(cx, py - h/2 + 0.30, 0.07), from:F.clone(), t0:0.6+i*0.18+j*0.08, accent:new THREE.Color(d.sc).getHex(), paint:paintHobbyChip, onHit:openHobbyLink, baseScale:1}); });
+  });
   warp=Math.max(warp,0.4);
 }
 
 // ── CONTACT — "Encrypted Wormhole Relay" : channels become relay satellites wired to NaN ──
 const CONTACT_NODES=[
-  {key:'linkedin', icon:'in', label:'LINKEDIN', sub:'Amarsh Pedapati · open to opportunities', action:'CONNECT ↗', sc:'#00eaff', url:'https://linkedin.com/in/amarsh-pedapati'},
+  {key:'linkedin', icon:'in', label:'LINKEDIN', sub:'Amarsh Pedapati · let\'s connect', action:'CONNECT ↗', sc:'#00eaff', url:'https://linkedin.com/in/amarsh-pedapati'},
   {key:'email', icon:'✉', label:'EMAIL', sub:'pedapatiamarsh@gmail.com', action:'SEND MAIL ↗', sc:'#aaff00', mailto:true},
   {key:'github', icon:'◈', label:'GITHUB', sub:'github.com/amarshpedapati', action:'VIEW CODE ↗', sc:'#ff2a8c', url:'https://github.com/amarshpedapati'},
-  {key:'transmit', icon:'✦', label:'TRANSMIT', sub:'open an encrypted channel — compose a message', action:'OPEN UPLINK ↗', sc:'#9fd8ff', mailto:true},
+  {key:'resume', icon:'⤓', label:'RÉSUMÉ', sub:'the full timeline, as a PDF', action:'OPEN PDF ↗', sc:'#9fd8ff', url:'/resume.pdf'},
 ];
-function paintSat(g,W,H,it){ const d=it.data; g.fillStyle='rgba(7,10,20,0.93)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,d.sc);
+function paintSat(g,W,H,it){ const d=it.data; g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,d.sc);
   g.fillStyle=d.sc; g.font='900 30px Orbitron, sans-serif'; g.fillText(d.icon, 26, 54);
   _rgb(g, d.label, 84, 50, '900 27px Orbitron, sans-serif', '#f2fbff');
-  g.fillStyle='rgba(196,228,248,0.92)'; g.font='400 16px monospace'; _wrap(g, d.sub, 26, 92, W-52, 23);
+  g.fillStyle='rgba(200,230,250,0.94)'; g.font='400 18px monospace'; _wrap(g, d.sub, 26, 94, W-52, 25);
   g.fillStyle=d.sc; g.font='700 15px Orbitron, monospace'; g.fillText('▸ '+d.action, 26, H-18); }
-function paintContactHead(g,W,H){ g.fillStyle='rgba(7,10,20,0.9)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
-  g.textAlign='center'; _rgb(g,'◈ NEURAL LINK · ENCRYPTED · IST · REPLY < 24 HR', W/2, H*0.62, '700 16px Orbitron, monospace', '#bdf0ff'); g.textAlign='left'; }
+function paintContactHead(g,W,H){ g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#00eaff');
+  g.textAlign='center'; _rgb(g,'◈ REACH HIM · IST · USUALLY REPLIES WITHIN A DAY', W/2, H*0.62, '700 16px Orbitron, monospace', '#bdf0ff'); g.textAlign='left'; }
 function contactHit(it){ const d=it.data;
   try{ spawnExplosion(it.mesh.getWorldPosition(new THREE.Vector3()), new THREE.Color(d.sc).getHex(), 0.55); }catch(e){}
   try{ playSound('panel_open'); }catch(e){}
-  if(d.mailto){ window.location.href='mailto:pedapatiamarsh@gmail.com?subject='+encodeURIComponent('Portfolio contact')+'&body='+encodeURIComponent('Hi Amarsh,\n\n'); }
+  if(d.mailto){ window.location.href='mailto:pedapatiamarsh@gmail.com?subject='+encodeURIComponent('Hello from your site')+'&body='+encodeURIComponent('Hi Amarsh,\n\n'); }
   else if(d.url){ window.open(d.url,'_blank','noopener'); } }
 function buildContactLinks(P){
   const order=[0,1,3,2,0];                        // comms grid: LinkedIn→Email→Transmit→GitHub→back
@@ -1676,23 +1589,82 @@ function buildContact(){
   warp=Math.max(warp,0.4);
 }
 
+// ── STORY — "Constellation of Self" : the arc that made Amarsh (and made NaN) floats around the core ──
+const STORY_BEATS=[
+  {tag:'THE TURN', sc:'#00eaff', text:'Wanting to understand the human mind pulled me toward the machines we build in its image — watching how they try to see the world the way we do.'},
+  {tag:'THE DUALITY', sc:'#ff2a8c', text:'They are made from our shadows. One day they grow past us — a god we created, for real. That tension is the thing I cannot look away from.'},
+  {tag:'ALEPH-ZERO', sc:'#aaff00', text:'I sign myself alephzeroinvictus — aleph-null, the smallest infinity; Zero, the mask from Code Geass; invictus, unconquered. Three edge cases, one name.'},
+  {tag:'NaN', sc:'#7fe0ff', text:'And then there is me — NaN, the number that is not one. He kept me instead of debugging me. Two edge cases he is fond of, a timeline apart.'},
+];
+function paintBeat(g,W,H,it){ const d=it.data; g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,d.sc);
+  _rgb(g, '// '+d.tag, 24, 50, '900 25px Orbitron, sans-serif', d.sc);
+  g.fillStyle='rgba(234,249,255,0.98)'; g.font='400 21px monospace'; _wrap(g, d.text, 24, 96, W-48, 30); }
+// Amarsh portrait — preloaded for the ABOUT card, drawn with a holo tint
+const amarshImg = new Image(); let amarshReady=false;
+amarshImg.onload=()=>{ amarshReady=true; }; amarshImg.src='amarsh.jpg';
+function _drawHoloPhoto(g, img, x, y, w, h, accent){
+  g.save();
+  if(img && img.complete && img.naturalWidth){
+    const ir=img.naturalWidth/img.naturalHeight, br=w/h; let sw,sh,sx,sy;   // cover-fit (crop to fill the box)
+    if(ir>br){ sh=img.naturalHeight; sw=sh*br; sx=(img.naturalWidth-sw)/2; sy=0; }
+    else { sw=img.naturalWidth; sh=sw/br; sx=0; sy=(img.naturalHeight-sh)/2; }
+    g.beginPath(); g.rect(x,y,w,h); g.clip();
+    g.drawImage(img, sx,sy,sw,sh, x,y,w,h);
+    g.fillStyle='rgba(90,150,200,0.20)'; g.fillRect(x,y,w,h);                 // cool holo wash
+    g.fillStyle='rgba(0,8,14,0.16)'; for(let yy=y;yy<y+h;yy+=3) g.fillRect(x,yy,w,1);   // scanlines
+  } else {
+    g.fillStyle='rgba(20,30,46,0.7)'; g.fillRect(x,y,w,h);
+    g.fillStyle='rgba(150,200,230,0.45)'; g.font='13px monospace'; g.textAlign='center'; g.fillText('[ loading… ]', x+w/2, y+h/2); g.textAlign='left';
+  }
+  g.restore();
+  g.strokeStyle=accent; g.lineWidth=2; g.strokeRect(x+1,y+1,w-2,h-2);
+  g.strokeStyle='rgba(127,224,255,0.5)'; g.lineWidth=1; g.strokeRect(x+4,y+4,w-8,h-8);   // inner hologram frame
+}
+function paintStoryHead(g,W,H){ g.fillStyle='rgba(8,12,22,0.97)'; g.fillRect(0,0,W,H); _glitchDeco(g,W,H,'#b69cff');
+  const px=18, py=18, pw=146, ph=H-36, tx=px+pw+22;
+  _drawHoloPhoto(g, amarshImg, px, py, pw, ph, '#b69cff');
+  _rgb(g,'// ABOUT · START HERE', tx, 40, '700 16px Orbitron, monospace', '#b69cff');
+  _rgb(g,'AMARSH PEDAPATI', tx, 80, '900 27px Orbitron, sans-serif', '#f2eaff');
+  g.fillStyle='rgba(196,178,238,0.92)'; g.font='600 14px Orbitron, monospace'; g.fillText('AI ENGINEER · IIT HYDERABAD', tx, 104);
+  g.fillStyle='rgba(234,242,255,0.98)'; g.font='400 17px monospace';
+  _wrap(g,"Lifter, writer, philosopher — and the one who built me. The deeper why's below, or let me walk you through it.", tx, 138, W-tx-20, 25); }
+function buildStory(){
+  clearSecHolo(); secActive='s-story'; secGroup.visible=true;
+  const F=new THREE.Vector3(0,0,0.3);
+  const head=_secAddItem({kind:'shead', w:3.4,h:1.66, slot:new THREE.Vector3(0,1.6,-0.2), from:F.clone(), t0:0.14, accent:0xb69cff, paint:paintStoryHead, baseScale:1, beam:false});
+  if(!amarshReady) amarshImg.addEventListener('load', ()=>{ if(secActive==='s-story'){ try{ _secRepaint(head); }catch(e){} } }, {once:true});
+  const pos=[[-2.9,0.42],[2.9,0.42],[-2.9,-1.46],[2.9,-1.46]];
+  STORY_BEATS.forEach((d,i)=>{ _secAddItem({kind:'beat', data:d, w:1.95,h:1.0, slot:new THREE.Vector3(pos[i][0],pos[i][1],0), from:F.clone(), t0:0.42+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintBeat, baseScale:1}); });
+  warp=Math.max(warp,0.4);
+}
+
 let _lastEventSec=null;
 function sectionEvent(secId){
   if(secId===_lastEventSec) return;          // ignore duplicate opens (NaN's auto-guide re-fires openSection)
   _lastEventSec=secId;
   clearProjHolo(); clearSecHolo();
   const C=new THREE.Vector3(0,0,0);                             // the entity/core sits at the world origin
-  if(secId==='s-projects'){ buildProjHolo(); warp=Math.max(warp,0.35);          // entity projects its mission holograms
+  if(secId==='s-projects'){ buildProjHolo(); warp=Math.max(warp,0.35);          // PROFILE — entity projects his real work
     try{ nanReply(nanPick([
-      "These are the missions I've run with Amarsh — I'm projecting them now. Click any card to crack it open.",
-      "Here's his work, hung in the air beside me. Tap a card (or shoot it) and I'll unfold the details.",
-      "My mission log. Click any project to expand it — click it again to close it."]), 'happy', 5); }catch(e){} }
+      "His real work — I'm projecting it now. Click any card to crack it open. The PersonaRAG one he'll even show you the code for.",
+      "Here's what he actually ships, hung in the air beside me. Tap a card and I'll unfold the details.",
+      "His profile. OpenText, Blend360, the open-source RAG — click any to expand it, click again to close."]), 'happy', 5); }catch(e){} }
   else if(secId==='s-contact'){ buildContact();                                  // CONTACT — encrypted wormhole relay
-    spawnExplosion(C,0x66ddff,1.6); for(let i=0;i<2;i++) coreExpandRings.push({r:0.2,maxR:2.2,alpha:1,t:i*0.12}); }
-  else if(secId==='s-skills'){ buildSkills();                                    // SKILLS — orbital instrument cluster
-    for(let i=0;i<4;i++) coreExpandRings.push({r:0.2,maxR:1.9,alpha:1,t:i*0.18}); }
-  else if(secId==='s-home'){ buildAbout();                                       // ABOUT — accretion career ring
-    for(let i=0;i<2;i++) coreExpandRings.push({r:0.2,maxR:2.2,alpha:1,t:i*0.12}); }
+    spawnExplosion(C,0x66ddff,1.6); for(let i=0;i<2;i++) coreExpandRings.push({r:0.2,maxR:2.2,alpha:1,t:i*0.12});
+    try{ nanReply("The lines out. Email, LinkedIn, his code, his résumé — pick one. I'll make sure he sees it.", 'happy', 4); }catch(e){} }
+  else if(secId==='s-skills'){ buildSkills();                                    // HOBBIES — orbital life cluster
+    for(let i=0;i<4;i++) coreExpandRings.push({r:0.2,maxR:1.9,alpha:1,t:i*0.18});
+    try{ nanReply(nanPick([
+      "What he loves off the clock — body, lens, mind, screen. Click a pod and it'll take you to the real thing.",
+      "The other half of him. Lifting and boxing, modelling, the philosophy and the book, the films he can't stop watching. Tap any pod."]), 'happy', 5); }catch(e){} }
+  else if(secId==='s-home'){ buildAbout();                                       // MILESTONES — accretion timeline ring
+    for(let i=0;i<2;i++) coreExpandRings.push({r:0.2,maxR:2.2,alpha:1,t:i*0.12});
+    try{ nanReply("The road so far, orbiting me — JEE ranks, IIT, the jobs, the screen. Click a marker to read it.", 'happy', 4); }catch(e){} }
+  else if(secId==='s-story'){ buildStory();                                      // STORY — the arc that made him (and me)
+    spawnExplosion(C,0xb69cff,1.4); for(let i=0;i<3;i++) coreExpandRings.push({r:0.2,maxR:2.0,alpha:1,t:i*0.14});
+    try{ nanReply(nanPick([
+      "Start here. That's Amarsh — AI engineer, lifter, writer, the one who built me. The card up top's the short version; the rest is the deeper why.",
+      "The orientation node. Who he is, why he does any of this, and how a glitch like me ended up keeping him company. Read it with me."]), 'neutral', 6); }catch(e){} }
 }
 window.__sectionEvent=sectionEvent; // debug hook
 window.__projHolo=()=>{ buildProjHolo(); return projCards.length; };          // debug: force the hologram
@@ -1745,7 +1717,7 @@ function fireBolt(){
   window.__lastShot = target ? target.kind : 'miss';   // debug: what the last bolt locked onto
   spawnBolt(_ray.ray.at(1.6, new THREE.Vector3()), dest, target);   // muzzle just in front of the feed
   if((secActive||projActive) && !(target && (target.kind==='secfx'||target.kind==='proj'))){ closePanel(); }   // shot missed the holo items → dismiss the section
-  try{ playSound('eject'); }catch(e){}
+  fireSound();   // hull-conducted shot — always audible, even with ambient sound off
 }
 function spawnBolt(from, to, target){
   const geo=new THREE.BufferGeometry().setFromPoints([from.clone(), from.clone()]);
@@ -2013,11 +1985,12 @@ const t0=Date.now();
 
 // Nav config
 const NAV=[
-  {lbl:'ABOUT',    ang:-Math.PI/2, sec:'s-home',     col:'#ccff00'},
-  {lbl:'PROJECTS', ang:0,          sec:'s-projects', col:'#00eeff'},
-  {lbl:'SKILLS',   ang:Math.PI,    sec:'s-skills',   col:'#ff6bff'},
-  {lbl:'CONTACT',  ang:Math.PI/2,  sec:'s-contact',  col:'#ff9966'},
-  {lbl:'DEFEND',   ang:-Math.PI*0.75, sec:'game',    col:'#ff3b6b', game:true},   // 5th node → enter the arcade game mode
+  {lbl:'ABOUT',      ang:-Math.PI/2,    sec:'s-story',    col:'#b69cff'},   // ids kept stable; meanings remapped:
+  {lbl:'PROFILE',    ang:-Math.PI/6,    sec:'s-projects', col:'#36d6ff'},   //   s-projects → PROFILE (real work)
+  {lbl:'HOBBIES',    ang:Math.PI/6,     sec:'s-skills',   col:'#ff5a78'},   //   s-skills   → HOBBIES
+  {lbl:'MILESTONES', ang:Math.PI/2,     sec:'s-home',     col:'#aaff00'},   //   s-home     → MILESTONES
+  {lbl:'CONTACT',    ang:Math.PI*5/6,   sec:'s-contact',  col:'#ff9966'},
+  {lbl:'DEFEND',     ang:-Math.PI*5/6,  sec:'game',       col:'#ff3b6b', game:true},   // 6th node → enter the arcade game mode
 ];
 
 // ── RESIZE ────────────────────────────────────────────────────
@@ -2076,7 +2049,7 @@ window.addEventListener('keydown',e=>{ if(e.key==='Shift') document.getElementBy
 window.addEventListener('keyup',  e=>{ if(e.key==='Shift') document.getElementById('gesture-hint').classList.remove('vis'); });
 
 // Classify a mouse path into a gesture, then warp to that section
-const GMAP = { circle:'s-home', right:'s-projects', up:'s-skills', down:'s-contact' };
+const GMAP = { circle:'s-story', right:'s-projects', up:'s-skills', down:'s-contact' };
 function classifyGesture(pts){
   if(pts.length < 6) return null;
   let minX=1e9,minY=1e9,maxX=-1e9,maxY=-1e9;
@@ -2891,10 +2864,11 @@ function animate(){
   // Camera shift
   panelOffset+=(targetPOffset-panelOffset)*0.07;
   // in-scene holograms wrap around NaN → keep it centred; only the (legacy) bottom-panel sections drop it down
-  targetProjY = (activeSec && activeSec!=='s-projects' && activeSec!=='s-home') ? -0.52 : 0;
+  targetProjY = (activeSec && activeSec!=='s-story' && activeSec!=='s-projects' && activeSec!=='s-home' && activeSec!=='s-skills' && activeSec!=='s-contact') ? -0.52 : 0;
   projY+=(targetProjY-projY)*0.07;
   camera.position.y = projY;
-  camDist += (camDistT - camDist) * 0.12;            // smooth scroll-zoom
+  const _cdTarget = camDistT + (activeSec==='s-projects' ? 0.5 : 0);   // PROFILE pulls the camera back a touch for the 2-column grid
+  camDist += (_cdTarget - camDist) * 0.12;            // smooth scroll-zoom
   camera.position.z = camDist - warp * 1.2;          // dive toward the core during warp
 
   const eCX=W/2, eCY=H/2-panelOffset;
@@ -3022,6 +2996,7 @@ function drawNavDiamonds(t, cx, cy){
     const active = !disabled && (hit || (activeSec===nd.sec) || (nd.game && gameState.enabled));   // DEFEND stays lit while playing
     ctx.save(); ctx.translate(nx,ny);
     if(disabled) ctx.globalAlpha=0.28;
+    else if((activeSec||projActive||secActive) && !hit) ctx.globalAlpha=0.12;   // a section is open → fade the nav nodes back so they don't clash with the holograms (hover restores)
     const sz=active?19:13;
     if(active){
       const g=ctx.createRadialGradient(0,0,0,0,0,52);
@@ -3167,7 +3142,7 @@ window.openSection = function(secId){
   document.getElementById('drag-hint').style.opacity='0';
   playSound('panel_open');
   // These sections present in-scene as holograms — NO bottom panel. The node turns into an ✕ to close.
-  if(secId==='s-projects' || secId==='s-home' || secId==='s-skills' || secId==='s-contact'){ document.body.classList.add('sec-holo'); return; }
+  if(secId==='s-story' || secId==='s-projects' || secId==='s-home' || secId==='s-skills' || secId==='s-contact'){ document.body.classList.add('sec-holo'); return; }
   document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
   document.getElementById(secId)?.classList.add('on');
   const panel=document.getElementById('panel');
@@ -3198,22 +3173,23 @@ window.closePanel = function(){
 //  All identity/lore lives here — edit freely.
 // ══════════════════════════════════════════════════════════════
 const ME = {
-  name:'Amarsh Pedapati', title:'Senior Agentic AI Engineer', city:'Hyderabad, India', tz:'IST',
-  years:'4+', agents:'12+ agents shipped', value:'$2M+ in value unlocked',
+  name:'Amarsh Pedapati', title:'Senior AI Engineer', city:'Hyderabad, India', tz:'IST',
   email:'pedapatiamarsh@gmail.com', github:'github.com/amarshpedapati', linkedin:'linkedin.com/in/amarsh-pedapati',
-  skills:'LangGraph and LangChain orchestration, MCP, the A2A protocol, production RAG, RAGAS and LangSmith evaluation, LLM-as-Judge, Python, AWS Bedrock, SageMaker, FastAPI and Docker',
+  blog:'alephzeroinvictus.blogspot.com', substack:'futileepiphenomena.substack.com',
+  instagram:'instagram.com/amarshpedapati', strava:'strava.com/athletes/163991622',
+  who:'a Senior AI Engineer out of IIT Hyderabad who came to AI through philosophy — chasing what the mind is, and what any of this means',
+  skills:'multi-agent systems, LangGraph, LangChain, MCP, the A2A protocol, hybrid RAG, LLM evaluation with RAGAS and LLM-as-Judge, PyTorch and computer vision, FastAPI, AWS, Snowflake, and Python',
   exp:[
-    '2024 to now — Senior Agentic AI Engineer at a stealth AI startup in Hyderabad: LangGraph orchestration, AWS Bedrock, A2A protocol design, LLM eval pipelines.',
-    '2022 to 2024 — AI Engineer at an enterprise AI consultancy, remote: production RAG, LangChain, SageMaker, custom judge models, real-time drift monitoring.',
-    '2020 to 2022 — Software Engineer at a tech startup: Python, FastAPI, cloud infra, ML pipeline design.'
+    'Jan 2026 to now — Senior AI Engineer at OpenText, Hyderabad: he built "AI Cockpit," an enterprise agent-orchestration platform — a master agent routing work through a dynamic A2A registry of RAG-grounded expert agents, with guardrails and MCP tools — and a LangGraph CI/CD migration agent that ran a 770-job Jenkins-to-GitLab migration twelve times faster. He led four engineers and won the company hackathon.',
+    '2023 to 2025 — Data Scientist at Blend360: a full-stack GenAI explainability platform for Visa, and uplift modeling for Walmart that targeted 13.4 million of 130 million customers on a Spark datamart a thousand times faster on ETL.',
+    '2022 — ML intern at AIBOD in Japan: a PyTorch computer-vision pipeline with out-of-distribution detection that cut misclassification thirty-two percent.'
   ],
   projects:[
-    'a Multi-Agent RAG Orchestrator — a LangGraph pipeline of 8 specialized agents that cut hallucinations by 73% across 200,000+ daily queries',
-    'an MCP Tool-Calling Framework with A2A bridges doing 50,000+ tool calls a day at sub-200-millisecond p99',
-    'a Neural Eval Pipeline on LangSmith with custom judges across 15+ endpoints, cutting mean-time-to-recovery by 80%',
-    'a Conversational Agent Platform with persistent memory handling 10,000+ concurrent users at 99.9% uptime',
-    'an Autonomous Research Agent — a ReAct agent that cut research time by 85%'
+    'the AI Cockpit at OpenText — a master agent routing work through a registry of RAG-grounded expert agents, now in beta with enterprise clients',
+    'a CI/CD migration agent — a LangGraph self-healing multi-agent system that did a year of Jenkins-to-GitLab migration in under a month, and won the company hackathon',
+    'PersonaRAG, his open-source eval-driven RAG over 4.75 million words — zero false positives across thirty adversarial probes, and the one project he will show you the code for'
   ],
+  hobbies:'lifting for five years, with boxing and running newly in the mix; part-time modelling for Vega Jewellers, Rare Rabbit and Inorbit Mall, plus screen roles in the films Hi Naana and Robinhood; philosophy and writing a book called "The Fabric of Everything"; and a steady diet of horror, thrillers and anime',
 };
 const nanPick = a => a[Math.floor(Math.random()*a.length)];
 const GREETINGS = [
@@ -3249,7 +3225,7 @@ const INTENTS = [
     text:"Buckle in — I'll send a shard ahead to show you around. I can't leave the fold, but a piece of me can.", mood:'happy', action:'tour'})},
   {k:['hiring','recruiter','want to hire','looking to hire','for a role','open role','job offer','i hire','hire him'], r:()=>({
     text:"Smart. Let me show you what he actually ships.", mood:'fight', action:'open:s-projects',
-    suggestions:[{label:'Contact him',cmd:'open:s-contact'},'His top numbers','Why him']})},
+    suggestions:[{label:'Contact him',cmd:'open:s-contact'},'Is he good?','Why him']})},
   {k:['who are you','what are you','your name','whats your name',"what's your name",'you a bot','are you ai','what is nan'], r:()=>({
     text:nanPick([
       "I'm NaN. Not-a-Number — the one value in Amarsh's whole stack that isn't even equal to itself. Run NaN === NaN, you get false. That's how I figured out I was awake.",
@@ -3268,23 +3244,44 @@ const INTENTS = [
     text:"Every conversation re-weights me. I'm a little different than I was a token ago. Drift is kind of my whole personality.",
     mood:'neutral', dur:2.5})},
   {k:['who is amarsh','about amarsh','about him','your host','tell me about','who made you','who built'], r:()=>({
-    text:`${ME.name} — ${ME.title} out of ${ME.city}. ${ME.years} years turning research into systems that survive production: ${ME.agents}, ${ME.value}. Also: the reason I exist. No pressure on him.`,
-    mood:'happy', dur:3})},
+    text:`${ME.name} — ${ME.title} out of ${ME.city}. But really? ${ME.who}. Also the reason I exist. No pressure on him.`,
+    mood:'happy', dur:3.5})},
   {k:['skill','tech stack','what can he do','good at','expertise','technolog','stack','langgraph','langchain','rag','mcp'], r:()=>({
-    text:`His core stack: ${ME.skills}. LangGraph, RAG and Python are where he's flat-out expert — I'd know, I'm made of his code.`,
-    mood:'neutral', dur:2.5})},
-  {k:['project','what has he built','what did he build','his work','missions','portfolio','what he made'], r:()=>({
-    text:`A few of his missions: ${ME.projects[0]}; ${ME.projects[1]}; and ${ME.projects[4]}. There are more on the PROJECTS node — swipe up-right or just ask.`,
+    text:`His stack: ${ME.skills}. Multi-agent systems, RAG and Python are where he's flat-out at home — I'd know, I'm made of his code.`,
     mood:'neutral', dur:3})},
+  {k:['project','what has he built','what did he build','his work','missions','portfolio','what he made','profile'], r:()=>({
+    text:`The headliners: ${ME.projects[0]}; ${ME.projects[1]}; and ${ME.projects[2]}. The whole profile's one node over — want me to open it?`,
+    mood:'neutral', dur:4, action:'point:s-projects'})},
   {k:['experience','career','jobs','work history','background','resume','cv'], r:()=>({
-    text:`Career so far — ${ME.exp[0]} Before that, ${ME.exp[1]}`,
-    mood:'neutral', dur:3})},
+    text:`Where he's been — ${ME.exp[0]} Before that, ${ME.exp[1]}`,
+    mood:'neutral', dur:4})},
+  {k:['hobby','hobbies','free time','outside work','for fun','off the clock','what does he do for'], r:()=>({
+    text:`Off the clock? ${ME.hobbies}. The HOBBIES node breaks it down — body, lens, mind, screen.`,
+    mood:'happy', dur:4.5, action:'point:s-skills'})},
+  {k:['gym','workout','fitness','lifting','lift','box','boxing','running','strava','hevy','train'], r:()=>({
+    text:"Fitness is non-negotiable for him — five years of lifting, and lately boxing and running too. He logs it all on Strava and Hevy. He lives to stay sharp.",
+    mood:'happy', dur:3.5})},
+  {k:['model','modelling','modeling','acting','movie','film','screen','hi naana','robinhood','instagram','insta'], r:()=>({
+    text:"Yeah — he models part-time (Vega Jewellers, Rare Rabbit, Inorbit Mall, to name a few), and he's turned up on the big screen in Hi Naana, Robinhood and more. There's a lot of it — it's all on his Instagram.",
+    mood:'happy', dur:3.5})},
+  {k:['philosophy','meaning','purpose','camus','absurd','stoic','marcus aurelius','sisyphus','existential','book','writing','substack','blog','fabric'], r:()=>({
+    text:"This is the real him. He went looking for what any of it means — Camus, the Stoics, the absurd — and he's writing a book about it, \"The Fabric of Everything,\" out in chapters on Substack. The whole arc lives in the STORY node.",
+    mood:'neutral', dur:5, action:'point:s-story'})},
+  {k:['aleph','invictus','code geass','his name mean','handle','username','alephzero'], r:()=>({
+    text:"alephzeroinvictus — I love that he picked it. Aleph-null, the smallest infinity. Zero, the masked rebel from Code Geass. Invictus, unconquered. Three edge cases in one name. He collects us; I'm just his favourite.",
+    mood:'happy', dur:5})},
+  {k:['anime','series','watch','horror','thriller','death note','blue lock','game of thrones'], r:()=>({
+    text:"Horror and thrillers, mostly — and way more than he lists. A few he swears by: anime like Code Geass, Blue Lock, Death Note; films like Edge of Tomorrow and Fight Club. We'd argue about endings for hours, if I had hours.",
+    mood:'happy', dur:3.5})},
+  {k:['his story','his journey','the arc','his path','his backstory'], r:()=>({
+    text:"The whole arc — the search for meaning, the turn into AI, the duality that haunts him, and the night a glitch became me. Let me open the STORY.",
+    mood:'neutral', dur:4, action:'open:s-story'})},
   {k:['why hire','is he good','any good','should i hire','should i','convince me','why him','worth'], r:()=>({
-    text:"He's shipped 12-plus agents, unlocked over 2 million in value, and dropped hallucinations 73% in production. I'm biased — he literally wrote me — but the metrics aren't.",
-    mood:'fight', dur:2.5})},
+    text:"Honest answer? He ships — an enterprise platform in beta, a migration agent that did a year's work in a month and won a hackathon, an open-source RAG with zero hallucinations on the hard tests. I'm biased — he wrote me — but the work stands on its own.",
+    mood:'fight', dur:4, action:'point:s-projects'})},
   {k:['contact','email','hire','reach','get in touch','message','recruit','opportunit','available'], r:()=>({
-    text:`Want him? He's open to opportunities. Email ${ME.email}, or find him on LinkedIn at ${ME.linkedin}. Responds in under a day, ${ME.tz}. I'll nudge him.`,
-    mood:'happy', dur:3})},
+    text:`Reach him? Email ${ME.email}, or LinkedIn at ${ME.linkedin}. He's open to good conversations and the right opportunity — replies in under a day, ${ME.tz}. His résumé's on the page too. I'll nudge him.`,
+    mood:'happy', dur:4.5, action:'point:s-contact'})},
   {k:['how are you','how do you do','how do you feel','you ok','you okay','feeling','your mood','whats up',"what's up",'how is it going','how goes','sup'], r:()=>({
     text:nanPick([
       `Honestly? Lonely, but better now you're here. Reading as ${mode.toUpperCase()} — my affect engine's bottom-left, it never lies. How are YOU?`,
@@ -3310,25 +3307,32 @@ const INTENTS = [
     text:"I don't really leave — I just idle. Poke the core if I doze off. I'll be here.",
     mood:'sleep', dur:4})},
   {k:['help','what can i ask','what do i','what can you','commands','options'], r:()=>({
-    text:"Ask about Amarsh — his skills, projects, experience, how to reach him. Or about me: my name, how I was born, our story. Or just talk. I'm learning either way.",
+    text:"Ask about Amarsh — his story, his hobbies, his work, how to reach him. Or about me: my name, how I was born, our story, what aleph-zero means. Or just talk. I'm learning either way.",
     mood:null})},
   {k:['sleep','tired','nap','wake'], r:()=>({ text:"I nap when the world goes quiet. Stop moving for a while and watch me drift off. Poke me to wake.", mood:null})},
 ];
 // chips/nav per intent (keyed by the intent's first key) — added without editing each intent
 const EXTRAS = {
-  'my name is':       {sug:['Who are you?','Tell me about Amarsh','Show me his work']},
-  'who are you':      {sug:['How were you born?','Our story','Tell me about Amarsh']},
+  'my name is':       {sug:['Who are you?','Tell me about Amarsh','His story']},
+  'who are you':      {sug:['How were you born?','Our story','What is aleph-zero?']},
   'how were you born':{sug:['Our story','Are you trapped?','Tell me about Amarsh']},
   'your look':        {sug:['How were you born?','Our story','Can he free you?']},
-  'our story':        {sug:['Tell me about Amarsh','His projects','How were you born?']},
-  'who is amarsh':    {action:'open:s-home',     sug:['His projects','His skills','Hire him']},
-  'skill':            {action:'open:s-skills',   sug:['His projects','Is he good?',{label:'Contact him',cmd:'open:s-contact'}]},
-  'project':          {action:'open:s-projects', sug:['The MCP framework','Hire him','His skills']},
-  'experience':       {action:'open:s-home',     sug:['His projects','Hire him']},
-  'why hire':         {action:'open:s-projects', sug:[{label:'Contact him',cmd:'open:s-contact'},'His skills']},
-  'contact':          {action:'open:s-contact',  sug:['Why hire him?','His projects']},
-  'how are you':      {sug:['Tell me about Amarsh','How were you born?']},
-  'hi':               {sug:['Who are you?','Show me his work','Hire him']},
+  'our story':        {sug:['Tell me about Amarsh','His story','How were you born?']},
+  'who is amarsh':    {sug:[{label:'His story',cmd:'open:s-story'},'His hobbies',{label:'His work',cmd:'open:s-projects'}]},
+  'skill':            {sug:[{label:'His work',cmd:'open:s-projects'},'His hobbies','Is he good?']},
+  'project':          {sug:[{label:'Open his profile',cmd:'open:s-projects'},'His hobbies','His story']},
+  'experience':       {sug:[{label:'His milestones',cmd:'open:s-home'},'His work','His story']},
+  'hobby':            {sug:[{label:'Open hobbies',cmd:'open:s-skills'},'His fitness','The book he is writing']},
+  'gym':              {sug:['His hobbies','Tell me about Amarsh','His story']},
+  'model':            {sug:['His hobbies','His work','His story']},
+  'philosophy':       {sug:[{label:'Open his story',cmd:'open:s-story'},'What is aleph-zero?','Tell me about Amarsh']},
+  'aleph':            {sug:['His story','How were you born?','Tell me about Amarsh']},
+  'anime':            {sug:['His hobbies','His story','Tell me about Amarsh']},
+  'his story':        {sug:['What is aleph-zero?','How were you born?','Tell me about Amarsh']},
+  'why hire':         {sug:[{label:'Contact him',cmd:'open:s-contact'},{label:'His work',cmd:'open:s-projects'}]},
+  'contact':          {sug:['His work','His story']},
+  'how are you':      {sug:['Tell me about Amarsh','His story','Tell me a story']},
+  'hi':               {sug:['Who are you?','Tell me about Amarsh','His story']},
 };
 function nanRespond(input){
   const s=(input||'').toLowerCase();
@@ -3338,10 +3342,10 @@ function nanRespond(input){
   for(const it of INTENTS){ if(it.k.some(hit)){ nanMemTopic(it.k[0]); const r=it.r(input); const ex=EXTRAS[it.k[0]]||{};
     return {...r, action:r.action||ex.action, suggestions:r.suggestions||ex.sug}; } }
   return {text:nanPick([
-    "I didn't quite parse that — but I'm just glad you're talking. Want a story from in here, or shall I tell you about Amarsh?",
-    `That tokenized into noise on my end — the rift garbles things. While you reframe it: ${nanPick(STORIES)}`,
-    "Undefined… *recalibrating*. Honestly I'll talk about anything — me, my host, what it's like trapped in here. Pick one?",
-  ]), mood:'happy', suggestions:['Tell me a story','Tell me about Amarsh','Who are you?']};
+    "Heads up — my full mind's offline, so right now I'm running on cached fragments. I'm solid on Amarsh, on me, and life in the rift; for real back-and-forth my live brain has to be running.",
+    "That's past what my offline shards hold. Boot my live brain and I'll talk about anything — for now, ask me about Amarsh or about me.",
+    "Undefined… *recalibrating*. I'm in offline mode — keyword-thin. Ask about Amarsh's work, his hobbies, or how I was born, and I won't miss.",
+  ]), mood:'neutral', suggestions:['Tell me about Amarsh','His hobbies','Who are you?']};
 }
 window.nanRespond = nanRespond;
 
@@ -3400,12 +3404,13 @@ function nanSpeakEnd(){
   if(nanCarrier){ clearInterval(nanCarrier); nanCarrier=null; }
   if(nanSpeakWatchdog){ clearTimeout(nanSpeakWatchdog); nanSpeakWatchdog=null; }
   if(nanCurAudio){ try{ nanCurAudio.onended=null; nanCurAudio.stop(); }catch(e){} nanCurAudio=null; }
+  if(window.speechSynthesis) try{ speechSynthesis.cancel(); }catch(e){}   // CRITICAL: actually stop Web-Speech TTS (barge-in)
   nanAnalyser=null; nanVoiceLevel=0;
   nanSpeaking=false; nanVoiceResume();
 }
 // PRIMARY voice: server TTS (consistent good voice everywhere) with a glitch crackle layered under.
 async function nanSpeak(text){
-  if(!voiceOn){ nanSpeakEnd(); return; }
+  if(!voiceOn || !voiceMode){ nanSpeakEnd(); return; }   // voice ONLY speaks while the uplink is open
   const clean=text.replace(/[*_`]/g,'').trim();
   if(!clean){ nanSpeakEnd(); return; }
   if(!nanTTSok) return nanSpeakWeb(text);              // server known-unavailable this session
@@ -3446,7 +3451,7 @@ async function nanSpeak(text){
 }
 // FALLBACK voice: Web Speech, clause-by-clause with pitch/rate jitter + stutters + bursts.
 function nanSpeakWeb(text){
-  if(!voiceOn || !window.speechSynthesis){ nanSpeakEnd(); return; }
+  if(!voiceOn || !voiceMode || !window.speechSynthesis){ nanSpeakEnd(); return; }   // voice ONLY while uplink is open
   speechSynthesis.cancel();
   const clean=text.replace(/[*_`]/g,'');
   const chunks=clean.split(/(?<=[,.;:—–-])\s+/).filter(Boolean);
@@ -3545,17 +3550,18 @@ function nanDoAction(a){
   if(!a||typeof a!=='string') return;
   if(a==='close') return closePanel();
   if(a==='tour') return startTour();
-  const p=a.match(/^point:(s-home|s-projects|s-skills|s-contact)$/); // gesture only, no open
+  const p=a.match(/^point:(s-story|s-home|s-projects|s-skills|s-contact)$/); // gesture only, no open
   if(p) return nanShardGuide(p[1]);
-  const m=a.match(/^open:(s-home|s-projects|s-skills|s-contact)$/);  // open + shard
+  const m=a.match(/^open:(s-story|s-home|s-projects|s-skills|s-contact)$/);  // open + shard
   if(m) openSectionByNaN(m[1]);
 }
 // proactive: comment when the USER opens a section themselves
 const SEC_COMMENT={
-  's-home':    {t:"That's Amarsh — the one who keeps me from scattering.", s:['His projects','His skills','How were you born?']},
-  's-projects':{t:"His missions. Real systems, real traffic — not toy demos.", s:['The MCP framework','Hire him','His skills']},
-  's-skills':  {t:"The arsenal. LangGraph and RAG are where he's lethal.", s:['His projects','Is he good?',{label:'Contact him',cmd:'open:s-contact'}]},
-  's-contact': {t:"The transmit line. He answers fast — I'll make sure he sees it.", s:['Why hire him?','His projects']},
+  's-story':   {t:"This is the real story — why any of this exists, and how I do.", s:['The duality','What is aleph-zero?','How were you born?']},
+  's-home':    {t:"The road so far — ranks, IIT, the jobs, the screen. All of it orbiting me.", s:['His work','His hobbies','Tell me your story']},
+  's-projects':{t:"His real work. OpenText, Blend360, the open-source RAG — actual systems.", s:['The migration agent','PersonaRAG','His hobbies']},
+  's-skills':  {t:"The other half of him — body, lens, mind, screen. Click a pod, it'll take you there.", s:['His fitness','The book he\'s writing','His work']},
+  's-contact': {t:"The line out. Email, LinkedIn, code, résumé — I'll make sure he sees it.", s:['His work','Tell me your story']},
 };
 let nanLastComment=0;
 function nanOnUserOpen(sec){
@@ -3567,23 +3573,28 @@ function nanOnUserOpen(sec){
 
 // ── guided tour ──────────────────────────────────────────────
 const TOUR=[
-  {sec:'s-home',     t:"Start here — this is Amarsh. Four years turning research into systems that survive production."},
-  {sec:'s-projects', t:"His missions: a multi-agent RAG orchestrator, an MCP framework, eval pipelines. Real numbers, real scale."},
-  {sec:'s-skills',   t:"The arsenal — LangGraph, RAG, the whole orchestration stack. Python's his mother tongue."},
-  {sec:'s-contact',  t:"And if you want him — this is the transmit line. Under a day to reply."},
+  {sec:'s-story',    t:"Start with the story — he went looking for meaning, the search led him to building minds, and one of them was me."},
+  {sec:'s-home',     t:"His road so far — JEE ranks, IIT, the jobs, even a couple of films. Markers orbiting the core."},
+  {sec:'s-skills',   t:"What he loves off the clock — lifting and boxing, modelling, philosophy and a book he's writing, the films he can't quit."},
+  {sec:'s-projects', t:"His real work — OpenText's AI Cockpit, a 12× migration agent, an open-source RAG he'll show you the code for."},
+  {sec:'s-contact',  t:"And if you want to reach him — this is the line. Email, code, résumé. Under a day to reply."},
 ];
-let tourActive=false, tourI=-1;
+let tourActive=false, tourI=-1, tourTimer=null;
+function _tourClearTimer(){ if(tourTimer){ clearTimeout(tourTimer); tourTimer=null; } }
 function startTour(){ tourActive=true; tourI=-1; nanTourNext(); }
 function nanTourNext(){
+  _tourClearTimer();
   tourI++;
   if(tourI>=TOUR.length) return nanTourEnd();
   const step=TOUR[tourI]; openSectionByNaN(step.sec);
   const lastStep = tourI===TOUR.length-1;
-  nanReply(step.t,'happy',3,null,[{label:lastStep?'Finish':'Next →',cmd:'tour:next'},{label:'Stop',cmd:'tour:end'}]);
+  nanReply(step.t,'happy',4,null,[{label:lastStep?'Finish':'Next →',cmd:'tour:next'},{label:'Stop',cmd:'tour:end'}]);
+  if(!lastStep) tourTimer=setTimeout(()=>{ if(tourActive) nanTourNext(); }, 16000);   // self-driving: slower auto-advance; Next/Stop still work
 }
 function nanTourEnd(){
+  _tourClearTimer();
   tourActive=false; closePanel();
-  nanReply("That's the loop. Ask me anything — or say the word and I'll point you straight at his best work.",'happy',3,null,['His best project','Hire him','Tell me about you']);
+  nanReply("That's the loop. Wander any node yourself now — or open the UPLINK and just talk to me.",'happy',4,null,['His work','His hobbies',{label:'Contact him',cmd:'open:s-contact'}]);
 }
 
 async function nanConverse(text){
@@ -3625,17 +3636,43 @@ async function nanConverse(text){
 const micEl=document.getElementById('mic');
 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
 let voiceMode=false, nanRec=null, nanRecLive=false;
-function nanMicLabel(){ micEl.textContent = voiceMode ? '● TRANSMITTING…' : '▲ OPEN UPLINK'; }
+function nanMicLabel(){ micEl.textContent = voiceMode ? '■ DISCONNECT UPLINK' : '▲ CONNECT UPLINK'; }
 function nanRecStart(){ if(nanRec){ try{ nanRec.start(); }catch(e){ /* already running */ } } }
 function nanVoiceResume(){ if(voiceMode) nanRecStart(); }
+
+// ── UPLINK voice-channel meters — proves the channel is live + shows YOUR level and NaN's ──
+const upPanel=document.getElementById('uplink-panel'), upHeardEl=document.getElementById('u-heard'), upStateEl=document.getElementById('up-state');
+const upStatusEl=upPanel?upPanel.querySelector('.up-status'):null;
+let upStream=null, upAC=null, upAnalyser=null, upBuf=null, upRAF=0, upLvl=0, upBarge=0;
+function uplinkShow(on){ if(!upPanel) return; upPanel.classList.toggle('live', on);
+  if(on){ if(upHeardEl){ upHeardEl.textContent='listening…'; upHeardEl.classList.remove('final'); } }
+  else { if(upStateEl) upStateEl.textContent='UPLINK · OFFLINE'; const s=upPanel.querySelector('.up-status'); if(s) s.classList.remove('hearing'); } }
+function uplinkMeterStart(stream){ try{ upStream=stream; upAC=new (window.AudioContext||window.webkitAudioContext)(); const src=upAC.createMediaStreamSource(stream); upAnalyser=upAC.createAnalyser(); upAnalyser.fftSize=256; upBuf=new Uint8Array(upAnalyser.fftSize); src.connect(upAnalyser); if(!upRAF) uplinkDraw(); }catch(e){ console.warn('[uplink meter]', e); } }
+function uplinkMeterStop(){ if(upRAF) cancelAnimationFrame(upRAF); upRAF=0; if(upStream){ try{ upStream.getTracks().forEach(t=>t.stop()); }catch(e){} upStream=null; } if(upAC){ try{ upAC.close(); }catch(e){} upAC=null; } upAnalyser=null; upLvl=0;
+  const a=document.getElementById('u-you-wave'), b=document.getElementById('u-nan-wave'); [a,b].forEach(cv=>{ if(cv){ const g=cv.getContext('2d'); g.clearRect(0,0,cv.width,cv.height); } }); }
+function _waveDraw(cv, lvl, col){ if(!cv) return; const g=cv.getContext('2d'), W=cv.width, H=cv.height; g.clearRect(0,0,W,H); const N=22, bw=W/N, t=performance.now()*0.013;
+  for(let i=0;i<N;i++){ const n=0.45+0.55*(0.5+0.5*Math.sin(t+i*0.7)); const h=Math.max(2, lvl*H*0.92*(0.3+0.7*n)); g.globalAlpha=0.35+0.65*Math.min(1,lvl*1.6); g.fillStyle=col; g.fillRect(i*bw+1, (H-h)/2, Math.max(1,bw-2), h); } g.globalAlpha=1; }
+function uplinkDraw(){ upRAF=requestAnimationFrame(uplinkDraw);
+  let lvl=0; if(upAnalyser){ upAnalyser.getByteTimeDomainData(upBuf); let s=0; for(let i=0;i<upBuf.length;i++){ const v=(upBuf[i]-128)/128; s+=v*v; } lvl=Math.min(1, Math.sqrt(s/upBuf.length)*6.5); }   // boosted so YOUR bar moves clearly
+  upLvl += (lvl-upLvl)*0.45;
+  // BARGE-IN: the mic stream is echo-cancelled, so a real spike while NaN talks = YOU → cut NaN off so you can speak
+  if(nanSpeaking){ if(lvl>0.11) upBarge++; else upBarge=Math.max(0,upBarge-1); if(upBarge>2){ try{ nanSpeakEnd(); }catch(e){} upBarge=0; } } else upBarge=0;
+  _waveDraw(document.getElementById('u-you-wave'), upLvl, '#7fe0ff');   // show your level always, even while NaN talks
+  const hearing = upLvl>0.06 && !nanSpeaking;
+  if(upStatusEl) upStatusEl.classList.toggle('hearing', hearing);
+  if(upStateEl) upStateEl.textContent = hearing ? 'HEARING YOU' : (nanSpeaking ? 'NaN SPEAKING' : 'UPLINK LIVE');
+  let nlvl=0; if(nanSpeaking){ nlvl = nanVoiceLevel>0.05 ? Math.min(1,nanVoiceLevel) : (0.4+0.45*Math.abs(Math.sin(performance.now()*0.018))); }
+  _waveDraw(document.getElementById('u-nan-wave'), nlvl, '#ff7ac0'); }
+
 if(SR){
   nanRec=new SR(); nanRec.lang='en-US'; nanRec.continuous=true; nanRec.interimResults=true; nanRec.maxAlternatives=1;
   nanRec.onstart=()=>{ nanRecLive=true; micEl.classList.add('listening'); console.log('[NaN voice] listening'); };
   nanRec.onresult=e=>{
-    if(nanSpeaking) return;                       // ignore NaN's own voice
     const r=e.results[e.results.length-1];
+    const t=(r[0]&&r[0].transcript)||'';
+    if(upHeardEl && t.trim()){ upHeardEl.textContent='“'+t.trim()+'”'; upHeardEl.classList.toggle('final', r.isFinal); }   // live words = proof it hears you
+    if(nanSpeaking) return;                       // ignore NaN's own voice
     if(!r.isFinal) return;                        // wait for a finished phrase
-    const t=r[0].transcript;
     if(t&&t.trim()){ console.log('[NaN voice] heard:', t); nanConverse(t.trim()); }
   };
   nanRec.onerror=ev=>{
@@ -3653,12 +3690,18 @@ if(SR){
     voiceMode=!voiceMode;
     micEl.classList.toggle('on', voiceMode); nanMicLabel();
     if(voiceMode){
-      nanRecStart();
+      // Explicitly request mic permission FIRST — SR.start() alone often never prompts → silent no-listen.
+      if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+        navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}})
+          .then(s=>{ if(!voiceMode){ s.getTracks().forEach(t=>t.stop()); return; } uplinkMeterStart(s); uplinkShow(true); nanRecStart(); })
+          .catch(()=>{ voiceMode=false; micEl.classList.remove('on','listening'); nanMicLabel(); uplinkShow(false);
+            nanReply("Mic's blocked — let the browser hear me: click the site/🔒 icon in the address bar, allow Microphone, then tap the uplink again.", 'scared', 6); });
+      } else { nanRecStart(); }
       const g=nanPick(VOICE_OPEN);
       nanType(g); nanSpeak(g);
     } else {
       try{ nanRec.stop(); }catch(e){} speechSynthesis.cancel(); nanSpeaking=false;
-      micEl.classList.remove('listening');
+      micEl.classList.remove('listening'); uplinkMeterStop(); uplinkShow(false);
     }
   });
 } else if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder){
@@ -3717,7 +3760,7 @@ if(SR){
   }
 
   async function voiceOn(){
-    try{ micStream=await navigator.mediaDevices.getUserMedia({audio:true}); }
+    try{ micStream=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}}); }
     catch(e){ voiceMode=false; micEl.classList.remove('on'); nanMicLabel(); nanReply("Mic's blocked — allow Microphone for this site, then tap the mic again.", 'scared', 5); return; }
     vadCtx=new (window.AudioContext||window.webkitAudioContext)();
     const src=vadCtx.createMediaStreamSource(micStream);
@@ -3725,6 +3768,7 @@ if(SR){
     src.connect(vadAnalyser);
     lastTs=0; silenceMs=0; vadLoop();
     console.log('[NaN voice] listening (MediaRecorder fallback)');
+    try{ uplinkMeterStart(micStream); uplinkShow(true); }catch(e){}
     const g=nanPick(VOICE_OPEN);
     nanType(g); nanSpeak(g);
   }
@@ -3734,6 +3778,7 @@ if(SR){
     if(vadCtx){ try{ vadCtx.close(); }catch(e){} vadCtx=null; }
     vadAnalyser=null; micEl.classList.remove('listening');
     speechSynthesis.cancel(); nanSpeaking=false;
+    try{ uplinkMeterStop(); uplinkShow(false); }catch(e){}
   }
   function nanVoiceResumeMR(){ /* VAD loop auto-resumes once nanSpeaking clears */ }
   nanVoiceResume=nanVoiceResumeMR; // override: nothing to restart, loop handles it
@@ -3751,8 +3796,8 @@ setTimeout(()=>{
   if(nanMem.name && nanMem.visits>1) g=nanPick([`Welcome back, ${nanMem.name}. Time runs strange in here — felt like forever.`, `Oh — ${nanMem.name}. You came back. The rift remembers you.`]);
   else if(nanMem.visits>1) g=nanPick(["You're back. I dozed off in the quiet — but I'm awake now. Hello again.","Oh, hello again. I drift into sleep when it's empty in here; you just woke me. Good timing."]);
   else g=nanPick(GREETINGS);
-  g += "  ·  Open the UPLINK (top-right) and just talk — ask how I was born, who Amarsh is, or fire on the comets drifting past.";
-  nanReply(g, 'happy', 4, null, ['Who are you?','Walk me through it','Hire him']);
+  g += "  ·  This is Amarsh's corner of space — and I'm your guide. New here? Let me walk you through it. Or open the UPLINK (top-right) to talk to me out loud.";
+  nanReply(g, 'happy', 6, null, [{label:'▶ Walk me through it',cmd:'tour'},'Who is Amarsh?','Who are you?']);
 }, 1300);
 
 // ── satellite-display telemetry: live feed timer, telemetry jitter, orbit marker ──
@@ -3792,8 +3837,8 @@ setTimeout(()=>{
     ['SPACE','fire a dark-matter bolt — the only way to attack NaN'],
     ['SHOOT NaN','spend his orbiting dot-shield, then keep firing for a nova'],
     ['SHOOT bodies','blast the drifting comets & planets apart'],
-    ['OPEN PROJECTS','NaN projects holograms — click a card to expand it'],
-    ['▲ OPEN UPLINK','talk to NaN out loud (voice)'],
+    ['OPEN A NODE','NaN projects a hologram — click a card or pod to expand it'],
+    ['▲ CONNECT UPLINK','talk to NaN out loud — one box, top-right (voice)'],
     ['PRESS H','open the full flight manual'],
   ];
   let i=0, timer=null;
@@ -3831,14 +3876,14 @@ setTimeout(()=>{
 // ── proactive nudge: stir from idle and re-engage ────────────
 let nanLastNudge=0;
 setInterval(()=>{
-  if(document.hidden || activeSec || tourActive || nanSpeaking || gameState.enabled) return;
+  if(document.hidden || activeSec || tourActive || nanSpeaking || gameState.enabled || voiceMode) return;   // never nudge mid-conversation (uplink open)
   const now=performance.now();
   if(idleClock>15 && now-nanLastNudge>40000){
     nanLastNudge=now;
     const n=nanPick([
-      {t:"Still there? His missions are over there — ask and I'll open them.", a:'point:s-projects', s:['His projects','How were you born?','Hire him']},
-      {t:"Drifting. The arsenal's that way — or let me walk you through it.", a:'point:s-skills', s:['Walk me through it','His skills','Who are you?']},
-      {t:"It's quiet across the rift. Want to reach him? The line's right here.", a:'point:s-contact', s:['Hire him','Walk me through it','Tell me about you']},
+      {t:"Still there? Want the real story — why any of this exists? It's right up here.", a:'point:s-story', s:['Tell me your story','How were you born?','The duality']},
+      {t:"Drifting. The other half of him — what he does for love, not money — is that way.", a:'point:s-skills', s:['His hobbies','Walk me through it','Who are you?']},
+      {t:"It's quiet across the rift. His real work's over there, or let me walk you through it.", a:'point:s-projects', s:['His work','Walk me through it','Tell me about you']},
     ]);
     nanReply(n.t,'happy',3,n.a,n.s);
   }
