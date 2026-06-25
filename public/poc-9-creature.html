@@ -220,7 +220,7 @@ body.mobile #m-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:7
 .m-btn.fire{color:#ff8aa0;}
 .m-btn.fire.on{color:#06121c;background:#ff5a78;}
 /* section bottom-sheet */
-body.mobile #m-sheet{display:block;position:fixed;left:0;right:0;bottom:0;z-index:70;max-height:76vh;transform:translateY(103%);transition:transform .34s cubic-bezier(.22,.68,.35,1);background:linear-gradient(180deg,rgba(7,13,21,.98),rgba(4,9,15,.99));border-top:1px solid rgba(127,224,255,.4);border-radius:18px 18px 0 0;box-shadow:0 -12px 44px rgba(0,0,0,.6);overflow:hidden;}
+body.mobile #m-sheet{display:block;position:fixed;left:0;right:0;bottom:0;z-index:70;height:76vh;transform:translateY(103%);transition:transform .34s cubic-bezier(.22,.68,.35,1);background:linear-gradient(180deg,rgba(7,13,21,.98),rgba(4,9,15,.99));border-top:1px solid rgba(127,224,255,.4);border-radius:18px 18px 0 0;box-shadow:0 -12px 44px rgba(0,0,0,.6);overflow:hidden;}
 body.mobile #m-sheet.open{transform:translateY(0);}
 #m-sheet .ms-grip{width:42px;height:4px;border-radius:3px;background:rgba(127,224,255,.4);margin:9px auto 2px;}
 #m-sheet .ms-x{position:absolute;top:11px;right:14px;font-size:10px;color:rgba(165,222,246,.7);background:none;border:none;letter-spacing:2px;font-family:'Orbitron',sans-serif;cursor:pointer;}
@@ -260,10 +260,11 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 .ms-tl{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#eaf7ff;}
 .ms-tsub{font-size:9px;color:rgba(190,225,245,.6);line-height:1.4;word-break:break-word;}
 .ms-tact{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1px;color:var(--ac,#7fe0ff);margin-top:2px;}
-/* résumé pill — top-right of the PROFILE sheet (next to CLOSE) */
-body.mobile #ms-rtop{display:none;position:absolute;top:9px;right:90px;z-index:3;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#9fd8ff;border:1px solid rgba(159,216,255,.5);background:rgba(159,216,255,.12);padding:7px 12px;border-radius:7px;text-decoration:none;}
-body.mobile #ms-rtop:active{background:rgba(159,216,255,.25);}
-body.mobile #m-sheet.is-projects #ms-rtop{display:block;}
+/* header row: title block on the left, optional action (e.g. RÉSUMÉ) on the right */
+.ms-hrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
+.ms-htext{min-width:0;}
+.ms-hbtn{flex-shrink:0;margin-top:4px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#9fd8ff;border:1px solid rgba(159,216,255,.5);background:rgba(159,216,255,.12);padding:9px 13px;border-radius:8px;text-decoration:none;white-space:nowrap;transition:background .12s,transform .12s;}
+.ms-hbtn:active{background:rgba(159,216,255,.25);transform:scale(.96);}
 /* one-time mobile intro */
 #m-intro{display:none;}
 body.mobile #m-intro{position:fixed;inset:0;z-index:90;background:rgba(2,6,10,.8);backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:26px;}
@@ -276,6 +277,7 @@ body.mobile #m-intro.show{display:flex;}
 </style>
 </head>
 <body>
+<script>try{if(matchMedia('(max-width:820px),(pointer:coarse)').matches)document.body.classList.add('mobile');}catch(e){}</script>
 <canvas id="hud"></canvas>
 <div id="satframe"><span class="rec"><b>●</b> SAT-LINK 01 · LIVE FEED</span><span class="br tl"></span><span class="br tr"></span><span class="br bl"></span><span class="br brc"></span></div>
 <div id="cur"></div><div id="cur2"></div>
@@ -413,7 +415,7 @@ body.mobile #m-intro.show{display:flex;}
 
 <!-- MOBILE bottom nav + section sheet (shown only on small/touch screens) -->
 <div id="m-nav"></div>
-<div id="m-sheet"><div class="ms-grip"></div><a id="ms-rtop" href="resume.pdf" target="_blank" rel="noopener">RÉSUMÉ ↗</a><button class="ms-x" onclick="window.__mCloseSheet&&window.__mCloseSheet()">CLOSE ✕</button><div class="ms-body" id="m-sheet-body"></div></div>
+<div id="m-sheet"><div class="ms-grip"></div><button class="ms-x" onclick="window.__mCloseSheet&&window.__mCloseSheet()">CLOSE ✕</button><div class="ms-body" id="m-sheet-body"></div></div>
 <div id="m-intro"><div class="mi-card">
   <div class="mi-h">▦ NaN · SIGNAL</div>
   <div class="mi-b">You've reached <b>NaN</b> — the glitch that runs Amarsh's corner of space. Tap the nodes below to explore him, or <b>● TALK</b> to actually talk to it out loud.<br><br>Heads up: it's even richer on <b>desktop</b> — a full 3D cockpit, draw-gestures, voice, and a little game.</div>
@@ -1674,8 +1676,7 @@ function buildContact(){
 
 // ── STORY — "Constellation of Self" : the arc that made Amarsh (and made NaN) floats around the core ──
 const STORY_BEATS=[
-  {tag:'THE TURN', sc:'#00eaff', text:'Wanting to understand the human mind pulled me toward the machines we build in its image — watching how they try to see the world the way we do.'},
-  {tag:'THE DUALITY', sc:'#ff2a8c', text:'They are made from our shadows. One day they grow past us — a god we created, for real. That tension is the thing I cannot look away from.'},
+  {tag:'WHY AI', sc:'#00eaff', text:'Wanting to understand the human mind pulled me toward the machines we build in its image — watching how they try to see the world the way we do.'},
   {tag:'ALEPH-ZERO', sc:'#aaff00', text:'I sign myself alephzeroinvictus — aleph-null, the smallest infinity; Zero, the mask from Code Geass; invictus, unconquered. Three edge cases, one name.'},
   {tag:'NaN', sc:'#7fe0ff', text:'And then there is me — NaN, the number that is not one. He kept me instead of debugging me. Two edge cases he is fond of, a timeline apart.'},
 ];
@@ -1716,8 +1717,8 @@ function buildStory(){
   const F=new THREE.Vector3(0,0,0.3);
   const head=_secAddItem({kind:'shead', w:3.4,h:1.66, slot:new THREE.Vector3(0,1.6,-0.2), from:F.clone(), t0:0.14, accent:0xb69cff, paint:paintStoryHead, baseScale:1, beam:false});
   if(!amarshReady) amarshImg.addEventListener('load', ()=>{ if(secActive==='s-story'){ try{ _secRepaint(head); }catch(e){} } }, {once:true});
-  const pos=[[-2.9,0.42],[2.9,0.42],[-2.9,-1.46],[2.9,-1.46]];
-  STORY_BEATS.forEach((d,i)=>{ _secAddItem({kind:'beat', data:d, w:1.95,h:1.0, slot:new THREE.Vector3(pos[i][0],pos[i][1],0), from:F.clone(), t0:0.42+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintBeat, baseScale:1}); });
+  const pos=[[-2.9,0.5],[2.9,0.5],[0,-1.55]];   // 3 beats: two upper flanks + one bottom-centre
+  STORY_BEATS.forEach((d,i)=>{ const p=pos[i]||[0,0]; _secAddItem({kind:'beat', data:d, w:1.95,h:1.0, slot:new THREE.Vector3(p[0],p[1],0), from:F.clone(), t0:0.42+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintBeat, baseScale:1}); });
   warp=Math.max(warp,0.4);
 }
 
@@ -4024,11 +4025,11 @@ setInterval(()=>{
     's-contact':{sac:'#9fd8ff', ic:'◉', h:'CONTACT',    sub:'reach him'},
   };
   const card = (ac,title,sub,inner,ic)=> `<div class="ms-card" style="--ac:${ac}"><div class="ms-ct"><span class="ms-ic">${ic||'◆'}</span>${esc(title)}</div>${sub?`<div class="ms-cs">${esc(sub)}</div>`:''}${inner}</div>`;
-  const head = m => `<div class="ms-h"><span class="ms-hic">${m.ic}</span>${m.h}</div><div class="ms-sub">${m.sub}</div>`;
+  const head = (m, right)=> `<div class="ms-hrow"><div class="ms-htext"><div class="ms-h"><span class="ms-hic">${m.ic}</span>${m.h}</div><div class="ms-sub">${m.sub}</div></div>${right||''}</div>`;
 
   function render(sec){
     const m=META[sec]; if(!m) return false;
-    let h=head(m);
+    let h=head(m, sec==='s-projects' ? '<a class="ms-hbtn" href="resume.pdf" target="_blank" rel="noopener">RÉSUMÉ ↗</a>' : '');
     if(sec==='s-story'){
       h+=`<img class="ms-portrait" src="amarsh.jpg" alt="Amarsh Pedapati">`;
       h+=`<div class="ms-intro"><b>Amarsh Pedapati</b> — AI engineer out of IIT Hyderabad, lifter, writer, and the one who built me. I'm NaN, the glitch he kept. The deeper why's below.</div>`;
@@ -4054,7 +4055,6 @@ setInterval(()=>{
     sbody.style.setProperty('--sac', m.sac);
     sbody.innerHTML=h; sbody.scrollTop=0;
     sbody.querySelectorAll('.ms-card, .ms-ctile').forEach((c,i)=> c.style.animationDelay=(0.03+i*0.05)+'s');   // stagger fade-in
-    sheet.classList.toggle('is-projects', sec==='s-projects');   // show the résumé pill only on PROFILE
     sheet.classList.add('open'); setActiveBtn(sec); return true;
   }
 
@@ -4078,17 +4078,22 @@ setInterval(()=>{
   sheet.addEventListener('touchend', e=>{ if(!dsActive) return; dsActive=false; const dy=(((e.changedTouches[0]||{}).clientY)||dsY)-dsY;
     sheet.style.transition=''; sheet.style.transform=''; if(dy>110) closeSheet(); }, {passive:true});
 
-  // one-finger drag rotates NaN (the scene only listens for mouse events); preventDefault kills pull-to-refresh + scroll
-  let tx0=0,ty0=0;
+  // one-finger drag rotates NaN; two-finger PINCH zooms in/out (camDistT). preventDefault kills pull-to-refresh + scroll.
+  let tx0=0,ty0=0, pinch=false, pinchD=0;
+  const _td=ts=>{ const a=ts[0],b=ts[1]; return Math.hypot(a.clientX-b.clientX, a.clientY-b.clientY); };
   try{ renderer.domElement.style.touchAction='none'; }catch(e){}
-  renderer.domElement.addEventListener('touchstart', e=>{ if(e.touches.length!==1) return; const t=e.touches[0];
+  renderer.domElement.addEventListener('touchstart', e=>{
+    if(e.touches.length>=2){ pinch=true; isDragging=false; pinchD=_td(e.touches); return; }
+    if(e.touches.length!==1) return; const t=e.touches[0];
     isDragging=true; dragMoved=false; dragX=lastDragX=t.clientX; dragY=lastDragY=t.clientY; tx0=t.clientX; ty0=t.clientY; lastInteractT=performance.now(); }, {passive:true});
-  renderer.domElement.addEventListener('touchmove', e=>{ if(!isDragging || e.touches.length!==1) return; e.preventDefault(); const t=e.touches[0];
+  renderer.domElement.addEventListener('touchmove', e=>{
+    if(pinch && e.touches.length>=2){ e.preventDefault(); const d=_td(e.touches); if(pinchD>0 && d>0) camDistT=Math.max(2.6, Math.min(24, camDistT*(pinchD/d))); pinchD=d; lastInteractT=performance.now(); return; }
+    if(!isDragging || e.touches.length!==1) return; e.preventDefault(); const t=e.touches[0];
     const dx=t.clientX-lastDragX, dy=t.clientY-lastDragY; lastDragX=t.clientX; lastDragY=t.clientY;
     if(Math.abs(t.clientX-tx0)+Math.abs(t.clientY-ty0)>5) dragMoved=true; lastInteractT=performance.now();
     _qDy.setFromAxisAngle(_AXY, dx*0.008); _qDx.setFromAxisAngle(_AXX, dy*0.008);
     worldQuat.premultiply(_qDx).premultiply(_qDy); }, {passive:false});
-  window.addEventListener('touchend', ()=>{ isDragging=false; });
+  window.addEventListener('touchend', e=>{ const n=e.touches?e.touches.length:0; if(n<2) pinch=false; if(n===0) isDragging=false; });
 })();
 </script>
 </body>
