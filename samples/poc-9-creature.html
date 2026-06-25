@@ -8,7 +8,7 @@
 <script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;}
-html,body{width:100%;height:100%;background:#000;overflow:hidden;cursor:none;}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;cursor:none;overscroll-behavior:none;}
 body{font-family:'Share Tech Mono',monospace;}
 
 #hud{position:fixed;inset:0;display:block;pointer-events:none;z-index:1;}
@@ -242,6 +242,15 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 .ms-stat{flex:1;text-align:center;border:1px solid rgba(170,255,0,.22);background:rgba(170,255,0,.05);border-radius:9px;padding:10px 4px;}
 .ms-stat .v{font-family:'Orbitron',sans-serif;font-size:21px;font-weight:900;color:#eaffd0;line-height:1;}
 .ms-stat .l{font-size:7.5px;letter-spacing:1px;color:rgba(170,255,0,.7);margin-top:5px;}
+/* one-time mobile intro */
+#m-intro{display:none;}
+body.mobile #m-intro{position:fixed;inset:0;z-index:90;background:rgba(2,6,10,.8);backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:26px;}
+body.mobile #m-intro.show{display:flex;}
+.mi-card{max-width:340px;background:linear-gradient(180deg,rgba(9,16,26,.98),rgba(5,10,16,.99));border:1px solid rgba(127,224,255,.4);border-radius:16px;padding:22px 20px;box-shadow:0 0 50px rgba(0,238,255,.18);}
+.mi-h{font-family:'Orbitron',sans-serif;font-size:13px;font-weight:900;letter-spacing:3px;color:#9ff0ff;text-shadow:0 0 12px rgba(0,238,255,.5);margin-bottom:13px;}
+.mi-b{font-size:13px;line-height:1.62;color:rgba(226,240,250,.86);}
+.mi-b b{color:#bdf0ff;}
+.mi-x{margin-top:18px;width:100%;font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:2px;color:#06121c;background:#7fe0ff;border:none;border-radius:9px;padding:13px;cursor:pointer;}
 </style>
 </head>
 <body>
@@ -383,6 +392,11 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 <!-- MOBILE bottom nav + section sheet (shown only on small/touch screens) -->
 <div id="m-nav"></div>
 <div id="m-sheet"><div class="ms-grip"></div><button class="ms-x" onclick="window.__mCloseSheet&&window.__mCloseSheet()">CLOSE ✕</button><div class="ms-body" id="m-sheet-body"></div></div>
+<div id="m-intro"><div class="mi-card">
+  <div class="mi-h">▦ NaN · SIGNAL</div>
+  <div class="mi-b">You've reached <b>NaN</b> — the glitch that runs Amarsh's corner of space. Tap the nodes below to explore him, or <b>● TALK</b> to actually talk to it out loud.<br><br>Heads up: it's even richer on <b>desktop</b> — a full 3D cockpit, draw-gestures, voice, and a little game.</div>
+  <button class="mi-x" id="mi-dismiss">EXPLORE →</button>
+</div></div>
 
 <script type="module">
 import * as THREE from 'three';
@@ -2217,7 +2231,13 @@ renderer.domElement.addEventListener('click',e=>{
     stimPoke = Math.min(0.4, stimPoke + 0.12); idleClock = 0;
     playSound('ripple');
     const now=performance.now();
-    if(now-lastShotReact>2500){ lastShotReact=now; try{ nanReply("Mm—careful. Pokes I can take. If you want a reaction, you'll have to actually shoot me.", null, 3); }catch(e){} }
+    if(now-lastShotReact>2500){ lastShotReact=now;
+      const pokeLine = document.body.classList.contains('mobile')
+        ? nanPick(["Hey — that tickles. Tap a node down there to explore, or hit ● TALK and actually say something to me.",
+                   "Mm, a poke. I'm better company in conversation — tap ● TALK, or pick a node below.",
+                   "Careful, I'm ticklish. Want the real me? Open the uplink (● TALK) and talk."])
+        : "Mm—careful. Pokes I can take. If you want a reaction, you'll have to actually shoot me.";
+      try{ nanReply(pokeLine, 'happy', 3); }catch(e){} }
     return;
   }
   ripples.push({x:e.clientX,y:e.clientY,t:0,maxR:90});
@@ -3959,6 +3979,17 @@ setInterval(()=>{
   nav.appendChild(talk);
   setInterval(()=>{ try{ talk.classList.toggle('on', !!document.getElementById('mic')?.classList.contains('on')); }catch(e){} }, 600);
 
+  // one-time intro overlay (mobile only) — "this has more on desktop"
+  try{
+    const intro=document.getElementById('m-intro');
+    if(intro && mq.matches && !localStorage.getItem('nan_m_intro_v1')){
+      const dismiss=()=>{ intro.classList.remove('show'); try{ localStorage.setItem('nan_m_intro_v1','1'); }catch(e){} };
+      setTimeout(()=>{ if(document.body.classList.contains('mobile')) intro.classList.add('show'); }, 900);
+      document.getElementById('mi-dismiss').addEventListener('click', dismiss);
+      intro.addEventListener('click', e=>{ if(e.target===intro) dismiss(); });
+    }
+  }catch(e){}
+
   function setActiveBtn(sec){ nav.querySelectorAll('.m-btn').forEach(b=> b.classList.toggle('act', b.dataset.sec===sec)); }
   function closeSheet(){ sheet.classList.remove('open'); setActiveBtn(null); if(activeSec && SEC_RE.test(activeSec)) activeSec=null; }
   window.__mCloseSheet = closeSheet;
@@ -4006,15 +4037,16 @@ setInterval(()=>{
   const _closePanel = window.closePanel;
   window.closePanel = function(){ if(document.body.classList.contains('mobile')) closeSheet(); return _closePanel(); };
 
-  // one-finger drag rotates NaN (the scene only listens for mouse events)
+  // one-finger drag rotates NaN (the scene only listens for mouse events); preventDefault kills pull-to-refresh + scroll
   let tx0=0,ty0=0;
+  try{ renderer.domElement.style.touchAction='none'; }catch(e){}
   renderer.domElement.addEventListener('touchstart', e=>{ if(e.touches.length!==1) return; const t=e.touches[0];
     isDragging=true; dragMoved=false; dragX=lastDragX=t.clientX; dragY=lastDragY=t.clientY; tx0=t.clientX; ty0=t.clientY; lastInteractT=performance.now(); }, {passive:true});
-  renderer.domElement.addEventListener('touchmove', e=>{ if(!isDragging || e.touches.length!==1) return; const t=e.touches[0];
+  renderer.domElement.addEventListener('touchmove', e=>{ if(!isDragging || e.touches.length!==1) return; e.preventDefault(); const t=e.touches[0];
     const dx=t.clientX-lastDragX, dy=t.clientY-lastDragY; lastDragX=t.clientX; lastDragY=t.clientY;
     if(Math.abs(t.clientX-tx0)+Math.abs(t.clientY-ty0)>5) dragMoved=true; lastInteractT=performance.now();
     _qDy.setFromAxisAngle(_AXY, dx*0.008); _qDx.setFromAxisAngle(_AXX, dy*0.008);
-    worldQuat.premultiply(_qDx).premultiply(_qDy); }, {passive:true});
+    worldQuat.premultiply(_qDx).premultiply(_qDy); }, {passive:false});
   window.addEventListener('touchend', ()=>{ isDragging=false; });
 })();
 </script>
