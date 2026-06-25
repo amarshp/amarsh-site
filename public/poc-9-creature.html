@@ -2233,6 +2233,7 @@ window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).
 // ── CLICK ─────────────────────────────────────────────────────
 renderer.domElement.addEventListener('click',e=>{
   if(dragMoved){ dragMoved=false; return; }   // that "click" was actually a drag-to-rotate → don't poke/select
+  if(document.body.classList.contains('mobile')){ const sh=document.getElementById('m-sheet'); if(sh && sh.classList.contains('open')){ if(window.__mCloseSheet) window.__mCloseSheet(); return; } }   // tap the scene → close the open panel
   if(hovNav>=0){ const nd=NAV[hovNav];
     if(nd.game){ if(gameState.enabled) exitDefendMode(); else enterDefendMode(); return; }   // DEFEND node toggles the game
     if(gameState.enabled) return;                                              // no section nav while the game is running
