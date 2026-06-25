@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const KEY = process.env.OPENAI_API_KEY || '';
-const MODEL = process.env.NAN_MODEL || 'gpt-4o-mini';
+const MODEL = process.env.NAN_MODEL || 'gpt-4.1-nano';   // OpenAI's fastest/cheapest "instant" model
 
 // ── rate limiting ───────────────────────────────────────────
 // NOTE: in-memory = per warm instance. Reliable for a single instance /
