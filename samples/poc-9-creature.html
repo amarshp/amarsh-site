@@ -145,7 +145,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 #sound-toggle.on{color:rgba(204,255,0,.45);border-color:rgba(204,255,0,.2);}
 
 /* ── NaN entity chat ── */
-#nanSays{position:fixed;top:9%;left:50%;transform:translateX(-50%);max-width:540px;width:80%;text-align:center;z-index:48;pointer-events:none;font-family:'Share Tech Mono',monospace;font-size:15px;line-height:1.7;color:#eaffff;text-shadow:0 0 10px rgba(120,220,255,.55);opacity:0;transition:opacity .4s;letter-spacing:.3px;}
+#nanSays{position:fixed;bottom:96px;top:auto;left:50%;transform:translateX(-50%);max-width:600px;width:84%;text-align:center;z-index:48;pointer-events:none;font-family:'Share Tech Mono',monospace;font-size:15px;line-height:1.55;color:#eaffff;text-shadow:0 0 8px rgba(120,220,255,.5);opacity:0;transition:opacity .4s;letter-spacing:.3px;background:rgba(4,10,16,.6);backdrop-filter:blur(3px);padding:9px 18px;border-radius:12px;border:1px solid rgba(127,224,255,.16);box-shadow:0 4px 24px rgba(0,0,0,.4);}
 #nanSays.vis{opacity:1;}
 #nanSays .who{display:block;font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:5px;color:#7fe0ff;opacity:.7;margin-bottom:7px;}
 #nanSays .gl{color:#ff4466;text-shadow:0 0 8px #ff4466;}
@@ -212,7 +212,7 @@ body.mobile .tn{font-size:15px;letter-spacing:3px;}
 body.mobile .ts{font-size:8px;letter-spacing:1.5px;margin-top:2px;}
 body.mobile .tr{display:none;}
 body.mobile #sound-toggle{top:calc(14px + env(safe-area-inset-top,0));left:auto;right:14px;}
-body.mobile #nanSays{top:92px;font-size:14px;line-height:1.55;width:90%;max-width:none;}
+body.mobile #nanSays{top:90px;bottom:auto;font-size:13.5px;line-height:1.5;width:92%;max-width:none;}
 body.mobile #nanChips{top:auto;bottom:140px;}
 body.mobile #uplink-panel{top:auto;bottom:72px;right:10px;left:10px;width:auto;flex-direction:column-reverse;}
 /* bottom nav */
@@ -1723,7 +1723,7 @@ function buildStory(){
   const F=new THREE.Vector3(0,0,0.3);
   const head=_secAddItem({kind:'shead', w:3.4,h:1.66, slot:new THREE.Vector3(0,1.6,-0.2), from:F.clone(), t0:0.14, accent:0xb69cff, paint:paintStoryHead, baseScale:1, beam:false});
   if(!amarshReady) amarshImg.addEventListener('load', ()=>{ if(secActive==='s-story'){ try{ _secRepaint(head); }catch(e){} } }, {once:true});
-  const pos=[[-2.9,0.5],[2.9,0.5],[0,-1.55]];   // 3 beats: two upper flanks + one bottom-centre
+  const pos=[[-2.9,0.5],[2.9,0.5],[0,-1.2]];   // 3 beats: two upper flanks + one lower-centre (kept clear of the bottom caption)
   STORY_BEATS.forEach((d,i)=>{ const p=pos[i]||[0,0]; _secAddItem({kind:'beat', data:d, w:1.95,h:1.0, slot:new THREE.Vector3(p[0],p[1],0), from:F.clone(), t0:0.42+i*0.18, accent:new THREE.Color(d.sc).getHex(), paint:paintBeat, baseScale:1}); });
   warp=Math.max(warp,0.4);
 }
