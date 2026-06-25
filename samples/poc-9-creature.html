@@ -250,6 +250,20 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 .ms-stat{flex:1;text-align:center;border:1px solid rgba(170,255,0,.22);background:rgba(170,255,0,.05);border-radius:9px;padding:10px 4px;}
 .ms-stat .v{font-family:'Orbitron',sans-serif;font-size:21px;font-weight:900;color:#eaffd0;line-height:1;}
 .ms-stat .l{font-size:7.5px;letter-spacing:1px;color:rgba(170,255,0,.7);margin-top:5px;}
+/* CONTACT — 2-column tile grid */
+.ms-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:2px;}
+.ms-ctile{display:flex;flex-direction:column;gap:5px;position:relative;overflow:hidden;border:1px solid rgba(127,224,255,.18);border-top:2px solid var(--ac,#7fe0ff);background:linear-gradient(180deg,rgba(127,224,255,.07),rgba(8,14,22,.4));border-radius:12px;padding:14px 13px;text-decoration:none;box-shadow:inset 0 0 22px rgba(0,238,255,.035);opacity:0;transform:translateY(10px);animation:msIn .42s cubic-bezier(.22,.68,.35,1) forwards;transition:filter .12s,transform .12s;}
+.ms-ctile::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,8,14,.07) 2px 3px);}
+.ms-ctile:active{filter:brightness(1.18);transform:scale(.97);}
+.ms-ctile>*{position:relative;z-index:1;}
+.ms-tic{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--ac,#7fe0ff);text-shadow:0 0 10px var(--ac,#7fe0ff);line-height:1;}
+.ms-tl{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#eaf7ff;}
+.ms-tsub{font-size:9px;color:rgba(190,225,245,.6);line-height:1.4;word-break:break-word;}
+.ms-tact{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1px;color:var(--ac,#7fe0ff);margin-top:2px;}
+/* résumé pill — top-right of the PROFILE sheet (next to CLOSE) */
+body.mobile #ms-rtop{display:none;position:absolute;top:9px;right:90px;z-index:3;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#9fd8ff;border:1px solid rgba(159,216,255,.5);background:rgba(159,216,255,.12);padding:7px 12px;border-radius:7px;text-decoration:none;}
+body.mobile #ms-rtop:active{background:rgba(159,216,255,.25);}
+body.mobile #m-sheet.is-projects #ms-rtop{display:block;}
 /* one-time mobile intro */
 #m-intro{display:none;}
 body.mobile #m-intro{position:fixed;inset:0;z-index:90;background:rgba(2,6,10,.8);backdrop-filter:blur(5px);align-items:center;justify-content:center;padding:26px;}
@@ -399,7 +413,7 @@ body.mobile #m-intro.show{display:flex;}
 
 <!-- MOBILE bottom nav + section sheet (shown only on small/touch screens) -->
 <div id="m-nav"></div>
-<div id="m-sheet"><div class="ms-grip"></div><button class="ms-x" onclick="window.__mCloseSheet&&window.__mCloseSheet()">CLOSE ✕</button><div class="ms-body" id="m-sheet-body"></div></div>
+<div id="m-sheet"><div class="ms-grip"></div><a id="ms-rtop" href="resume.pdf" target="_blank" rel="noopener">RÉSUMÉ ↗</a><button class="ms-x" onclick="window.__mCloseSheet&&window.__mCloseSheet()">CLOSE ✕</button><div class="ms-body" id="m-sheet-body"></div></div>
 <div id="m-intro"><div class="mi-card">
   <div class="mi-h">▦ NaN · SIGNAL</div>
   <div class="mi-b">You've reached <b>NaN</b> — the glitch that runs Amarsh's corner of space. Tap the nodes below to explore him, or <b>● TALK</b> to actually talk to it out loud.<br><br>Heads up: it's even richer on <b>desktop</b> — a full 3D cockpit, draw-gestures, voice, and a little game.</div>
@@ -4030,15 +4044,17 @@ setInterval(()=>{
     } else if(sec==='s-projects'){
       PROJECTS.forEach(p=>{ const inner=`<div class="ms-cd">${esc(p.desc)}</div><div class="ms-cm">▸ ${esc(p.metric)}</div><div class="ms-tags">`+p.tags.map(t=>`<span class="ms-tag">${esc(t)}</span>`).join('')+`</div>`;
         h+=card(p.sc,p.title,p.code+' · '+p.status,inner,'▦'); });
-      h+=`<a class="ms-link" style="--ac:#9fd8ff" href="resume.pdf" target="_blank" rel="noopener">OPEN RÉSUMÉ ↗</a>`;
+      // (résumé lives in the top-right pill for PROFILE)
     } else if(sec==='s-contact'){
       const CIC={LINKEDIN:'in',EMAIL:'✉',GITHUB:'◈','RÉSUMÉ':'⤓'};
-      CONTACT_NODES.forEach(d=>{ const href = d.mailto ? 'mailto:pedapatiamarsh@gmail.com' : (d.url||'#');
-        h+=card(d.sc,d.label,d.sub,`<a class="ms-link" style="--ac:${d.sc}" href="${href}" target="_blank" rel="noopener">${esc(d.action)}</a>`,CIC[d.label]||'◉'); });
+      h+=`<div class="ms-cgrid">`+CONTACT_NODES.map(d=>{ const href = d.mailto ? 'mailto:pedapatiamarsh@gmail.com' : (d.url||'#');
+        return `<a class="ms-ctile" style="--ac:${d.sc}" href="${href}" target="_blank" rel="noopener"><span class="ms-tic">${CIC[d.label]||'◉'}</span><span class="ms-tl">${esc(d.label)}</span><span class="ms-tsub">${esc(d.sub)}</span><span class="ms-tact">${esc(d.action)}</span></a>`;
+      }).join('')+`</div>`;
     }
     sbody.style.setProperty('--sac', m.sac);
     sbody.innerHTML=h; sbody.scrollTop=0;
-    sbody.querySelectorAll('.ms-card').forEach((c,i)=> c.style.animationDelay=(0.03+i*0.05)+'s');   // stagger fade-in
+    sbody.querySelectorAll('.ms-card, .ms-ctile').forEach((c,i)=> c.style.animationDelay=(0.03+i*0.05)+'s');   // stagger fade-in
+    sheet.classList.toggle('is-projects', sec==='s-projects');   // show the résumé pill only on PROFILE
     sheet.classList.add('open'); setActiveBtn(sec); return true;
   }
 
