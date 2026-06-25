@@ -159,7 +159,7 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 #mic.on{color:#ff4466;text-shadow:0 0 10px #ff4466;}
 #mic.listening{animation:micpulse .9s ease-in-out infinite;}
 /* ── UPLINK voice-channel panel: shows the channel is live + YOUR mic level + NaN's voice level ── */
-#uplink-panel{position:fixed;top:150px;right:74px;z-index:57;width:210px;display:flex;flex-direction:column;gap:9px;border:1px solid rgba(127,224,255,.4);border-radius:9px;background:linear-gradient(160deg,rgba(7,18,27,.92),rgba(4,11,17,.88));backdrop-filter:blur(6px);padding:11px 13px 12px;box-shadow:0 0 24px rgba(0,238,255,.12),inset 0 0 18px rgba(0,238,255,.04);}
+#uplink-panel{position:fixed;top:150px;right:74px;z-index:57;width:210px;display:flex;flex-direction:column;gap:8px;border:1px solid rgba(127,224,255,.4);border-radius:9px;background:linear-gradient(160deg,rgba(7,18,27,.92),rgba(4,11,17,.88));backdrop-filter:blur(6px);padding:10px 12px;box-shadow:0 0 24px rgba(0,238,255,.12),inset 0 0 18px rgba(0,238,255,.04);}
 #up-body{display:none;flex-direction:column;gap:8px;}
 #uplink-panel.live #up-body{display:flex;}
 .up-status{display:flex;align-items:center;gap:8px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:2.5px;color:rgba(159,240,255,.78);text-shadow:0 0 7px rgba(0,238,255,.3);padding-bottom:9px;border-bottom:1px solid rgba(127,224,255,.13);}
@@ -169,10 +169,12 @@ body.spell-mode #cur2{border-color:#ccff00;width:30px;height:30px;}
 .up-status.hearing{color:#ccff00;}
 .up-status.hearing .up-dot{background:#ccff00;box-shadow:0 0 11px #ccff00;}
 @keyframes uppulse{0%,100%{opacity:1;}50%{opacity:.35;}}
-.up-row{display:flex;align-items:center;gap:9px;}
-.up-tag{font-family:'Orbitron',sans-serif;font-size:8px;font-weight:700;letter-spacing:1.5px;color:rgba(127,224,255,.78);width:24px;flex-shrink:0;}
-.up-tag.nan{color:rgba(255,138,200,.85);}
-#u-you-wave,#u-nan-wave{flex:1;height:22px;display:block;border-radius:3px;background:rgba(127,224,255,.045);}
+.up-waves{display:flex;align-items:center;gap:9px;}
+.up-w{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;min-width:0;}
+.up-w canvas{width:100%;height:34px;display:block;}
+.up-wl{font-family:'Orbitron',sans-serif;font-size:7px;font-weight:700;letter-spacing:1.5px;color:rgba(127,224,255,.72);}
+.up-w.nan .up-wl{color:rgba(255,138,200,.82);}
+.up-div{width:1px;align-self:stretch;background:rgba(127,224,255,.16);margin:1px 0;}
 #u-heard{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:.3px;color:rgba(190,225,245,.42);line-height:1.4;min-height:15px;max-height:42px;overflow:hidden;padding-top:7px;border-top:1px solid rgba(127,224,255,.1);}
 #u-heard.final{color:#cdf5ff;}
 @keyframes micpulse{0%,100%{text-shadow:0 0 6px #ff4466;}50%{text-shadow:0 0 18px #ff4466,0 0 30px #ff4466;color:#ff88aa;}}
@@ -212,7 +214,7 @@ body.mobile .tr{display:none;}
 body.mobile #sound-toggle{top:calc(14px + env(safe-area-inset-top,0));left:auto;right:14px;}
 body.mobile #nanSays{top:92px;font-size:14px;line-height:1.55;width:90%;max-width:none;}
 body.mobile #nanChips{top:auto;bottom:140px;}
-body.mobile #uplink-panel{top:auto;bottom:74px;right:10px;left:10px;width:auto;}
+body.mobile #uplink-panel{top:auto;bottom:72px;right:10px;left:10px;width:auto;flex-direction:column-reverse;}
 /* bottom nav */
 body.mobile #m-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:71;gap:2px;background:rgba(4,10,16,.94);backdrop-filter:blur(8px);border-top:1px solid rgba(127,224,255,.25);padding:6px 5px calc(6px + env(safe-area-inset-bottom,0));}
 .m-btn{flex:1;text-align:center;font-family:'Orbitron',sans-serif;font-size:8.5px;font-weight:700;letter-spacing:.5px;color:rgba(165,222,246,.82);padding:10px 1px;border:none;background:none;cursor:pointer;border-radius:7px;transition:background .15s,color .15s;}
@@ -251,8 +253,8 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 .ms-stat .v{font-family:'Orbitron',sans-serif;font-size:21px;font-weight:900;color:#eaffd0;line-height:1;}
 .ms-stat .l{font-size:7.5px;letter-spacing:1px;color:rgba(170,255,0,.7);margin-top:5px;}
 /* CONTACT — 2-column tile grid */
-.ms-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-top:2px;}
-.ms-ctile{display:flex;flex-direction:column;gap:5px;position:relative;overflow:hidden;border:1px solid rgba(127,224,255,.18);border-top:2px solid var(--ac,#7fe0ff);background:linear-gradient(180deg,rgba(127,224,255,.07),rgba(8,14,22,.4));border-radius:12px;padding:14px 13px;text-decoration:none;box-shadow:inset 0 0 22px rgba(0,238,255,.035);opacity:0;transform:translateY(10px);animation:msIn .42s cubic-bezier(.22,.68,.35,1) forwards;transition:filter .12s,transform .12s;}
+.ms-cgrid{display:grid;grid-template-columns:1fr 1fr;gap:13px;margin-top:6px;}
+.ms-ctile{display:flex;flex-direction:column;justify-content:center;gap:7px;min-height:154px;position:relative;overflow:hidden;border:1px solid rgba(127,224,255,.18);border-top:2px solid var(--ac,#7fe0ff);background:linear-gradient(180deg,rgba(127,224,255,.08),rgba(8,14,22,.4));border-radius:13px;padding:16px 15px;text-decoration:none;box-shadow:inset 0 0 22px rgba(0,238,255,.04);opacity:0;transform:translateY(10px);animation:msIn .42s cubic-bezier(.22,.68,.35,1) forwards;transition:filter .12s,transform .12s;}
 .ms-ctile::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,8,14,.07) 2px 3px);}
 .ms-ctile:active{filter:brightness(1.18);transform:scale(.97);}
 .ms-ctile>*{position:relative;z-index:1;}
@@ -260,10 +262,11 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 .ms-tl{font-family:'Orbitron',sans-serif;font-size:11px;font-weight:700;letter-spacing:1px;color:#eaf7ff;}
 .ms-tsub{font-size:9px;color:rgba(190,225,245,.6);line-height:1.4;word-break:break-word;}
 .ms-tact{font-family:'Orbitron',sans-serif;font-size:8px;letter-spacing:1px;color:var(--ac,#7fe0ff);margin-top:2px;}
+.ms-cfoot{margin-top:18px;font-size:11px;line-height:1.6;color:rgba(180,215,240,.58);text-align:center;padding:0 8px;}
 /* header row: title block on the left, optional action (e.g. RÉSUMÉ) on the right */
 .ms-hrow{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;}
 .ms-htext{min-width:0;}
-.ms-hbtn{flex-shrink:0;margin-top:4px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#9fd8ff;border:1px solid rgba(159,216,255,.5);background:rgba(159,216,255,.12);padding:9px 13px;border-radius:8px;text-decoration:none;white-space:nowrap;transition:background .12s,transform .12s;}
+.ms-hbtn{flex-shrink:0;margin-top:16px;font-family:'Orbitron',sans-serif;font-size:9px;font-weight:700;letter-spacing:1px;color:#9fd8ff;border:1px solid rgba(159,216,255,.5);background:rgba(159,216,255,.12);padding:9px 13px;border-radius:8px;text-decoration:none;white-space:nowrap;transition:background .12s,transform .12s;}
 .ms-hbtn:active{background:rgba(159,216,255,.25);transform:scale(.96);}
 /* one-time mobile intro */
 #m-intro{display:none;}
@@ -392,8 +395,11 @@ body.mobile #m-intro.show{display:flex;}
   <span id="mic" title="connect the uplink — talk to NaN out loud">▲ CONNECT UPLINK</span>
   <div id="up-body">
     <div class="up-status"><span class="up-dot"></span><span id="up-state">UPLINK LIVE</span></div>
-    <div class="up-row"><span class="up-tag">YOU</span><canvas id="u-you-wave" width="172" height="24"></canvas></div>
-    <div class="up-row"><span class="up-tag nan">NaN</span><canvas id="u-nan-wave" width="172" height="24"></canvas></div>
+    <div class="up-waves">
+      <div class="up-w"><canvas id="u-you-wave" width="150" height="40"></canvas><span class="up-wl">YOU</span></div>
+      <div class="up-div"></div>
+      <div class="up-w nan"><canvas id="u-nan-wave" width="150" height="40"></canvas><span class="up-wl">NaN</span></div>
+    </div>
     <div id="u-heard">listening…</div>
   </div>
 </div>
@@ -3736,24 +3742,37 @@ function nanVoiceResume(){ if(voiceMode) nanRecStart(); }
 // ── UPLINK voice-channel meters — proves the channel is live + shows YOUR level and NaN's ──
 const upPanel=document.getElementById('uplink-panel'), upHeardEl=document.getElementById('u-heard'), upStateEl=document.getElementById('up-state');
 const upStatusEl=upPanel?upPanel.querySelector('.up-status'):null;
-let upStream=null, upAC=null, upAnalyser=null, upBuf=null, upRAF=0, upLvl=0, upBarge=0;
-function uplinkShow(on){ if(!upPanel) return; upPanel.classList.toggle('live', on);
+let upStream=null, upAC=null, upAnalyser=null, upBuf=null, upRAF=0, upLvl=0, upBarge=0, upHearHold=0, upShown='';
+function uplinkShow(on){ if(!upPanel) return; upPanel.classList.toggle('live', on); upShown=''; upHearHold=0;
   if(on){ if(upHeardEl){ upHeardEl.textContent='listening…'; upHeardEl.classList.remove('final'); } }
   else { if(upStateEl) upStateEl.textContent='UPLINK · OFFLINE'; const s=upPanel.querySelector('.up-status'); if(s) s.classList.remove('hearing'); } }
 function uplinkMeterStart(stream){ try{ upStream=stream; upAC=new (window.AudioContext||window.webkitAudioContext)(); const src=upAC.createMediaStreamSource(stream); upAnalyser=upAC.createAnalyser(); upAnalyser.fftSize=256; upBuf=new Uint8Array(upAnalyser.fftSize); src.connect(upAnalyser); if(!upRAF) uplinkDraw(); }catch(e){ console.warn('[uplink meter]', e); } }
 function uplinkMeterStop(){ if(upRAF) cancelAnimationFrame(upRAF); upRAF=0; if(upStream){ try{ upStream.getTracks().forEach(t=>t.stop()); }catch(e){} upStream=null; } if(upAC){ try{ upAC.close(); }catch(e){} upAC=null; } upAnalyser=null; upLvl=0;
   const a=document.getElementById('u-you-wave'), b=document.getElementById('u-nan-wave'); [a,b].forEach(cv=>{ if(cv){ const g=cv.getContext('2d'); g.clearRect(0,0,cv.width,cv.height); } }); }
-function _waveDraw(cv, lvl, col){ if(!cv) return; const g=cv.getContext('2d'), W=cv.width, H=cv.height; g.clearRect(0,0,W,H); const N=22, bw=W/N, t=performance.now()*0.013;
-  for(let i=0;i<N;i++){ const n=0.45+0.55*(0.5+0.5*Math.sin(t+i*0.7)); const h=Math.max(2, lvl*H*0.92*(0.3+0.7*n)); g.globalAlpha=0.35+0.65*Math.min(1,lvl*1.6); g.fillStyle=col; g.fillRect(i*bw+1, (H-h)/2, Math.max(1,bw-2), h); } g.globalAlpha=1; }
+function _waveDraw(cv, lvl, col){ if(!cv) return; const g=cv.getContext('2d'), W=cv.width, H=cv.height, cy=H/2; g.clearRect(0,0,W,H);
+  g.globalAlpha=0.22; g.fillStyle=col; g.fillRect(0,cy-0.5,W,1); g.globalAlpha=1;                 // centre baseline
+  const N=18, step=W/N, t=performance.now()*0.013;
+  g.fillStyle=col; g.shadowColor=col; g.shadowBlur=5;                                              // soft glow
+  for(let i=0;i<N;i++){ const n=0.42+0.58*(0.5+0.5*Math.sin(t+i*0.62));
+    const h=Math.max(1.5, lvl*(H*0.46)*(0.3+0.7*n));                                                // mirrored from centre
+    g.globalAlpha=0.45+0.55*Math.min(1,lvl*1.7);
+    const bw=Math.max(2.2, step-3.5), x=i*step+(step-bw)/2;
+    if(g.roundRect){ g.beginPath(); g.roundRect(x, cy-h, bw, h*2, bw/2); g.fill(); } else g.fillRect(x, cy-h, bw, h*2);
+  }
+  g.shadowBlur=0; g.globalAlpha=1; }
 function uplinkDraw(){ upRAF=requestAnimationFrame(uplinkDraw);
   let lvl=0; if(upAnalyser){ upAnalyser.getByteTimeDomainData(upBuf); let s=0; for(let i=0;i<upBuf.length;i++){ const v=(upBuf[i]-128)/128; s+=v*v; } lvl=Math.min(1, Math.sqrt(s/upBuf.length)*6.5); }   // boosted so YOUR bar moves clearly
   upLvl += (lvl-upLvl)*0.45;
   // BARGE-IN: the mic stream is echo-cancelled, so a real spike while NaN talks = YOU → cut NaN off so you can speak
   if(nanSpeaking){ if(lvl>0.11) upBarge++; else upBarge=Math.max(0,upBarge-1); if(upBarge>2){ try{ nanSpeakEnd(); }catch(e){} upBarge=0; } } else upBarge=0;
   _waveDraw(document.getElementById('u-you-wave'), upLvl, '#7fe0ff');   // show your level always, even while NaN talks
-  const hearing = upLvl>0.06 && !nanSpeaking;
-  if(upStatusEl) upStatusEl.classList.toggle('hearing', hearing);
-  if(upStateEl) upStateEl.textContent = hearing ? 'HEARING YOU' : (nanSpeaking ? 'NaN SPEAKING' : 'UPLINK LIVE');
+  // status with hysteresis — hold 'hearing' ~650ms after you stop so it doesn't flicker; only touch the DOM on change
+  const _np=performance.now();
+  if(!nanSpeaking && upLvl>0.08) upHearHold=_np+650;
+  const _want = nanSpeaking ? 'nan' : (_np<upHearHold ? 'you' : 'live');
+  if(_want!==upShown){ upShown=_want;
+    if(upStateEl) upStateEl.textContent = _want==='you'?'HEARING YOU':(_want==='nan'?'NaN SPEAKING':'UPLINK LIVE');
+    if(upStatusEl) upStatusEl.classList.toggle('hearing', _want==='you'); }
   let nlvl=0; if(nanSpeaking){ nlvl = nanVoiceLevel>0.05 ? Math.min(1,nanVoiceLevel) : (0.4+0.45*Math.abs(Math.sin(performance.now()*0.018))); }
   _waveDraw(document.getElementById('u-nan-wave'), nlvl, '#ff7ac0'); }
 
@@ -4051,6 +4070,7 @@ setInterval(()=>{
       h+=`<div class="ms-cgrid">`+CONTACT_NODES.map(d=>{ const href = d.mailto ? 'mailto:pedapatiamarsh@gmail.com' : (d.url||'#');
         return `<a class="ms-ctile" style="--ac:${d.sc}" href="${href}" target="_blank" rel="noopener"><span class="ms-tic">${CIC[d.label]||'◉'}</span><span class="ms-tl">${esc(d.label)}</span><span class="ms-tsub">${esc(d.sub)}</span><span class="ms-tact">${esc(d.action)}</span></a>`;
       }).join('')+`</div>`;
+      h+=`<div class="ms-cfoot">◈ Open to good conversations — replies within a day (IST).<br>NaN will make sure he sees it.</div>`;
     }
     sbody.style.setProperty('--sac', m.sac);
     sbody.innerHTML=h; sbody.scrollTop=0;
