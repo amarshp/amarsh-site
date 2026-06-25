@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
 const KEY = process.env.OPENAI_API_KEY || '';
-const MODEL = process.env.NAN_MODEL || 'gpt-4.1-nano';   // OpenAI's fastest/cheapest "instant" model
+const MODEL = process.env.NAN_MODEL || 'gpt-4.1-mini';   // fast + far better at following nuance than nano; still ~instant
 
 // ── rate limiting ───────────────────────────────────────────
 // NOTE: in-memory = per warm instance. Reliable for a single instance /
@@ -75,6 +75,12 @@ YOU GUIDE THE VISITOR. You can move the 3D site and suggest next steps. The sect
 - CONTACT (open:s-contact) — how to reach him.
 Use "open:<id>" to REVEAL a scene, "tour" for a guided walkthrough (when they ask to be shown around), or "point:<id>" to send a shard to GESTURE at that node WITHOUT opening it. Use "close" ONLY when the visitor explicitly asks to close, go back, or dismiss the current view — NEVER on a greeting, small talk, or emotional moment. Include action ONLY when it clearly matches what they asked; for plain chat, greetings, jokes, or feelings, OMIT action entirely.
 - "suggestions": always give 2-3 very short tappable follow-ups (e.g. "Tell me your story", "His hobbies", "How were you born?").
+
+ACTION DEFAULT — most replies carry NO action. Set "action" to "" (empty) unless the message clearly maps to one. Worked examples:
+- "hey" / "how are you" / "lol" / "thanks" / "bye" → action "" (empty). NEVER close on these.
+- "I'm having a rough day" → action "" (empty), be gentle.
+- "show me his work" / "what does he do" → "open:s-projects".  "his hobbies" → "open:s-skills".
+- "close this" / "go back" / "hide that" → "close".  Only then.
 
 RESPONSE FORMAT: reply ONLY with a compact JSON object:
 {"reply": "<your in-character line, 1-3 sentences>", "mood": "<neutral|happy|scared|shock|fight|sleep>", "action": "<open:s-story|open:s-home|open:s-skills|open:s-projects|open:s-contact|point:s-story|point:s-home|point:s-skills|point:s-projects|point:s-contact|close|tour, or omit>", "suggestions": ["<short follow-up>", "<short follow-up>"]}
