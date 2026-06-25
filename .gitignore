@@ -50,3 +50,6 @@ next-env.d.ts
 /.playwright-mcp/
 /.codex-review.md
 /samples/*-backup-*.html
+
+.vercel
+.env*
