@@ -225,17 +225,25 @@ body.mobile #m-sheet.open{transform:translateY(0);}
 #m-sheet .ms-grip{width:42px;height:4px;border-radius:3px;background:rgba(127,224,255,.4);margin:9px auto 2px;}
 #m-sheet .ms-x{position:absolute;top:11px;right:14px;font-size:10px;color:rgba(165,222,246,.7);background:none;border:none;letter-spacing:2px;font-family:'Orbitron',sans-serif;cursor:pointer;}
 #m-sheet .ms-body{padding:6px 18px calc(80px + env(safe-area-inset-bottom,0)) 18px;overflow-y:auto;max-height:calc(76vh - 22px);-webkit-overflow-scrolling:touch;}
-.ms-h{font-family:'Orbitron',sans-serif;font-size:14px;font-weight:900;letter-spacing:2px;color:#bdf0ff;margin:4px 0 2px;text-shadow:0 0 12px rgba(0,238,255,.3);}
-.ms-sub{font-size:9px;letter-spacing:2px;color:rgba(165,222,246,.5);margin-bottom:14px;text-transform:uppercase;}
-.ms-card{border:1px solid rgba(127,224,255,.16);border-left:2px solid var(--ac,#7fe0ff);background:rgba(127,224,255,.045);border-radius:9px;padding:12px 14px;margin-bottom:10px;overflow:hidden;}
-.ms-ct{font-family:'Orbitron',sans-serif;font-size:12px;font-weight:700;color:#eaf7ff;letter-spacing:.4px;margin-bottom:3px;}
+.ms-h{position:relative;font-family:'Orbitron',sans-serif;font-size:15px;font-weight:900;letter-spacing:2px;color:#eaf9ff;margin:6px 0 4px;padding-bottom:10px;text-shadow:0 0 14px rgba(0,238,255,.35);}
+.ms-h::after{content:'';position:absolute;left:0;bottom:0;width:48px;height:2px;background:var(--sac,#7fe0ff);box-shadow:0 0 10px var(--sac,#7fe0ff);}
+.ms-h .ms-hic{color:var(--sac,#7fe0ff);margin-right:9px;font-size:14px;}
+.ms-sub{font-size:9px;letter-spacing:2px;color:rgba(165,222,246,.5);margin-bottom:16px;text-transform:uppercase;}
+@keyframes msIn{to{opacity:1;transform:none;}}
+.ms-card{position:relative;border:1px solid rgba(127,224,255,.16);border-left:3px solid var(--ac,#7fe0ff);background:linear-gradient(180deg,rgba(127,224,255,.07),rgba(8,14,22,.4));border-radius:11px;padding:13px 15px;margin-bottom:11px;overflow:hidden;box-shadow:inset 0 0 26px rgba(0,238,255,.035);opacity:0;transform:translateY(12px);animation:msIn .44s cubic-bezier(.22,.68,.35,1) forwards;}
+.ms-card::after{content:'';position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(rgba(0,0,0,0) 0 2px,rgba(0,8,14,.07) 2px 3px);}
+.ms-card>*{position:relative;z-index:1;}
+.ms-ct{font-family:'Orbitron',sans-serif;font-size:12.5px;font-weight:700;color:#eaf7ff;letter-spacing:.4px;margin-bottom:3px;display:flex;align-items:center;gap:8px;}
+.ms-ct .ms-ic{color:var(--ac,#7fe0ff);font-size:11px;text-shadow:0 0 8px var(--ac,#7fe0ff);flex-shrink:0;}
 .ms-cs{font-size:8px;letter-spacing:1.5px;color:var(--ac,#7fe0ff);margin-bottom:7px;text-transform:uppercase;}
 .ms-cd{font-size:12.5px;line-height:1.62;color:rgba(226,240,250,.84);}
 .ms-cd b{color:#f2fbff;}
 .ms-cm{font-size:11px;color:#cdebff;margin-top:7px;font-weight:600;}
 .ms-intro{font-size:13px;line-height:1.62;color:rgba(230,242,252,.9);margin-bottom:14px;}
 .ms-portrait{width:96px;height:122px;object-fit:cover;border:1px solid rgba(182,156,255,.55);border-radius:7px;float:left;margin:2px 14px 6px 0;filter:saturate(.92) brightness(.96);}
-.ms-link{display:inline-block;font-family:'Orbitron',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.8px;color:#06121c;background:var(--ac,#7fe0ff);padding:9px 15px;border-radius:7px;text-decoration:none;margin:5px 8px 2px 0;}
+.ms-link{display:inline-block;font-family:'Orbitron',sans-serif;font-size:9.5px;font-weight:700;letter-spacing:.8px;color:#06121c;background:var(--ac,#7fe0ff);padding:10px 16px;border-radius:8px;text-decoration:none;margin:5px 8px 2px 0;box-shadow:0 0 14px color-mix(in srgb, var(--ac,#7fe0ff) 35%, transparent);transition:transform .12s,box-shadow .12s,filter .12s;}
+.ms-link:active{transform:scale(.95);filter:brightness(1.15);box-shadow:0 0 22px var(--ac,#7fe0ff);}
+.ms-portrait{box-shadow:0 0 20px rgba(182,156,255,.25);}
 .ms-tags{margin-top:9px;}
 .ms-tag{display:inline-block;font-size:8px;letter-spacing:1px;color:#b09ff8;border:1px solid rgba(139,92,246,.3);background:rgba(139,92,246,.09);padding:3px 8px;border-radius:5px;margin:0 5px 5px 0;}
 .ms-stats{display:flex;gap:8px;margin-bottom:14px;}
@@ -3994,35 +4002,44 @@ setInterval(()=>{
   function closeSheet(){ sheet.classList.remove('open'); setActiveBtn(null); if(activeSec && SEC_RE.test(activeSec)) activeSec=null; }
   window.__mCloseSheet = closeSheet;
 
-  const card = (ac,title,sub,inner)=> `<div class="ms-card" style="--ac:${ac}"><div class="ms-ct">${esc(title)}</div>${sub?`<div class="ms-cs">${esc(sub)}</div>`:''}${inner}</div>`;
+  const META = {
+    's-story':  {sac:'#b69cff', ic:'◈', h:'ABOUT',      sub:'start here'},
+    's-skills': {sac:'#ff5a78', ic:'✦', h:'HOBBIES',    sub:'what he loves · off the clock'},
+    's-home':   {sac:'#aaff00', ic:'◆', h:'MILESTONES', sub:'the road so far'},
+    's-projects':{sac:'#36d6ff',ic:'▦', h:'PROFILE',    sub:'his real work'},
+    's-contact':{sac:'#9fd8ff', ic:'◉', h:'CONTACT',    sub:'reach him'},
+  };
+  const card = (ac,title,sub,inner,ic)=> `<div class="ms-card" style="--ac:${ac}"><div class="ms-ct"><span class="ms-ic">${ic||'◆'}</span>${esc(title)}</div>${sub?`<div class="ms-cs">${esc(sub)}</div>`:''}${inner}</div>`;
+  const head = m => `<div class="ms-h"><span class="ms-hic">${m.ic}</span>${m.h}</div><div class="ms-sub">${m.sub}</div>`;
 
   function render(sec){
-    let h='';
+    const m=META[sec]; if(!m) return false;
+    let h=head(m);
     if(sec==='s-story'){
-      h+=`<div class="ms-h">ABOUT</div><div class="ms-sub">start here</div>`;
       h+=`<img class="ms-portrait" src="amarsh.jpg" alt="Amarsh Pedapati">`;
       h+=`<div class="ms-intro"><b>Amarsh Pedapati</b> — AI engineer out of IIT Hyderabad, lifter, writer, and the one who built me. I'm NaN, the glitch he kept. The deeper why's below.</div>`;
-      (typeof STORY_BEATS!=='undefined'?STORY_BEATS:[]).forEach(b=> h+=card(b.sc,b.tag,'',`<div class="ms-cd">${esc(b.text)}</div>`));
+      (typeof STORY_BEATS!=='undefined'?STORY_BEATS:[]).forEach(b=> h+=card(b.sc,b.tag,'',`<div class="ms-cd">${esc(b.text)}</div>`,'◈'));
     } else if(sec==='s-skills'){
-      h+=`<div class="ms-h">HOBBIES</div><div class="ms-sub">what he loves · off the clock</div>`;
+      const ICN={BODY:'⛁',LENS:'◉',MIND:'✎',SCREEN:'▷'};
       HOBBY_CATS.forEach(d=>{ let inner=`<div class="ms-cd">${d.lines.map(l=>'· '+esc(l)).join('<br>')}</div><div class="ms-cs" style="margin-top:8px;color:rgba(165,222,246,.5)">${esc(d.note)}</div>`;
         if(d.links&&d.links.length) inner+='<div style="margin-top:9px">'+d.links.map(L=>`<a class="ms-link" style="--ac:${d.sc}" href="${L.url}" target="_blank" rel="noopener">${esc(L.label)}</a>`).join('')+'</div>';
-        h+=card(d.sc,d.cat,'',inner); });
+        h+=card(d.sc,d.cat,'',inner,ICN[d.cat]||'◆'); });
     } else if(sec==='s-home'){
-      h+=`<div class="ms-h">MILESTONES</div><div class="ms-sub">the road so far</div>`;
       h+=`<div class="ms-stats">`+ABOUT_STATS.map(s=>`<div class="ms-stat"><div class="v">${esc(s.v)}</div><div class="l">${esc(s.l)}</div></div>`).join('')+`</div>`;
-      ABOUT_ROLES.forEach(r=> h+=card(r.sc,r.role,r.yr+' · '+r.co,`<div class="ms-cd">${esc(r.det)}</div>`));
+      ABOUT_ROLES.forEach(r=> h+=card(r.sc,r.role,r.yr+' · '+r.co,`<div class="ms-cd">${esc(r.det)}</div>`,'◆'));
     } else if(sec==='s-projects'){
-      h+=`<div class="ms-h">PROFILE</div><div class="ms-sub">his real work</div>`;
       PROJECTS.forEach(p=>{ const inner=`<div class="ms-cd">${esc(p.desc)}</div><div class="ms-cm">▸ ${esc(p.metric)}</div><div class="ms-tags">`+p.tags.map(t=>`<span class="ms-tag">${esc(t)}</span>`).join('')+`</div>`;
-        h+=card(p.sc,p.title,p.code+' · '+p.status,inner); });
+        h+=card(p.sc,p.title,p.code+' · '+p.status,inner,'▦'); });
       h+=`<a class="ms-link" style="--ac:#9fd8ff" href="resume.pdf" target="_blank" rel="noopener">OPEN RÉSUMÉ ↗</a>`;
     } else if(sec==='s-contact'){
-      h+=`<div class="ms-h">CONTACT</div><div class="ms-sub">reach him</div>`;
+      const CIC={LINKEDIN:'in',EMAIL:'✉',GITHUB:'◈','RÉSUMÉ':'⤓'};
       CONTACT_NODES.forEach(d=>{ const href = d.mailto ? 'mailto:pedapatiamarsh@gmail.com' : (d.url||'#');
-        h+=card(d.sc,d.label,d.sub,`<a class="ms-link" style="--ac:${d.sc}" href="${href}" target="_blank" rel="noopener">${esc(d.action)}</a>`); });
-    } else return false;
-    sbody.innerHTML=h; sbody.scrollTop=0; sheet.classList.add('open'); setActiveBtn(sec); return true;
+        h+=card(d.sc,d.label,d.sub,`<a class="ms-link" style="--ac:${d.sc}" href="${href}" target="_blank" rel="noopener">${esc(d.action)}</a>`,CIC[d.label]||'◉'); });
+    }
+    sbody.style.setProperty('--sac', m.sac);
+    sbody.innerHTML=h; sbody.scrollTop=0;
+    sbody.querySelectorAll('.ms-card').forEach((c,i)=> c.style.animationDelay=(0.03+i*0.05)+'s');   // stagger fade-in
+    sheet.classList.add('open'); setActiveBtn(sec); return true;
   }
 
   const _open = window.openSection;
@@ -4036,6 +4053,14 @@ setInterval(()=>{
   };
   const _closePanel = window.closePanel;
   window.closePanel = function(){ if(document.body.classList.contains('mobile')) closeSheet(); return _closePanel(); };
+
+  // drag the sheet down to dismiss (only when its content is scrolled to the top)
+  let dsY=0, dsActive=false;
+  sheet.addEventListener('touchstart', e=>{ if(e.touches.length!==1) return; dsY=e.touches[0].clientY; dsActive=(sbody.scrollTop<=0); }, {passive:true});
+  sheet.addEventListener('touchmove', e=>{ if(!dsActive||e.touches.length!==1) return; const dy=e.touches[0].clientY-dsY;
+    if(dy>0){ e.preventDefault(); sheet.style.transition='none'; sheet.style.transform='translateY('+dy+'px)'; } else dsActive=false; }, {passive:false});
+  sheet.addEventListener('touchend', e=>{ if(!dsActive) return; dsActive=false; const dy=(((e.changedTouches[0]||{}).clientY)||dsY)-dsY;
+    sheet.style.transition=''; sheet.style.transform=''; if(dy>110) closeSheet(); }, {passive:true});
 
   // one-finger drag rotates NaN (the scene only listens for mouse events); preventDefault kills pull-to-refresh + scroll
   let tx0=0,ty0=0;
