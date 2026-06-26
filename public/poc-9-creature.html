@@ -4075,7 +4075,7 @@ setInterval(()=>{
       if(!tr.ok||!tj.value){ throw new Error('token '+tr.status+' '+(tj.error||'')+(tj.detail?(' '+(typeof tj.detail==='string'?tj.detail:JSON.stringify(tj.detail))):'')); }
       pc=new RTCPeerConnection();
       remoteEl=document.createElement('audio'); remoteEl.autoplay=true; remoteEl.style.display='none'; document.body.appendChild(remoteEl);
-      pc.ontrack=ev=>{ try{ remoteEl.srcObject=ev.streams[0]; }catch(e){} attachLevel(ev.streams[0]); };
+      pc.ontrack=ev=>{ try{ remoteEl.srcObject=ev.streams[0]; const pl=remoteEl.play&&remoteEl.play(); if(pl&&pl.catch) pl.catch(()=>{}); }catch(e){} };
       mic.getTracks().forEach(t=>pc.addTrack(t, mic));
       dc=pc.createDataChannel('oai-events'); dc.onopen=()=>send({type:'response.create'}); dc.onmessage=onEvent;   // greet on open
       pc.onconnectionstatechange=()=>{ if(pc && (pc.connectionState==='failed'||pc.connectionState==='closed') && st==='live'){ teardown('connection '+pc.connectionState); } };
@@ -4083,7 +4083,7 @@ setInterval(()=>{
       const sr=await fetch(SDP_URL,{method:'POST',headers:{Authorization:'Bearer '+tj.value,'Content-Type':'application/sdp'},body:offer.sdp});
       if(!sr.ok){ throw new Error('sdp '+sr.status+' '+(await sr.text().catch(()=>''))); }
       await pc.setRemoteDescription({type:'answer',sdp:await sr.text()});
-      st='live'; setState('UPLINK LIVE');
+      st='live'; setState('UPLINK LIVE'); if(!raf) pump();   // start the mouth/meter animation loop
       cap=setTimeout(()=>{ saysDone("That's my limit for one session — tap the uplink to talk again."); teardown('session cap'); }, 240000);  // 4-min hard cap (cost guard)
     }catch(e){
       console.warn('[NaN realtime] connect failed:', e&&e.message);
@@ -4126,8 +4126,10 @@ setInterval(()=>{
     if(callId){ send({type:'conversation.item.create', item:{type:'function_call_output', call_id:callId, output:JSON.stringify({ok:!!id, section:sec})}}); send({type:'response.create'}); }
   }
 
-  function attachLevel(stream){ try{ const ac=nanAudio(); if(!ac) return; const src=ac.createMediaStreamSource(stream); an=ac.createAnalyser(); an.fftSize=256; anBuf=new Uint8Array(an.fftSize); src.connect(an); if(!raf) pump(); }catch(e){} }
-  function pump(){ raf=requestAnimationFrame(pump); if(!an) return; an.getByteTimeDomainData(anBuf); let s=0; for(let i=0;i<anBuf.length;i++){ const v=(anBuf[i]-128)/128; s+=v*v; } const lvl=Math.min(1, Math.sqrt(s/anBuf.length)*5.5); if(nanSpeaking) nanVoiceLevel=lvl; }
+  // drive the mouth/meters from a SYNTHETIC level while NaN talks. We deliberately do NOT tap the WebRTC remote
+  // stream through Web Audio — that can silence the <audio> playback in Chrome (NaN "spikes" but you hear nothing).
+  // The real sound plays straight through remoteEl.
+  function pump(){ raf=requestAnimationFrame(pump); nanVoiceLevel = nanSpeaking ? (0.45+0.4*Math.abs(Math.sin(performance.now()*0.013))) : 0; }
 
   function teardown(reason, keepLabel){
     if(cap){ clearTimeout(cap); cap=null; }
