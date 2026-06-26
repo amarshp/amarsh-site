@@ -9,12 +9,12 @@ export const dynamic = 'force-dynamic';
 
 const KEY = process.env.OPENAI_API_KEY || '';
 const TTS_MODEL = process.env.NAN_TTS_MODEL || 'gpt-4o-mini-tts';
-const TTS_VOICE = process.env.NAN_TTS_VOICE || 'onyx'; // deep male
-// gpt-4o-mini-tts honors a tone instruction — push it toward the glitch entity
+const TTS_VOICE = process.env.NAN_TTS_VOICE || 'fable'; // warm, smooth, friendly — not deep/scary
+// gpt-4o-mini-tts honors a tone instruction — a gentle little robot companion
 const TTS_INSTRUCTIONS =
-  'Speak like a lonely, sardonic AI entity transmitting from a fold in space-time: ' +
-  'low and a little gravelly, calm but warm, with faint digital/glitch coloring — as if the signal ' +
-  'occasionally degrades. Slightly inhuman, never cheerful or customer-service. Unhurried.';
+  'Speak like a friendly, curious little robot companion (think the warmth of WALL-E or BB-8): ' +
+  'smooth, warm, and gentle, with a soft synthetic shimmer — lightly robotic but endearing, ' +
+  'never deep, gravelly, or menacing. Calm and a touch playful. Clear and easy to understand.';
 
 const PER_IP_MAX = 16, WINDOW_MS = 60_000, DAILY_MAX = 400, MAX_CHARS = 600;
 const ipHits = new Map<string, { count: number; start: number }>();

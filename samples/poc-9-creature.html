@@ -3478,6 +3478,8 @@ window.__nanMem=()=>nanMem;
 
 // ── voice (Web Speech) ─ the entity speaks, glitchily ────────
 let nanVoice=null, voiceOn=true; // nanSpeaking hoisted earlier (animate references it)
+let nanReplying=false;           // true from the moment a user line is sent until NaN finishes replying (gates the mic)
+let heardBuf='', heardTimer=null; // accumulate the WHOLE spoken utterance, then send once on a pause
 // server-side TTS (good voice in EVERY browser); falls back to Web Speech if unavailable
 let nanTTSok=true, nanCurAudio=null;
 const NAN_TTS_URL=(()=>{ try{ if(location.origin.startsWith('http')) return location.origin+'/api/nan-tts'; }catch(e){} return 'http://localhost:8791/api/nan-tts'; })();
@@ -3512,7 +3514,7 @@ function nanBurst(vol){
 }
 // soft-clip distortion curve for the TTS voice — adds grit without word-mangling
 function nanDistCurve(k){ const n=2048, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=(1+k)*x/(1+k*Math.abs(x)); } return c; }
-const NAN_DIST = nanDistCurve(2.2);
+const NAN_DIST = nanDistCurve(1.1);
 // carrier crackle: low static bursts running UNDER the speech (reads as transmitted/processed)
 let nanCarrier=null, nanSpeakWatchdog=null;
 function nanSpeakEnd(){
@@ -3521,7 +3523,7 @@ function nanSpeakEnd(){
   if(nanCurAudio){ try{ nanCurAudio.onended=null; nanCurAudio.stop(); }catch(e){} nanCurAudio=null; }
   if(window.speechSynthesis) try{ speechSynthesis.cancel(); }catch(e){}   // CRITICAL: actually stop Web-Speech TTS (barge-in)
   nanAnalyser=null; nanVoiceLevel=0;
-  nanSpeaking=false; nanVoiceResume();
+  nanSpeaking=false; nanReplying=false; nanVoiceResume();   // turn is over → reopen the mic
 }
 // PRIMARY voice: server TTS (consistent good voice everywhere) with a glitch crackle layered under.
 async function nanSpeak(text, onStart){
@@ -3545,11 +3547,11 @@ async function nanSpeak(text, onStart){
     const audioBuf=await ac.decodeAudioData(buf);
     if(!nanSpeaking) return;                            // cancelled while fetching
     const src=ac.createBufferSource(); src.buffer=audioBuf;
-    src.playbackRate.value=0.97+Math.random()*0.03;    // near-natural — gentle, not deep/scary
-    // signal chain: light grit → modest warmth → tiny high roll-off → out
+    src.playbackRate.value=0.99+Math.random()*0.02;    // natural pace — no deep/scary slowdown
+    // signal chain: barely-there grit → a touch of warmth → keep the highs (clarity) → out
     const shaper=ac.createWaveShaper(); shaper.curve=NAN_DIST; shaper.oversample='2x';
-    const bass=ac.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=220; bass.gain.value=4;
-    const hicut=ac.createBiquadFilter(); hicut.type='highshelf'; hicut.frequency.value=4400; hicut.gain.value=-2;
+    const bass=ac.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=200; bass.gain.value=2;
+    const hicut=ac.createBiquadFilter(); hicut.type='highshelf'; hicut.frequency.value=5400; hicut.gain.value=-1;
     const g=ac.createGain(); g.gain.value=0.92;
     nanAnalyser=ac.createAnalyser(); nanAnalyser.fftSize=256; nanLevelBuf=new Uint8Array(nanAnalyser.fftSize); // mouth sync
     src.connect(shaper); shaper.connect(bass); bass.connect(hicut); hicut.connect(g); g.connect(nanAnalyser); nanAnalyser.connect(ac.destination);
@@ -3721,6 +3723,8 @@ function nanTourEnd(){
 }
 
 async function nanConverse(text){
+  nanReplying=true;                             // lock the turn: ignore the mic until NaN finishes
+  if(heardTimer){ clearTimeout(heardTimer); heardTimer=null; } heardBuf='';
   idleClock=0;                                  // talking wakes the entity
   nanClearChips();
   // tour controls (handled locally, no API call)
@@ -3804,12 +3808,18 @@ if(SR){
   nanRec=new SR(); nanRec.lang='en-US'; nanRec.continuous=true; nanRec.interimResults=true; nanRec.maxAlternatives=1;
   nanRec.onstart=()=>{ nanRecLive=true; micEl.classList.add('listening'); console.log('[NaN voice] listening'); };
   nanRec.onresult=e=>{
-    const r=e.results[e.results.length-1];
-    const t=(r[0]&&r[0].transcript)||'';
-    if(upHeardEl && t.trim()){ upHeardEl.textContent='“'+t.trim()+'”'; upHeardEl.classList.toggle('final', r.isFinal); }   // live words = proof it hears you
-    if(nanSpeaking) return;                       // ignore NaN's own voice
-    if(!r.isFinal) return;                        // wait for a finished phrase
-    if(t&&t.trim()){ console.log('[NaN voice] heard:', t); nanConverse(t.trim()); }
+    // gather ALL segments from this event — final ones get banked, interim shown live
+    let interim='', finalNew='';
+    for(let i=e.resultIndex;i<e.results.length;i++){ const r=e.results[i], txt=(r[0]&&r[0].transcript)||''; if(r.isFinal) finalNew+=txt+' '; else interim+=txt+' '; }
+    const show=(heardBuf+' '+finalNew+' '+interim).replace(/\s+/g,' ').trim();
+    if(upHeardEl && show){ upHeardEl.textContent='“'+show+'”'; upHeardEl.classList.toggle('final', !interim.trim()); }
+    if(nanSpeaking || nanReplying) return;        // don't capture NaN's own voice or anything mid-reply
+    if(finalNew.trim()){                          // bank the finished words, then send the WHOLE thing after a pause
+      heardBuf=(heardBuf+' '+finalNew).replace(/\s+/g,' ').trim();
+      if(heardTimer) clearTimeout(heardTimer);
+      heardTimer=setTimeout(()=>{ const msg=heardBuf.trim(); heardBuf=''; heardTimer=null;
+        if(msg && !nanSpeaking && !nanReplying){ console.log('[NaN voice] heard:', msg); nanConverse(msg); } }, 1000);
+    }
   };
   nanRec.onerror=ev=>{
     console.warn('[NaN voice] error:', ev.error);
@@ -3819,7 +3829,7 @@ if(SR){
     }
     // 'no-speech' / 'aborted' / 'network' → onend will reopen the mic
   };
-  nanRec.onend=()=>{ nanRecLive=false; micEl.classList.remove('listening'); if(voiceMode) setTimeout(nanRecStart,250); }; // reopen in voice mode
+  nanRec.onend=()=>{ nanRecLive=false; micEl.classList.remove('listening'); if(voiceMode && !nanReplying && !nanSpeaking) setTimeout(nanRecStart,250); }; // reopen ONLY when NaN isn't mid-reply (nanSpeakEnd resumes it after)
   micEl.title='voice mode — talk to NaN';
   micEl.addEventListener('click',()=>{
     nanAudio();                                 // unlock audio on user gesture
@@ -3834,7 +3844,10 @@ if(SR){
             nanReply("Mic's blocked — let the browser hear me: click the site/🔒 icon in the address bar, allow Microphone, then tap the uplink again.", 'scared', 6); });
       } else { nanRecStart(); }
       const g=nanPick(VOICE_OPEN);
-      nanType(g); nanSpeak(g);
+      nanReplying=true;                          // hold the mic through the greeting (cleared when it finishes speaking)
+      let gt=false; const gtype=()=>{ if(!gt){ gt=true; nanType(g); } };
+      const gfb=setTimeout(gtype, 1100);
+      nanSpeak(g, ()=>{ clearTimeout(gfb); gtype(); });   // greeting types in sync with the voice too
     } else {
       try{ nanRec.stop(); }catch(e){} speechSynthesis.cancel(); nanSpeaking=false;
       micEl.classList.remove('listening'); uplinkMeterStop(); uplinkShow(false);
