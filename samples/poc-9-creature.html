@@ -4095,7 +4095,9 @@ setInterval(()=>{
   function send(o){ try{ if(dc&&dc.readyState==='open') dc.send(JSON.stringify(o)); }catch(e){} }
   // echo guard (mic stays OPEN so you can interrupt): if a "user turn" is really NaN's own words bouncing
   // back through the speakers, cancel that response instead of looping. Real interruptions don't match NaN.
-  let lastNanSaid='';
+  let lastNanSaid='', pendingUser='';
+  const LOG_URL=(()=>{ try{ if(location.origin.startsWith('http')) return location.origin+'/api/nan-log'; }catch(e){} return ''; })();
+  function logTurn(msg, reply){ if(!LOG_URL||(!msg&&!reply)) return; try{ fetch(LOG_URL,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({msg:msg||'',reply:reply||''})}).catch(()=>{}); }catch(e){} }
   const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
   function looksLikeEcho(userTxt){ const u=norm(userTxt); if(u.length<4) return false; const n=norm(lastNanSaid); if(!n) return false;
     const w=u.split(' ').filter(x=>x.length>2); if(!w.length) return false; let hit=0; w.forEach(x=>{ if(n.indexOf(x)>=0) hit++; });
@@ -4109,11 +4111,11 @@ setInterval(()=>{
     else if(T.indexOf('input_audio_transcription.completed')>=0){
       const txt=m.transcript||uTxt; uTxt='';
       if(nanSpeaking && looksLikeEcho(txt)){ send({type:'response.cancel'}); return; }   // NaN heard itself → drop it
-      setHeard(txt);
+      setHeard(txt); pendingUser=txt;
     }
     else if(T==='response.created'){ nanSpeaking=true; nTxt=''; setState('NaN SPEAKING'); }
     else if(T.indexOf('audio_transcript.delta')>=0){ nTxt+=(m.delta||''); says(nTxt); }
-    else if(T.indexOf('audio_transcript.done')>=0){ const t=m.transcript||nTxt; lastNanSaid=t; saysDone(t); }
+    else if(T.indexOf('audio_transcript.done')>=0){ const t=m.transcript||nTxt; lastNanSaid=t; saysDone(t); logTurn(pendingUser, t); pendingUser=''; }
     else if(T==='response.function_call_arguments.done'){ doTool(m.name, m.arguments, m.call_id); }
     else if(T==='response.done'){ nanSpeaking=false; nanVoiceLevel=0; if(st==='live') setState('UPLINK LIVE'); handleDone(m.response); }
     else if(T==='error'){ console.warn('[NaN realtime] event error:', m.error); }
