@@ -3512,7 +3512,7 @@ function nanBurst(vol){
 }
 // soft-clip distortion curve for the TTS voice — adds grit without word-mangling
 function nanDistCurve(k){ const n=2048, c=new Float32Array(n); for(let i=0;i<n;i++){ const x=i/(n-1)*2-1; c[i]=(1+k)*x/(1+k*Math.abs(x)); } return c; }
-const NAN_DIST = nanDistCurve(6);
+const NAN_DIST = nanDistCurve(2.2);
 // carrier crackle: low static bursts running UNDER the speech (reads as transmitted/processed)
 let nanCarrier=null, nanSpeakWatchdog=null;
 function nanSpeakEnd(){
@@ -3524,17 +3524,15 @@ function nanSpeakEnd(){
   nanSpeaking=false; nanVoiceResume();
 }
 // PRIMARY voice: server TTS (consistent good voice everywhere) with a glitch crackle layered under.
-async function nanSpeak(text){
+async function nanSpeak(text, onStart){
   if(!voiceOn || !voiceMode){ nanSpeakEnd(); return; }   // voice ONLY speaks while the uplink is open
   const clean=text.replace(/[*_`]/g,'').trim();
   if(!clean){ nanSpeakEnd(); return; }
-  if(!nanTTSok) return nanSpeakWeb(text);              // server known-unavailable this session
+  if(!nanTTSok) return nanSpeakWeb(text, onStart);     // server known-unavailable this session
   // stop any prior voice
   if(nanCurAudio){ try{ nanCurAudio.onended=null; nanCurAudio.stop(); }catch(e){} nanCurAudio=null; }
   if(window.speechSynthesis) speechSynthesis.cancel();
-  nanSpeaking=true; nanBurst(0.07);
-  if(nanCarrier) clearInterval(nanCarrier);
-  nanCarrier=setInterval(()=>{ if(nanSpeaking) nanBurst(0.012+Math.random()*0.014); }, 150);
+  nanSpeaking=true;                                     // NO pre-speech bursts/crackle — he speaks straight, no "keyboard" preamble
   if(nanSpeakWatchdog) clearTimeout(nanSpeakWatchdog);
   nanSpeakWatchdog=setTimeout(()=>{ if(nanSpeaking) nanSpeakEnd(); }, clean.length*120+9000); // generous (network)
   try{
@@ -3547,41 +3545,43 @@ async function nanSpeak(text){
     const audioBuf=await ac.decodeAudioData(buf);
     if(!nanSpeaking) return;                            // cancelled while fetching
     const src=ac.createBufferSource(); src.buffer=audioBuf;
-    src.playbackRate.value=0.88+Math.random()*0.04;    // slowed → deeper/bassier + glitch wobble
-    // signal chain: distortion grit → big low-shelf bass → roll off the highs → out
+    src.playbackRate.value=0.97+Math.random()*0.03;    // near-natural — gentle, not deep/scary
+    // signal chain: light grit → modest warmth → tiny high roll-off → out
     const shaper=ac.createWaveShaper(); shaper.curve=NAN_DIST; shaper.oversample='2x';
-    const bass=ac.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=240; bass.gain.value=11;
-    const hicut=ac.createBiquadFilter(); hicut.type='highshelf'; hicut.frequency.value=3600; hicut.gain.value=-7;
+    const bass=ac.createBiquadFilter(); bass.type='lowshelf'; bass.frequency.value=220; bass.gain.value=4;
+    const hicut=ac.createBiquadFilter(); hicut.type='highshelf'; hicut.frequency.value=4400; hicut.gain.value=-2;
     const g=ac.createGain(); g.gain.value=0.92;
     nanAnalyser=ac.createAnalyser(); nanAnalyser.fftSize=256; nanLevelBuf=new Uint8Array(nanAnalyser.fftSize); // mouth sync
     src.connect(shaper); shaper.connect(bass); bass.connect(hicut); hicut.connect(g); g.connect(nanAnalyser); nanAnalyser.connect(ac.destination);
     src.onended=()=>{ if(nanCurAudio===src) nanSpeakEnd(); };
     nanCurAudio=src; src.start();
+    if(onStart) try{ onStart(); }catch(e){}            // text types in SYNC with the voice
+    if(nanCarrier) clearInterval(nanCarrier);          // very soft transmission hiss UNDER the voice only
+    nanCarrier=setInterval(()=>{ if(nanSpeaking) nanBurst(0.004+Math.random()*0.005); }, 260);
   }catch(e){
     console.warn('[NaN voice] server TTS failed → Web Speech', e&&e.message);
     nanTTSok=false;                                    // stop hammering; fall back rest of session
     nanSpeakEnd();
-    nanSpeakWeb(text);
+    nanSpeakWeb(text, onStart);
   }
 }
 // FALLBACK voice: Web Speech, clause-by-clause with pitch/rate jitter + stutters + bursts.
-function nanSpeakWeb(text){
+function nanSpeakWeb(text, onStart){
   if(!voiceOn || !voiceMode || !window.speechSynthesis){ nanSpeakEnd(); return; }   // voice ONLY while uplink is open
   speechSynthesis.cancel();
   const clean=text.replace(/[*_`]/g,'');
   const chunks=clean.split(/(?<=[,.;:—–-])\s+/).filter(Boolean);
   if(!chunks.length){ nanSpeakEnd(); return; }
-  nanSpeaking=true; nanBurst(0.07);
-  if(nanCarrier) clearInterval(nanCarrier);
-  nanCarrier=setInterval(()=>{ if(nanSpeaking) nanBurst(0.012+Math.random()*0.014); }, 130); // under-speech static
-  let last=null;
-  chunks.forEach(chunk=>{
+  nanSpeaking=true;
+  let last=null, started=false;
+  chunks.forEach((chunk,ci)=>{
     const u=new SpeechSynthesisUtterance(chunk);   // no word-repeat — speak the line straight
     if(nanVoice) u.voice=nanVoice;
-    // deep + slightly warbled. glitch comes from the carrier crackle, not stutters.
-    u.pitch=0.55+Math.random()*0.18;            // 0.55..0.73 — bass-leaning, not light/smooth
-    u.rate=0.92+Math.random()*0.16; u.volume=0.95;
-    u.onstart=()=>{ if(Math.random()<0.6) nanBurst(0.04); };
+    u.pitch=0.9+Math.random()*0.12;             // softer — natural, not bass-heavy/scary
+    u.rate=0.96+Math.random()*0.12; u.volume=0.95;
+    if(ci===0) u.onstart=()=>{ if(!started){ started=true; if(onStart) try{ onStart(); }catch(e){}   // text in sync with voice
+        if(nanCarrier) clearInterval(nanCarrier);
+        nanCarrier=setInterval(()=>{ if(nanSpeaking) nanBurst(0.004+Math.random()*0.005); }, 260); } };  // soft hiss under voice only
     u.onboundary=()=>{ nanVoiceLevel=0.7+Math.random()*0.3; }; // mouth opens per word
     speechSynthesis.speak(u); last=u;
   });
@@ -3629,9 +3629,17 @@ let nanProxyOk=true;
 const nanHistory=[];
 function nanThinking(){ clearInterval(nanTypeT); clearTimeout(nanHideT); nanSaysEl.classList.add('vis'); nanTxtEl.textContent='▓ ▒ ░'; }
 function nanReply(text, mood, dur, action, suggestions){
-  nanType(text); nanSpeak(text); nanMoodSet(mood, dur);
+  nanMoodSet(mood, dur);
   nanHistory.push({role:'assistant', content:text});
   if(nanHistory.length>12) nanHistory.splice(0, nanHistory.length-12);
+  if(voiceOn && voiceMode){
+    // speaking: type the line in SYNC with the voice (fallback-type if TTS is slow, so text is never stuck)
+    let typed=false; const startType=()=>{ if(!typed){ typed=true; nanType(text); } };
+    const fb=setTimeout(startType, 1100);
+    nanSpeak(text, ()=>{ clearTimeout(fb); startType(); });
+  } else {
+    nanType(text);   // not in voice mode → just show the line
+  }
   if(action) setTimeout(()=>nanDoAction(action), 750);   // let the line land, then move the world
   nanRenderChips(suggestions);
 }
