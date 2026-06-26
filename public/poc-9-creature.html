@@ -4068,7 +4068,7 @@ setInterval(()=>{
     try{ uplinkShow(true); }catch(e){} setState('CONNECTING…');
     try{
       try{ nanAudio(); }catch(e){}
-      mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:true}});
+      mic=await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:true,noiseSuppression:true,autoGainControl:false}});  // AGC off → don't amplify speaker echo into a false trigger
       try{ uplinkMeterStart(mic); }catch(e){}                       // YOUR live-level meter
       const tr=await fetch(TOKEN_URL,{method:'POST',headers:{'Content-Type':'application/json'}});
       const tj=await tr.json().catch(()=>({}));
@@ -4093,23 +4093,29 @@ setInterval(()=>{
   }
 
   function send(o){ try{ if(dc&&dc.readyState==='open') dc.send(JSON.stringify(o)); }catch(e){} }
-  // mute YOUR mic while NaN is talking, so NaN can't hear its own voice (speakers→mic) and loop forever
-  let unmuteT=null;
-  function micEnable(on){ try{ if(mic) mic.getAudioTracks().forEach(t=>t.enabled=on); }catch(e){} }
-  function onNanStart(){ if(unmuteT){ clearTimeout(unmuteT); unmuteT=null; } micEnable(false); }
-  function onNanEnd(){ if(unmuteT) clearTimeout(unmuteT); unmuteT=setTimeout(()=>micEnable(true), 650); }  // small tail so the last audio doesn't re-trigger
+  // echo guard (mic stays OPEN so you can interrupt): if a "user turn" is really NaN's own words bouncing
+  // back through the speakers, cancel that response instead of looping. Real interruptions don't match NaN.
+  let lastNanSaid='';
+  const norm=s=>(s||'').toLowerCase().replace(/[^a-z0-9 ]/g,'').replace(/\s+/g,' ').trim();
+  function looksLikeEcho(userTxt){ const u=norm(userTxt); if(u.length<4) return false; const n=norm(lastNanSaid); if(!n) return false;
+    const w=u.split(' ').filter(x=>x.length>2); if(!w.length) return false; let hit=0; w.forEach(x=>{ if(n.indexOf(x)>=0) hit++; });
+    return hit/w.length > 0.7; }   // >70% of your words appear in what NaN just said → it's echo
 
   function onEvent(ev){
     let m; try{ m=JSON.parse(ev.data); }catch(e){ return; } const T=m.type||'';
     if(T==='input_audio_buffer.speech_started'){ setState('HEARING YOU'); uTxt=''; }
     else if(T==='input_audio_buffer.speech_stopped'){ if(st==='live') setState('UPLINK LIVE'); }
     else if(T.indexOf('input_audio_transcription.delta')>=0){ uTxt+=(m.delta||''); setHeard(uTxt); }
-    else if(T.indexOf('input_audio_transcription.completed')>=0){ setHeard(m.transcript||uTxt); uTxt=''; }
-    else if(T==='response.created'){ nanSpeaking=true; nTxt=''; setState('NaN SPEAKING'); onNanStart(); }
+    else if(T.indexOf('input_audio_transcription.completed')>=0){
+      const txt=m.transcript||uTxt; uTxt='';
+      if(nanSpeaking && looksLikeEcho(txt)){ send({type:'response.cancel'}); return; }   // NaN heard itself → drop it
+      setHeard(txt);
+    }
+    else if(T==='response.created'){ nanSpeaking=true; nTxt=''; setState('NaN SPEAKING'); }
     else if(T.indexOf('audio_transcript.delta')>=0){ nTxt+=(m.delta||''); says(nTxt); }
-    else if(T.indexOf('audio_transcript.done')>=0){ saysDone(m.transcript||nTxt); }
+    else if(T.indexOf('audio_transcript.done')>=0){ const t=m.transcript||nTxt; lastNanSaid=t; saysDone(t); }
     else if(T==='response.function_call_arguments.done'){ doTool(m.name, m.arguments, m.call_id); }
-    else if(T==='response.done'){ nanSpeaking=false; nanVoiceLevel=0; if(st==='live') setState('UPLINK LIVE'); onNanEnd(); handleDone(m.response); }
+    else if(T==='response.done'){ nanSpeaking=false; nanVoiceLevel=0; if(st==='live') setState('UPLINK LIVE'); handleDone(m.response); }
     else if(T==='error'){ console.warn('[NaN realtime] event error:', m.error); }
   }
   function handleDone(resp){ const out=(resp&&resp.output)||[]; out.forEach(it=>{ if(it&&it.type==='function_call'&&it.name==='open_section') doTool(it.name, it.arguments, it.call_id); }); }
@@ -4125,7 +4131,6 @@ setInterval(()=>{
 
   function teardown(reason, keepLabel){
     if(cap){ clearTimeout(cap); cap=null; }
-    if(unmuteT){ clearTimeout(unmuteT); unmuteT=null; }
     if(raf){ cancelAnimationFrame(raf); raf=0; } an=null;
     try{ if(dc) dc.close(); }catch(e){} dc=null;
     try{ if(pc){ pc.getSenders().forEach(s=>{ try{ s.track&&s.track.stop(); }catch(e){} }); pc.close(); } }catch(e){} pc=null;
