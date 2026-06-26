@@ -9,6 +9,26 @@ export const dynamic = 'force-dynamic';
 const KEY = process.env.OPENAI_API_KEY || '';
 const MODEL = process.env.NAN_MODEL || 'gpt-4.1-mini';   // fast + far better at following nuance than nano; still ~instant
 
+// ── conversation logging ────────────────────────────────────
+// Always console.log (visible in Vercel runtime logs). If Upstash Redis env vars
+// are set, ALSO persist to a capped list you can read via /api/nan-logs?key=...
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL || '';
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || '';
+const LOG_KEEP = 2000;   // keep only the most recent N turns
+function logConvo(entry: Record<string, unknown>) {
+  try { console.log('[NAN_CONVO]', JSON.stringify(entry)); } catch { /* ignore */ }
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return;
+  // Upstash REST pipeline: LPUSH the entry, then trim to LOG_KEEP. Fire-and-forget — never blocks the reply.
+  fetch(`${UPSTASH_URL}/pipeline`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify([
+      ['LPUSH', 'nan:convos', JSON.stringify(entry)],
+      ['LTRIM', 'nan:convos', '0', String(LOG_KEEP - 1)],
+    ]),
+  }).catch(() => { /* logging must never break chat */ });
+}
+
 // ── rate limiting ───────────────────────────────────────────
 // NOTE: in-memory = per warm instance. Reliable for a single instance /
 // low traffic. For strict global limits on serverless, back this with
@@ -135,6 +155,7 @@ export async function POST(req: NextRequest) {
     const out: string = j.choices?.[0]?.message?.content || '';
     let reply = out, mood: string | null = null, action: string | null = null, suggestions: unknown = null;
     try { const p = JSON.parse(out); reply = p.reply || out; mood = p.mood || null; action = p.action || null; suggestions = Array.isArray(p.suggestions) ? p.suggestions : null; } catch { /* keep raw */ }
+    logConvo({ ts: new Date().toISOString(), ip, ua: req.headers.get('user-agent')?.slice(0, 160) || null, name: name || null, msg: message.slice(0, 500), reply: (reply || '').slice(0, 500), mood });
     return Response.json({ reply, mood, action, suggestions }, { headers: CORS });
   } catch (e) {
     return Response.json({ error: 'upstream', detail: String((e as Error)?.message || e) }, { status: 502, headers: CORS });
