@@ -193,8 +193,8 @@ body.sec-holo #sat-stats, body.sec-holo #sat-feed, body.sec-holo #weapon, body.s
 #satframe .tr{top:20px;right:20px;border-left:0;border-bottom:0;border-top-right-radius:5px;}
 #satframe .bl{bottom:20px;left:20px;border-right:0;border-top:0;border-bottom-left-radius:5px;}
 #satframe .brc{bottom:20px;right:20px;border-left:0;border-top:0;border-bottom-right-radius:5px;}
-#nanChips{display:none;}
-#nanChips.vis{opacity:1;pointer-events:auto;}
+#nanChips{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:49;display:none;gap:8px;justify-content:center;flex-wrap:wrap;max-width:620px;width:88%;opacity:0;pointer-events:none;transition:opacity .3s;}
+#nanChips.vis{display:flex;opacity:1;pointer-events:auto;}
 .nchip{font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:.4px;color:#7fe0ff;background:rgba(8,16,24,.74);border:1px solid rgba(127,224,255,.3);padding:5px 11px;cursor:pointer;transition:background .15s,color .15s,border-color .15s;white-space:nowrap;}
 .nchip:hover{background:rgba(127,224,255,.16);color:#eaffff;border-color:#7fe0ff;}
 
@@ -213,7 +213,8 @@ body.mobile .ts{font-size:8px;letter-spacing:1.5px;margin-top:2px;}
 body.mobile .tr{display:none;}
 body.mobile #sound-toggle{top:calc(14px + env(safe-area-inset-top,0));left:auto;right:14px;}
 body.mobile #nanSays{top:90px;bottom:auto;font-size:13.5px;line-height:1.5;width:92%;max-width:none;}
-body.mobile #nanChips{top:auto;bottom:140px;}
+body.mobile #nanChips{top:auto;bottom:84px;}
+body.mobile.tour #nanChips{top:auto;bottom:calc(76vh + 10px);}   /* during a walkthrough the bottom sheet is open → hug the Next/Stop chips just above it */
 body.mobile #uplink-panel{top:auto;bottom:72px;right:10px;left:10px;width:auto;flex-direction:column-reverse;}
 /* bottom nav */
 body.mobile #m-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:71;gap:2px;background:rgba(4,10,16,.94);backdrop-filter:blur(8px);border-top:1px solid rgba(127,224,255,.25);padding:6px 5px calc(6px + env(safe-area-inset-bottom,0));}
@@ -3664,7 +3665,7 @@ function nanRenderChips(list){
 function nanCommand(cmd){
   if(cmd==='tour:next') return nanTourNext();
   if(cmd==='tour:end') return nanTourEnd();
-  if(cmd.startsWith('open:')) return nanDoAction(cmd);
+  return nanDoAction(cmd);   // 'tour' → startTour; 'open:…' / 'close' / 'point:…' all handled there too
 }
 
 // ── NaN drives the 3D world ──────────────────────────────────
@@ -3707,7 +3708,7 @@ const TOUR=[
 ];
 let tourActive=false, tourI=-1, tourTimer=null;
 function _tourClearTimer(){ if(tourTimer){ clearTimeout(tourTimer); tourTimer=null; } }
-function startTour(){ tourActive=true; tourI=-1; nanTourNext(); }
+function startTour(){ tourActive=true; tourI=-1; document.body.classList.add('tour'); nanTourNext(); }
 function nanTourNext(){
   _tourClearTimer();
   tourI++;
@@ -3719,7 +3720,7 @@ function nanTourNext(){
 }
 function nanTourEnd(){
   _tourClearTimer();
-  tourActive=false; closePanel();
+  tourActive=false; document.body.classList.remove('tour'); closePanel();
   nanReply("That's the loop. Wander any node yourself now — or open the UPLINK and just talk to me.",'happy',4,null,['His work','His hobbies',{label:'Contact him',cmd:'open:s-contact'}]);
 }
 
