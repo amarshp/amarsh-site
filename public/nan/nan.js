@@ -399,7 +399,10 @@ const mwBand = new THREE.Mesh(
   new THREE.SphereGeometry(300, 64, 40),
   new THREE.MeshBasicMaterial({map:mwTex, transparent:true, opacity:0.07, side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false})  // faint underglow only — the 16k band POINTS carry the structure; a strong paint here just greys the sky
 );
-mwBand.rotation.set(0.38, 0.2, 0.35); // tilt the band into a diagonal night-sky arc across the view
+// ALIGNED with the band-star river: the underglow's equator must lie in the galaxy group's XZ plane
+// (the same plane buildBandStars samples), else the two bands cross — one Milky Way, not two.
+// rotation.y=-1.0 turns the texture's bright core (u=0.5 → +X) onto the star bulge longitude (lon=1.0).
+mwBand.rotation.set(0, -1.0, 0);
 galaxy.add(mwBand);
 
 // ── CREATURE MESH — spiky closed shell with MANY vertices ────────────
@@ -852,7 +855,9 @@ function makeTailRibbon(N, hex, headW, step){
     vertexShader:`attribute float aSide; attribute float aAlong; varying float vS; varying float vA;
       void main(){ vS=aSide; vA=aAlong; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
     fragmentShader:`uniform vec3 uColor; uniform float uOpacity; varying float vS; varying float vA;
-      void main(){ float edge=1.0-vS*vS; float len=pow(1.0-vA,1.35); gl_FragColor=vec4(uColor*(0.45+edge*0.75), edge*len*uOpacity); }` });
+      void main(){ float edge=1.0-vS*vS; float len=pow(1.0-vA,1.35);
+        float headFade=smoothstep(0.0,0.14,vA);   // tail emerges from INSIDE the coma — no hard flat edge cutting the head glow
+        gl_FragColor=vec4(uColor*(0.45+edge*0.75), edge*len*headFade*uOpacity); }` });
   const mesh=new THREE.Mesh(geo, mat); mesh.frustumCulled=false;
   return {mesh, geo, pos, N, headW, step};
 }
@@ -1510,7 +1515,7 @@ function updateProjectiles(dt){
 function resolveHit(target, at){
   if(!target){ spawnExplosion(at, 0x88ddff, 0.45); return; }     // miss → faint spark
   if(target.kind==='blocked'){ spawnHexShield(at);                            // hex barrier flares the instant the bolt reaches the converged dots
-    try{ spawnExplosion(at, 0x66ffd0, 1.2); }catch(e){} return; }             // bolt shatters on the shield — no damage to NaN
+    try{ spawnExplosion(at, 0x66ffd0, 0.45); }catch(e){} return; }            // small spark — the hex flare is the show, not a detonation
   if(target.kind==='proj'){ if(projActive && projCards.includes(target.card)) toggleProjCard(target.card); return; }   // expand/collapse a project card
   if(target.kind==='secfx'){ spawnExplosion(at, 0x9ff6ff, 0.5); return; }                                            // section-holo item already activated at fire-time
   if(target.kind==='sec'){ if(secActive && secItems.includes(target.it)) secHit(target.it); return; }                 // (fallback) activate a section-holo item
@@ -2683,7 +2688,7 @@ function damageEntity(n, at){
 function handleThreatImpact(t){
   if(t.hitShield) return; t.hitShield=true;
   const at=t.p.clone();
-  if(!shieldDown()){ try{ shieldBlock(at); }catch(e){} try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffaa66, 0.5); }catch(e){} destroyThreat(t,false); }   // soft pop — the shield absorbs, it doesn't detonate
+  if(!shieldDown()){ try{ shieldBlock(at); }catch(e){} try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffaa66, 0.35); }catch(e){} destroyThreat(t,false); }   // soft pop — the shield absorbs, it doesn't detonate
   else { destroyThreat(t,false); damageEntity(1, at); }
 }
 function updateThreats(dt){
@@ -2754,7 +2759,7 @@ function animate(){
   // Free-orbit trackball — drag rotates the world in ANY direction (no axis clamp). Plus slow idle drift
   // and a subtle cursor-lean on top. HUD stays centered.
   // idle yaw drift — only AFTER you've stopped interacting for a few seconds, so it never fights your drag
-  if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.00045); worldQuat.premultiply(_qDy); }   // barely-perceptible station drift (was 0.0014 — read as spinning)
+  if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.0008); worldQuat.premultiply(_qDy); }   // gentle station drift — alive but not spinning (0.0014 too fast, 0.00045 too dead)
   world.quaternion.copy(worldQuat);   // the drag is the ONLY thing that orients the view — cursor-lean removed (it slid the scene like a sheet on hover)
 
   // comets / asteroids drift past now and then — suppressed during the game (threats replace them)
