@@ -232,7 +232,10 @@ camera.position.set(0, 0, 6.6);
 
 const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 renderer.setSize(W, H);
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+// render ratio: native on hi-DPI (capped 2 for perf), SUPERSAMPLED 1.5x on plain 1x monitors —
+// stars, lines and limbs come out visibly crisper there for a modest GPU cost
+const RENDER_DPR = Math.min(Math.max(devicePixelRatio||1, 1.5), 2);
+renderer.setPixelRatio(RENDER_DPR);
 renderer.setClearColor(0x000000, 1);
 renderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;';
 document.body.prepend(renderer.domElement);
@@ -1774,9 +1777,14 @@ const bloomPass = new UnrealBloomPass(new THREE.Vector2(W, H), 0.7, 0.55, 0.52);
 composer.addPass(bloomPass);
 
 // ── HUD CANVAS ────────────────────────────────────────────────
+// Backed at device resolution (was always 1x → every HUD label rendered blurry on hi-DPI
+// screens). Drawing code keeps using CSS-pixel coords; the transform maps to device pixels.
 const hud = document.getElementById('hud');
 const ctx = hud.getContext('2d');
-hud.width = W; hud.height = H;
+const HUD_DPR = Math.min(devicePixelRatio||1, 2);
+function sizeHud(){ hud.width=Math.round(W*HUD_DPR); hud.height=Math.round(H*HUD_DPR);
+  hud.style.width=W+'px'; hud.style.height=H+'px'; ctx.setTransform(HUD_DPR,0,0,HUD_DPR,0,0); }
+sizeHud();
 
 // ── STATE ─────────────────────────────────────────────────────
 let mx=W/2, my=H/2, crx=W/2, cry=H/2;
@@ -1877,7 +1885,7 @@ window.addEventListener('resize', ()=>{
   composer.setSize(W,H);
   bloomPass.resolution.set(W,H);
   bloomPass.setSize(W,H);
-  hud.width=W; hud.height=H;
+  sizeHud();
 });
 
 // ── CURSOR ────────────────────────────────────────────────────
