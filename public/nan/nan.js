@@ -316,6 +316,72 @@ scene.add(galaxy);
   g.setAttribute('color',new THREE.BufferAttribute(col,3));
   galaxy.add(new THREE.Points(g, new THREE.PointsMaterial({size:1.7, vertexColors:true, transparent:true, opacity:1.0, sizeAttenuation:false, blending:THREE.AdditiveBlending, depthWrite:false})));
 })();
+
+// ── DEEP-SKY OBJECTS — the real naked-eye landmarks, at their TRUE J2000 positions ──
+// Same equatorial frame as the HYG catalog (x=cosδcosα, y=cosδsinα, z=sinδ), same parent group,
+// so each object sits correctly relative to the real constellations around it.
+//   M31 Andromeda  α 00h42.7m δ +41.27°  ~3°×1°, mag 3.4 — elongated disc, PA ~38°
+//   LMC            α 05h23.6m δ −69.76°  ~10.8°, mag 0.9 — big irregular cloud
+//   SMC            α 00h52.7m δ −72.80°  ~5.3°,  mag 2.7 — smaller cloud
+//   M42 Orion      α 05h35.3m δ −5.39°   ~1.1°,  mag 4.0 — Hα red, hot white core
+//   Carina (η Car) α 10h45.1m δ −59.87°  ~2°,    mag 1.0 — diffuse Hα red
+//   M45 Pleiades   α 03h47.4m δ +24.12°  ~2°     — blue reflection haze (its stars are already in HYG)
+(function buildDeepSky(){
+  const R=316, D2R=Math.PI/180;
+  const dir=(raDeg,decDeg)=>{ const ra=raDeg*D2R, dec=decDeg*D2R;
+    return new THREE.Vector3(Math.cos(dec)*Math.cos(ra), Math.cos(dec)*Math.sin(ra), Math.sin(dec)); };
+  const ang=(deg)=>2*R*Math.tan(deg*D2R/2);           // angular size → world units at radius R
+  function galaxyTex(){ // M31: bright compact core + tilted faint disc
+    const c=document.createElement('canvas'); c.width=256; c.height=256; const g=c.getContext('2d');
+    g.translate(128,128); g.scale(1,0.38);            // disc seen ~77° from face-on
+    const rg=g.createRadialGradient(0,0,0,0,0,120);
+    rg.addColorStop(0,'rgba(255,244,224,0.95)'); rg.addColorStop(0.12,'rgba(255,238,214,0.5)');
+    rg.addColorStop(0.45,'rgba(214,214,255,0.16)'); rg.addColorStop(1,'rgba(190,200,255,0)');
+    g.fillStyle=rg; g.fillRect(-128,-336,256,672);
+    return new THREE.CanvasTexture(c);
+  }
+  function cloudTex(seed,r,gc,b){ // Magellanic clouds: irregular mottled star-cloud
+    const c=document.createElement('canvas'); c.width=128; c.height=128; const g=c.getContext('2d');
+    for(let i=0;i<46;i++){ const a=seed*7+i*2.399, rad=Math.pow((Math.sin(seed*13+i*7.7)*0.5+0.5),1.4)*44;
+      const x=64+Math.cos(a)*rad, y=64+Math.sin(a)*rad*0.8, s=5+(Math.sin(seed*3+i*3.1)*0.5+0.5)*15;
+      const rg=g.createRadialGradient(x,y,0,x,y,s);
+      rg.addColorStop(0,`rgba(${r},${gc},${b},0.14)`); rg.addColorStop(1,`rgba(${r},${gc},${b},0)`);
+      g.fillStyle=rg; g.fillRect(x-s,y-s,s*2,s*2); }
+    return new THREE.CanvasTexture(c);
+  }
+  function nebulaTex(coreWhite){ // Hα emission nebula: deep red, optional hot core
+    const c=document.createElement('canvas'); c.width=128; c.height=128; const g=c.getContext('2d');
+    const rg=g.createRadialGradient(64,64,0,64,64,62);
+    rg.addColorStop(0,coreWhite?'rgba(255,238,232,0.75)':'rgba(255,120,110,0.4)');
+    rg.addColorStop(0.3,'rgba(236,90,86,0.3)'); rg.addColorStop(0.7,'rgba(190,60,70,0.12)'); rg.addColorStop(1,'rgba(160,50,70,0)');
+    g.fillStyle=rg; g.fillRect(0,0,128,128);
+    return new THREE.CanvasTexture(c);
+  }
+  function blueHazeTex(){ // Pleiades reflection nebulosity
+    const c=document.createElement('canvas'); c.width=128; c.height=128; const g=c.getContext('2d');
+    const rg=g.createRadialGradient(64,64,0,64,64,60);
+    rg.addColorStop(0,'rgba(170,200,255,0.35)'); rg.addColorStop(0.5,'rgba(150,185,255,0.12)'); rg.addColorStop(1,'rgba(140,180,255,0)');
+    g.fillStyle=rg; g.fillRect(0,0,128,128);
+    return new THREE.CanvasTexture(c);
+  }
+  const OBJ=[
+    { ra:10.685,  dec:41.269,  size:ang(3.0),  op:0.5,  tex:galaxyTex(),  rot:38*D2R },   // M31
+    { ra:80.894,  dec:-69.756, size:ang(10.8), op:0.16, tex:cloudTex(1, 232,228,244) },   // LMC
+    { ra:13.187,  dec:-72.829, size:ang(5.3),  op:0.14, tex:cloudTex(2, 226,224,242) },   // SMC
+    { ra:83.822,  dec:-5.391,  size:ang(1.4),  op:0.55, tex:nebulaTex(true) },            // M42
+    { ra:161.265, dec:-59.868, size:ang(2.0),  op:0.30, tex:nebulaTex(false) },           // Carina
+    { ra:56.850,  dec:24.117,  size:ang(2.0),  op:0.28, tex:blueHazeTex() },              // M45 haze
+  ];
+  for(const o of OBJ){
+    const m=new THREE.SpriteMaterial({map:o.tex, transparent:true, opacity:o.op, blending:THREE.AdditiveBlending, depthWrite:false});
+    if(o.rot) m.rotation=o.rot;                        // M31 position angle
+    const s=new THREE.Sprite(m);
+    s.position.copy(dir(o.ra,o.dec)).multiplyScalar(R);
+    s.scale.set(o.size,o.size,1);
+    galaxy.add(s);
+  }
+})();
+
 // REAL stars from the HYG catalog (public domain): 30k brightest, true x/y/z/colour/magnitude,
 // rendered as a distant flattened galactic disk. Async so it never blocks first paint.
 function ciToRGB(ci){ // B–V colour index → approximate star colour (hot blue → cool red)
@@ -339,6 +405,28 @@ fetch('stars.json').then(r=>r.json()).then(d=>{
   gg.setAttribute('position', new THREE.BufferAttribute(pos,3));
   gg.setAttribute('color',    new THREE.BufferAttribute(col,3));
   galaxy.add(new THREE.Points(gg, new THREE.PointsMaterial({map:nebTex, size:2.6, vertexColors:true, transparent:true, opacity:0.95, sizeAttenuation:false, blending:THREE.AdditiveBlending, depthWrite:false})));
+  // ── first-magnitude glare — real sensors bleed on the very brightest stars (Sirius −1.46, Canopus −0.74,
+  //    α Cen −0.27, Arcturus −0.05, Vega 0.03…). Soft halo + faint 4-point glare, tinted the star's own colour,
+  //    sized by magnitude. Only mag < 0.7 gets it (~15 stars) — everything else stays a clean point.
+  const glareTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+    const rg=g.createRadialGradient(64,64,0,64,64,64);
+    rg.addColorStop(0,'rgba(255,255,255,0.9)'); rg.addColorStop(0.18,'rgba(255,255,255,0.28)'); rg.addColorStop(0.5,'rgba(255,255,255,0.06)'); rg.addColorStop(1,'rgba(255,255,255,0)');
+    g.fillStyle=rg; g.fillRect(0,0,128,128);
+    const spike=(w,l)=>{ const lg=g.createLinearGradient(64-l,64,64+l,64);
+      lg.addColorStop(0,'rgba(255,255,255,0)'); lg.addColorStop(0.5,'rgba(255,255,255,0.5)'); lg.addColorStop(1,'rgba(255,255,255,0)');
+      g.fillStyle=lg; g.fillRect(64-l,64-w/2,l*2,w); };
+    spike(1.6,62); g.save(); g.translate(64,64); g.rotate(Math.PI/2); g.translate(-64,-64); spike(1.6,62); g.restore();
+    return new THREE.CanvasTexture(c); })();
+  for(let i=0;i<N;i++){
+    if(M[i]>=0.7 || M[i]<-5) continue;                       // < -5 = the Sun's HYG entry, skip
+    const c=ciToRGB(C[i]);
+    const s=new THREE.Sprite(new THREE.SpriteMaterial({map:glareTex, transparent:true, opacity:0.32,
+      color:new THREE.Color(c[0],c[1],c[2]), blending:THREE.AdditiveBlending, depthWrite:false}));
+    s.position.set(pos[i*3],pos[i*3+1],pos[i*3+2]);
+    const sc=(1.35-M[i])*2.6;                                // Sirius ~7.3 units (~1.3°), mag 0.6 ~2 units
+    s.scale.set(sc,sc,1);
+    galaxy.add(s);
+  }
 }).catch(e=>console.warn('[stars] catalog load failed', e));
 // soft radial sprite texture (reused for comet heads / glow)
 const nebTex = (()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
