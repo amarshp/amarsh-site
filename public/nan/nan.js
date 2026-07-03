@@ -199,19 +199,24 @@ function fireSound(){
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') audioCtx.resume();
     const now=audioCtx.currentTime;
-    // electric discharge — falling sawtooth zap, lowpassed so it reads "through the hull"
-    const zap=audioCtx.createOscillator(), zg=audioCtx.createGain(), zf=audioCtx.createBiquadFilter();
-    zf.type='lowpass'; zf.frequency.setValueAtTime(2200,now); zf.frequency.exponentialRampToValueAtTime(700,now+0.14);
-    zap.type='sawtooth'; zap.frequency.setValueAtTime(880,now); zap.frequency.exponentialRampToValueAtTime(150,now+0.13);
-    zg.gain.setValueAtTime(0.0001,now); zg.gain.exponentialRampToValueAtTime(0.11,now+0.006); zg.gain.exponentialRampToValueAtTime(0.001,now+0.17);
-    zap.connect(zf); zf.connect(zg); zg.connect(audioCtx.destination); zap.start(now); zap.stop(now+0.19);
-    // launch recoil — short low-frequency thump felt through the deck
-    const len=Math.floor(audioCtx.sampleRate*0.14), tb=audioCtx.createBuffer(1,len,audioCtx.sampleRate), td=tb.getChannelData(0);
-    for(let s=0;s<len;s++) td[s]=(Math.random()*2-1)*Math.pow(1-s/len,2);
-    const thump=audioCtx.createBufferSource(); thump.buffer=tb;
-    const tf=audioCtx.createBiquadFilter(); tf.type='lowpass'; tf.frequency.value=210;
-    const tg=audioCtx.createGain(); tg.gain.setValueAtTime(0.5,now); tg.gain.exponentialRampToValueAtTime(0.001,now+0.14);
-    thump.connect(tf); tf.connect(tg); tg.connect(audioCtx.destination); thump.start(now); thump.stop(now+0.15);
+    // snappy "pew" — fast triangle dive with a slight random detune so rapid fire doesn't sound stamped
+    const det=1+(Math.random()-0.5)*0.12;
+    const zap=audioCtx.createOscillator(), zg=audioCtx.createGain();
+    zap.type='triangle'; zap.frequency.setValueAtTime(1350*det,now); zap.frequency.exponentialRampToValueAtTime(160,now+0.085);
+    zg.gain.setValueAtTime(0.0001,now); zg.gain.exponentialRampToValueAtTime(0.16,now+0.004); zg.gain.exponentialRampToValueAtTime(0.001,now+0.1);
+    zap.connect(zg); zg.connect(audioCtx.destination); zap.start(now); zap.stop(now+0.11);
+    // muzzle crack — tiny high-passed noise transient right at the front
+    const cl=Math.floor(audioCtx.sampleRate*0.03), cb=audioCtx.createBuffer(1,cl,audioCtx.sampleRate), cd=cb.getChannelData(0);
+    for(let s=0;s<cl;s++) cd[s]=(Math.random()*2-1)*Math.pow(1-s/cl,3);
+    const crack=audioCtx.createBufferSource(); crack.buffer=cb;
+    const cf=audioCtx.createBiquadFilter(); cf.type='highpass'; cf.frequency.value=2800;
+    const cg=audioCtx.createGain(); cg.gain.setValueAtTime(0.12,now); cg.gain.exponentialRampToValueAtTime(0.001,now+0.03);
+    crack.connect(cf); cf.connect(cg); cg.connect(audioCtx.destination); crack.start(now); crack.stop(now+0.035);
+    // low body — one short sine knock so the shot still has weight
+    const sub=audioCtx.createOscillator(), sg=audioCtx.createGain();
+    sub.type='sine'; sub.frequency.setValueAtTime(150,now); sub.frequency.exponentialRampToValueAtTime(55,now+0.07);
+    sg.gain.setValueAtTime(0.22,now); sg.gain.exponentialRampToValueAtTime(0.001,now+0.08);
+    sub.connect(sg); sg.connect(audioCtx.destination); sub.start(now); sub.stop(now+0.09);
   }catch(e){}
 }
 
@@ -919,24 +924,67 @@ let flyClock=0, flyNext=6;
 window.__flyby=spawnFlyby; // debug: spawn a comet/asteroid now
 
 // ── EXPLOSIONS — shared burst for shooting comets/asteroids and weapon impacts ──
+// Three layers: hard white flash + expanding shockwave ring + two spark systems (fast white-hot
+// core that drags to a stop, slower coloured embers), plus tumbling rock debris on big bursts.
+const ringTex=(()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const rg=g.createRadialGradient(64,64,0,64,64,64);
+  rg.addColorStop(0,'rgba(255,255,255,0)'); rg.addColorStop(0.62,'rgba(255,255,255,0)');
+  rg.addColorStop(0.78,'rgba(255,255,255,1)'); rg.addColorStop(0.9,'rgba(255,255,255,0.35)'); rg.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=rg; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c); })();
+const _debrisGeo=new THREE.TetrahedronGeometry(1, 0);   // shared unit geometry, scaled per chunk
 const explosions=[];
-function spawnExplosion(pos, color, size){
-  size=size||1; const N=24, g=new THREE.BufferGeometry(), pp=new Float32Array(N*3), vel=[];
-  for(let i=0;i<N;i++){ pp[i*3]=pos.x; pp[i*3+1]=pos.y; pp[i*3+2]=pos.z;
-    vel.push(new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize().multiplyScalar((0.6+Math.random()*1.6)*size)); }
+function _sparkSys(pos, color, size, n, spd, psize){
+  const g=new THREE.BufferGeometry(), pp=new Float32Array(n*3), vel=[];
+  for(let i=0;i<n;i++){ pp[i*3]=pos.x; pp[i*3+1]=pos.y; pp[i*3+2]=pos.z;
+    vel.push(new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize().multiplyScalar((0.5+Math.random())*spd*size)); }
   g.setAttribute('position', new THREE.BufferAttribute(pp,3));
-  const pts=new THREE.Points(g, new THREE.PointsMaterial({map:nebTex,color:color||0xffaa44,size:0.45*size,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
-  scene.add(pts);
-  const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:color||0xffcc66,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
-  fl.position.copy(pos); fl.scale.setScalar(1.2*size); scene.add(fl);
-  explosions.push({pts,g,vel,fl,t:0,dur:0.7});
+  const pts=new THREE.Points(g, new THREE.PointsMaterial({map:nebTex,color,size:psize*size,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false,sizeAttenuation:true}));
+  scene.add(pts); return {pts,g,vel};
+}
+function spawnExplosion(pos, color, size){
+  size=size||1;
+  const sparks=_sparkSys(pos, 0xfff3dd, size, 16, 4.5, 0.22);           // white-hot core burst, dies fast
+  const embers=_sparkSys(pos, color||0xffaa44, size, 22, 1.6, 0.5);     // coloured embers, linger
+  const fl=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0xffffff,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
+  fl.position.copy(pos); fl.scale.setScalar(1.6*size); scene.add(fl);
+  const ring=new THREE.Sprite(new THREE.SpriteMaterial({map:ringTex,color:color||0xffcc66,transparent:true,opacity:0.9,blending:THREE.AdditiveBlending,depthWrite:false}));
+  ring.position.copy(pos); ring.scale.setScalar(0.3*size); scene.add(ring);
+  let debris=null;
+  if(size>=0.8){ debris=[];
+    const n=4+Math.min(4, Math.round(size*2));
+    for(let i=0;i<n;i++){ const m=new THREE.Mesh(_debrisGeo, new THREE.MeshBasicMaterial({color:0x4a3f36,transparent:true,opacity:0.95}));
+      m.position.copy(pos); m.scale.setScalar((0.05+Math.random()*0.07)*size);
+      debris.push({m, v:new THREE.Vector3(Math.random()-0.5,Math.random()-0.5,Math.random()-0.5).normalize().multiplyScalar((1+Math.random()*1.6)*size),
+        spin:new THREE.Vector3(Math.random(),Math.random(),Math.random()).multiplyScalar(9)});
+      scene.add(m); } }
+  explosions.push({sparks,embers,fl,ring,debris,t:0,dur:0.85,size});
 }
 function updateExplosions(dt){
-  for(let i=explosions.length-1;i>=0;i--){ const e=explosions[i]; e.t+=dt; const k=e.t/e.dur, arr=e.g.attributes.position.array;
-    for(let j=0;j<e.vel.length;j++){ arr[j*3]+=e.vel[j].x*dt; arr[j*3+1]+=e.vel[j].y*dt; arr[j*3+2]+=e.vel[j].z*dt; }
-    e.g.attributes.position.needsUpdate=true;
-    e.pts.material.opacity=Math.max(0,1-k); e.fl.material.opacity=Math.max(0,1-k*2); e.fl.scale.setScalar((1.2+k*2));
-    if(e.t>=e.dur){ scene.remove(e.pts); scene.remove(e.fl); e.g.dispose(); e.pts.material.dispose(); e.fl.material.dispose(); explosions.splice(i,1); }
+  const drag=Math.exp(-3.2*dt), eDrag=Math.exp(-1.4*dt);
+  for(let i=explosions.length-1;i>=0;i--){ const e=explosions[i]; e.t+=dt; const k=e.t/e.dur;
+    const sa=e.sparks.g.attributes.position.array;
+    for(let j=0;j<e.sparks.vel.length;j++){ const v=e.sparks.vel[j]; v.multiplyScalar(drag);
+      sa[j*3]+=v.x*dt; sa[j*3+1]+=v.y*dt; sa[j*3+2]+=v.z*dt; }
+    e.sparks.g.attributes.position.needsUpdate=true;
+    e.sparks.pts.material.opacity=Math.max(0,1-k*2.4);                                  // core sparks vanish in the first third
+    const ea=e.embers.g.attributes.position.array;
+    for(let j=0;j<e.embers.vel.length;j++){ const v=e.embers.vel[j]; v.multiplyScalar(eDrag);
+      ea[j*3]+=v.x*dt; ea[j*3+1]+=v.y*dt; ea[j*3+2]+=v.z*dt; }
+    e.embers.g.attributes.position.needsUpdate=true;
+    e.embers.pts.material.opacity=Math.max(0,1-k)*0.9;
+    e.fl.material.opacity=Math.max(0,1-k*3.5); e.fl.scale.setScalar((1.6+k*1.2)*e.size); // flash: instant pop, fast fade
+    const rk=Math.min(1,k*1.35);
+    e.ring.material.opacity=0.9*(1-rk); e.ring.scale.setScalar((0.3+rk*4.2)*e.size);     // shockwave races outward
+    if(e.debris) for(const d of e.debris){ d.m.position.addScaledVector(d.v, dt); d.v.multiplyScalar(eDrag);
+      d.m.rotation.x+=d.spin.x*dt; d.m.rotation.y+=d.spin.y*dt; d.m.rotation.z+=d.spin.z*dt;
+      d.m.material.opacity=Math.max(0,0.95-k*1.1); }
+    if(e.t>=e.dur){
+      scene.remove(e.sparks.pts); e.sparks.g.dispose(); e.sparks.pts.material.dispose();
+      scene.remove(e.embers.pts); e.embers.g.dispose(); e.embers.pts.material.dispose();
+      scene.remove(e.fl); e.fl.material.dispose(); scene.remove(e.ring); e.ring.material.dispose();
+      if(e.debris) for(const d of e.debris){ scene.remove(d.m); d.m.material.dispose(); }
+      explosions.splice(i,1);
+    }
   }
 }
 
@@ -1400,7 +1448,7 @@ function fireBolt(){
       if(d < Math.max(pk.rad*1.6, 0.5) && d < bestD){ bestD=d; target={kind:'pickup',pk}; impact=_tmpV.clone(); } }
     for(const t of gameState.threats){ if(t.p.length()>gameState.rangeMax) continue;   // beyond engage range → not targetable (RANGE booster raises it)
       t.obj.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
-      if(d < Math.max(t.rad*1.7, 0.45) && d < bestD){ bestD=d; target={kind:'threat',t}; impact=_tmpV.clone(); } } }
+      if(d < Math.max(t.rad*2.6, 0.75) && d < bestD){ bestD=d; target={kind:'threat',t}; impact=_tmpV.clone(); } } }   // generous aim assist — near misses count
   for(const c of fly){ c.obj.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
     if(d < c.rad && d < bestD){ bestD=d; target={kind:'fly',c}; impact=_tmpV.clone(); } }
   for(const p of planets){ p.mesh.getWorldPosition(_tmpV); const d=_ray.ray.distanceToPoint(_tmpV);
@@ -1429,14 +1477,14 @@ function spawnBolt(from, to, target){
   const head=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0x9ff6ff,transparent:true,opacity:1,blending:THREE.AdditiveBlending,depthWrite:false}));
   head.scale.setScalar(0.5); head.position.copy(from); scene.add(head);
   // blocked bolts travel slower so the eye can follow the dots rushing in to intercept before it lands
-  const dur=(target&&target.kind==='blocked') ? 0.42 : Math.max(0.12, Math.min(0.4, from.distanceTo(to)/60));
+  const dur=(target&&target.kind==='blocked') ? 0.42 : Math.max(0.05, Math.min(0.16, from.distanceTo(to)/140));
   projectiles.push({line,head,geo,from:from.clone(),to:to.clone(),t:0,dur,target,done:false});
 }
 const _pcur=new THREE.Vector3(), _ptail=new THREE.Vector3(); // reused scratch (no per-frame alloc)
 function updateProjectiles(dt){
   for(let i=projectiles.length-1;i>=0;i--){ const b=projectiles[i]; b.t+=dt; const k=Math.min(1,b.t/b.dur);
     _pcur.copy(b.from).lerp(b.to,k); b.head.position.copy(_pcur);
-    _ptail.copy(b.from).lerp(b.to,Math.max(0,k-0.25));
+    _ptail.copy(b.from).lerp(b.to,Math.max(0,k-0.55));   // long streak — the bolt reads as a light-speed tracer
     const arr=b.geo.attributes.position.array; arr[0]=_ptail.x;arr[1]=_ptail.y;arr[2]=_ptail.z; arr[3]=_pcur.x;arr[4]=_pcur.y;arr[5]=_pcur.z; b.geo.attributes.position.needsUpdate=true;
     if(k>=1 && !b.done){ b.done=true; resolveHit(b.target, b.to); }
     if(k>=1){ scene.remove(b.line); scene.remove(b.head); b.geo.dispose(); b.line.material.dispose(); b.head.material.dispose(); projectiles.splice(i,1); }
@@ -1451,8 +1499,10 @@ function resolveHit(target, at){
   if(target.kind==='sec'){ if(secActive && secItems.includes(target.it)) secHit(target.it); return; }                 // (fallback) activate a section-holo item
   if(target.kind==='pickup'){ const pk=target.pk; if(gameState.pickups.includes(pk)){ applyPickup(pk.kind); destroyPickup(pk); } return; }   // collect booster
   if(target.kind==='threat'){ const t=target.t; if(!gameState.threats.includes(t)) return;   // already gone
-    t.hp-=1; try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffd0a0, 0.55); }catch(e){}
-    if(t.hp<=0) destroyThreat(t, true);   // scored kill → points + combo
+    t.hp-=1;
+    const kill=t.hp<=0;
+    try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffa055, kill?(t.isBoss?2.4:(t.kind==='comet'?1.0:1.25)):0.45); }catch(e){}   // hit = spark, kill = real blast
+    if(kill) destroyThreat(t, true);   // scored kill → points + combo
     return; }
   if(target.kind==='fly'){ const c=target.c, idx=fly.indexOf(c);
     if(idx>=0){ c.obj.getWorldPosition(_tmpV); spawnExplosion(_tmpV, c.type==='comet'?0x88e0ff:0xffaa55, c.type==='comet'?1.1:1.5); removeFlyby(c); fly.splice(idx,1); }
@@ -2286,9 +2336,9 @@ function exitDefendMode(){
 }
 function togglePause(){ if(!gameState.enabled || gameState.phase==='IDLE' || gameState.phase==='GAME_OVER') return; gameState.paused=!gameState.paused; }
 // ── WAVES (Phase 5) ──
-function waveCount(w){ return 6+w*2; }
-function waveInterval(w){ return Math.max(0.45, 1.35-w*0.06); }
-function waveLiveCap(w){ return Math.min(16, 4+Math.floor(w*1.2)); }
+function waveCount(w){ return 4+w*2; }                                     // wave 1: 6 total — a readable warm-up, not a flood
+function waveInterval(w){ return Math.max(0.45, 1.7-w*0.08); }
+function waveLiveCap(w){ return Math.min(14, 2+Math.ceil(w*0.8)); }        // wave 1: max 3 on screen at once
 function isSwarmWave(w){ return w%5===0; }
 function isBossWave(w){ return w%10===0; }
 function startWave(w){
@@ -2364,6 +2414,26 @@ function drawDefendHUD(){
     ctx.font='700 18px Orbitron'; ctx.fillStyle='#fff'; ctx.fillText('+'+(P.lastBonus||0)+' BONUS', W/2, H*0.40+30);
     ctx.font='11px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText('WAVE '+(P.wave+1)+' INCOMING…', W/2, H*0.40+54); }
   if(P.paused){ ctx.textAlign='center'; ctx.font='700 42px Orbitron'; ctx.fillStyle='rgba(255,255,255,.92)'; ctx.fillText('PAUSED', W/2, H/2); ctx.font='11px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.5)'; ctx.fillText('ESC RESUME · Q QUIT', W/2, H/2+30); }
+  // off-screen threat arrows — you should never be hit by something you couldn't see coming
+  const M=34;
+  for(const t of P.threats){
+    t.obj.getWorldPosition(_tmpV).project(camera);
+    const behind=_tmpV.z>1;
+    let sx=(_tmpV.x*0.5+0.5)*W, sy=(-_tmpV.y*0.5+0.5)*H;
+    if(behind){ sx=W-sx; sy=H-sy; }
+    if(!behind && sx>M && sx<W-M && sy>M && sy<H-M) continue;   // on screen → no arrow
+    const cxp=W/2, cyp=H/2, ang=Math.atan2(sy-cyp, sx-cxp);
+    const ex=Math.min(W-M, Math.max(M, sx)), ey=Math.min(H-M, Math.max(M, sy));
+    const col=t.isBoss?'#ff3b6b':(t.kind==='comet'?'#9fd0ff':'#ffa055');
+    const s=t.isBoss?13:9, dist=t.p.length();
+    ctx.save(); ctx.translate(ex,ey); ctx.rotate(ang);
+    ctx.globalAlpha=0.55+0.45*Math.abs(Math.sin(performance.now()*0.006+t.id));
+    ctx.fillStyle=col; ctx.shadowColor=col; ctx.shadowBlur=8;
+    ctx.beginPath(); ctx.moveTo(s,0); ctx.lineTo(-s*0.7,-s*0.62); ctx.lineTo(-s*0.7,s*0.62); ctx.closePath(); ctx.fill();
+    ctx.rotate(-ang); ctx.shadowBlur=0; ctx.globalAlpha=0.8;
+    ctx.font='9px "Share Tech Mono"'; ctx.textAlign='center'; ctx.fillText(dist.toFixed(0), 0, s+14);
+    ctx.restore();
+  }
   ctx.restore();
 }
 document.getElementById('g-start-btn').addEventListener('click', startRun);
@@ -2374,10 +2444,10 @@ gOver.style.pointerEvents='auto'; gOver.addEventListener('click', e=>{ if(e.targ
 const threatGroup=new THREE.Group(); world.add(threatGroup);   // inside `world` so threats orbit with the scene
 let _threatId=0;
 const _thA=new THREE.Vector3(), _thB=new THREE.Vector3(), _thCam=new THREE.Vector3();
-function getWaveParams(w){ w=Math.max(1,w); return { astSpeed:1.25+w*0.06, astHP:Math.ceil(1+w/4), cometSpeed:2.0+w*0.08, cometHP:1+Math.floor(w/7) }; }
+function getWaveParams(w){ w=Math.max(1,w); return { astSpeed:0.8+w*0.05, astHP:Math.ceil(1+w/4), cometSpeed:1.3+w*0.07, cometHP:1+Math.floor(w/7) }; }   // slow enough to SEE coming — you get ~8s of visible approach
 function spawnThreat(kind){
   const wp=getWaveParams(gameState.wave);
-  const a=Math.random()*Math.PI*2, el=(Math.random()-0.5)*1.5, R=13;
+  const a=Math.random()*Math.PI*2, el=(Math.random()-0.5)*1.5, R=10;
   const p=new THREE.Vector3(Math.cos(a)*Math.cos(el), Math.sin(el), Math.sin(a)*Math.cos(el)).multiplyScalar(R);
   const v=p.clone().multiplyScalar(-1).normalize().multiplyScalar(kind==='comet'?wp.cometSpeed:wp.astSpeed);
   let obj, rad, hp, speed, points, turnRate;
@@ -2389,8 +2459,13 @@ function spawnThreat(kind){
     obj.add(head); obj.add(nuc);
     const tail=makeTailRibbon(14, 0x9fd0ff, rad*1.7, 0.30); threatGroup.add(tail.mesh); obj.userData.tail=tail;
   } else {
-    rad=0.30+Math.random()*0.26; hp=wp.astHP; speed=wp.astSpeed; points=100; turnRate=0.8;
+    rad=0.34+Math.random()*0.26; hp=wp.astHP; speed=wp.astSpeed; points=100; turnRate=0.8;
     obj=makeAsteroid(rad);
+    // game threats must READ as threats: hot molten tint + a pulsing warning glow (ambient flybys stay dark rock)
+    obj.material=obj.material.clone();
+    obj.material.color.setHex(0x8a6a52); obj.material.emissive=new THREE.Color(0x7a2408); obj.material.emissiveIntensity=0.9;
+    const glow=new THREE.Sprite(new THREE.SpriteMaterial({map:nebTex,color:0xff7733,transparent:true,opacity:0.3,blending:THREE.AdditiveBlending,depthWrite:false}));
+    glow.scale.setScalar(rad*2.6); obj.add(glow); obj.userData.glow=glow;
   }
   obj.position.copy(p); threatGroup.add(obj);
   const t={ id:_threatId++, kind, obj, p:p.clone(), v, hp, hpMax:hp, rad, speed, points, turnRate, hitShield:false,
@@ -2402,7 +2477,8 @@ function destroyThreat(t, scored){
   if(!t) return;
   const idx=gameState.threats.indexOf(t); if(idx>=0) gameState.threats.splice(idx,1);
   if(t.obj){ threatGroup.remove(t.obj);
-    if(t.kind==='asteroid'){ if(t.obj.geometry)t.obj.geometry.dispose(); if(t.obj.material)t.obj.material.dispose(); }
+    if(t.kind==='asteroid'){ if(t.obj.geometry)t.obj.geometry.dispose(); if(t.obj.material)t.obj.material.dispose();
+      const gl=t.obj.userData.glow; if(gl&&gl.material) gl.material.dispose(); }
     else { t.obj.children.forEach(o=>{ if(o.material)o.material.dispose(); });
       const tail=t.obj.userData.tail; if(tail){ threatGroup.remove(tail.mesh); tail.geo.dispose(); tail.mesh.material.dispose(); } } }
   if(scored) onThreatKilled(t);   // Phase 3
@@ -2492,7 +2568,8 @@ function updateThreats(dt){
     _thA.copy(t.p).multiplyScalar(-1).normalize().multiplyScalar(t.speed);     // desired velocity = toward NaN at origin
     t.v.lerp(_thA, 1-Math.exp(-t.turnRate*dt));
     t.p.addScaledVector(t.v, dt); t.obj.position.copy(t.p);
-    if(t.kind==='asteroid'){ t.obj.rotation.x+=t.spin.x*dt; t.obj.rotation.y+=t.spin.y*dt; }
+    if(t.kind==='asteroid'){ t.obj.rotation.x+=t.spin.x*dt; t.obj.rotation.y+=t.spin.y*dt;
+      const gl=t.obj.userData.glow; if(gl) gl.material.opacity=0.26+Math.sin(performance.now()*0.006+t.id)*0.12; }   // warning pulse
     else if(t.obj.userData.tail){ _thB.copy(t.v).normalize();
       updateTailRibbon(t.obj.userData.tail, t.p, _thA.copy(_thB).multiplyScalar(-1), _thB, 0.0, _thCam);
       t.obj.userData.tail.mesh.material.uniforms.uOpacity.value=0.82; }
