@@ -283,6 +283,11 @@ const starMat = new THREE.ShaderMaterial({ transparent:true, depthWrite:false, b
 const stars = new THREE.Points(starGeo, starMat);
 scene.add(stars);
 
+// soft radial sprite texture (comet heads / glow / soft star grains) — defined before first use below
+const nebTex = (()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
+  const rg=g.createRadialGradient(64,64,0,64,64,64); rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(0.35,'rgba(255,255,255,0.5)'); rg.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle=rg; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c); })();
+
 // ── MILKY WAY — a tilted galactic band of dense stars + soft nebula clouds ──
 const galaxy = new THREE.Group();
 galaxy.position.set(0,0,0); galaxy.rotation.z = 0.6; // centred celestial sphere; band tilted like the night sky
@@ -314,7 +319,7 @@ scene.add(galaxy);
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  galaxy.add(new THREE.Points(g, new THREE.PointsMaterial({size:1.7, vertexColors:true, transparent:true, opacity:1.0, sizeAttenuation:false, blending:THREE.AdditiveBlending, depthWrite:false})));
+  galaxy.add(new THREE.Points(g, new THREE.PointsMaterial({map:nebTex, size:2.2, vertexColors:true, transparent:true, opacity:1.0, sizeAttenuation:false, blending:THREE.AdditiveBlending, depthWrite:false})));   // soft round grains — hard 1.7px squares shimmered/flickered whenever the view rotated
 })();
 
 // ── DEEP-SKY OBJECTS — the real naked-eye landmarks, at their TRUE J2000 positions ──
@@ -428,11 +433,6 @@ fetch('stars.json').then(r=>r.json()).then(d=>{
     galaxy.add(s);
   }
 }).catch(e=>console.warn('[stars] catalog load failed', e));
-// soft radial sprite texture (reused for comet heads / glow)
-const nebTex = (()=>{ const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
-  const rg=g.createRadialGradient(64,64,0,64,64,64); rg.addColorStop(0,'rgba(255,255,255,1)'); rg.addColorStop(0.35,'rgba(255,255,255,0.5)'); rg.addColorStop(1,'rgba(255,255,255,0)');
-  g.fillStyle=rg; g.fillRect(0,0,128,128); return new THREE.CanvasTexture(c); })();
-
 // ── MILKY WAY band — STRONG, structured star-clouds with dark dust rifts (deep-space view) ──
 // Reference: ESO VLT dark-site shot — bright bulge + mottled clouds + truly dark dust lanes.
 // Additive blending keeps the sky dark, so we crank cloud brightness and drive rifts to ~0.
@@ -556,6 +556,8 @@ const creatureMesh = new THREE.LineSegments(cGeom, new THREE.LineBasicMaterial({
 // drag can orbit your view around it while the HUD stays centered on the core.
 const world = new THREE.Group();
 scene.add(world);
+world.add(stars); world.add(galaxy);   // sky rides the same trackball: dragging is a real view-orbit — the
+                                       // celestial sphere turns WITH the scene instead of sitting like wallpaper
 world.add(creatureMesh);
 creatureMesh.renderOrder = 2;   // draw the full wireframe ON TOP of the glass so every edge stays visible
 const ENTITY_SCALE = 0.76;  // resting size — below the disc so moods can balloon UP toward it with life
