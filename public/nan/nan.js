@@ -199,24 +199,28 @@ function fireSound(){
     if(!audioCtx) audioCtx=new (window.AudioContext||window.webkitAudioContext)();
     if(audioCtx.state==='suspended') audioCtx.resume();
     const now=audioCtx.currentTime;
-    // snappy "pew" — fast triangle dive with a slight random detune so rapid fire doesn't sound stamped
-    const det=1+(Math.random()-0.5)*0.12;
-    const zap=audioCtx.createOscillator(), zg=audioCtx.createGain();
-    zap.type='triangle'; zap.frequency.setValueAtTime(1350*det,now); zap.frequency.exponentialRampToValueAtTime(160,now+0.085);
-    zg.gain.setValueAtTime(0.0001,now); zg.gain.exponentialRampToValueAtTime(0.16,now+0.004); zg.gain.exponentialRampToValueAtTime(0.001,now+0.1);
-    zap.connect(zg); zg.connect(audioCtx.destination); zap.start(now); zap.stop(now+0.11);
-    // muzzle crack — tiny high-passed noise transient right at the front
-    const cl=Math.floor(audioCtx.sampleRate*0.03), cb=audioCtx.createBuffer(1,cl,audioCtx.sampleRate), cd=cb.getChannelData(0);
+    // Star-Wars-style blaster: two detuned oscillators diving fast through a resonant
+    // bandpass — that swept resonance is what gives the classic hollow "pew" ring.
+    const det=1+(Math.random()-0.5)*0.06, DUR=0.16;
+    const bp=audioCtx.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=7;
+    bp.frequency.setValueAtTime(2400*det,now); bp.frequency.exponentialRampToValueAtTime(240,now+DUR);
+    const out=audioCtx.createGain();
+    out.gain.setValueAtTime(0.0001,now); out.gain.exponentialRampToValueAtTime(0.34,now+0.005); out.gain.exponentialRampToValueAtTime(0.001,now+DUR+0.02);
+    bp.connect(out); out.connect(audioCtx.destination);
+    const o1=audioCtx.createOscillator(); o1.type='sawtooth';
+    o1.frequency.setValueAtTime(2200*det,now); o1.frequency.exponentialRampToValueAtTime(180,now+DUR);
+    const o2=audioCtx.createOscillator(); o2.type='square';
+    o2.frequency.setValueAtTime(2200*det*1.012,now); o2.frequency.exponentialRampToValueAtTime(182,now+DUR);   // slight detune → metallic beat
+    const g2=audioCtx.createGain(); g2.gain.value=0.5;
+    o1.connect(bp); o2.connect(g2); g2.connect(bp);
+    o1.start(now); o1.stop(now+DUR+0.03); o2.start(now); o2.stop(now+DUR+0.03);
+    // tick of noise at the muzzle so the front edge cracks
+    const cl=Math.floor(audioCtx.sampleRate*0.02), cb=audioCtx.createBuffer(1,cl,audioCtx.sampleRate), cd=cb.getChannelData(0);
     for(let s=0;s<cl;s++) cd[s]=(Math.random()*2-1)*Math.pow(1-s/cl,3);
     const crack=audioCtx.createBufferSource(); crack.buffer=cb;
-    const cf=audioCtx.createBiquadFilter(); cf.type='highpass'; cf.frequency.value=2800;
-    const cg=audioCtx.createGain(); cg.gain.setValueAtTime(0.12,now); cg.gain.exponentialRampToValueAtTime(0.001,now+0.03);
-    crack.connect(cf); cf.connect(cg); cg.connect(audioCtx.destination); crack.start(now); crack.stop(now+0.035);
-    // low body — one short sine knock so the shot still has weight
-    const sub=audioCtx.createOscillator(), sg=audioCtx.createGain();
-    sub.type='sine'; sub.frequency.setValueAtTime(150,now); sub.frequency.exponentialRampToValueAtTime(55,now+0.07);
-    sg.gain.setValueAtTime(0.22,now); sg.gain.exponentialRampToValueAtTime(0.001,now+0.08);
-    sub.connect(sg); sg.connect(audioCtx.destination); sub.start(now); sub.stop(now+0.09);
+    const cf=audioCtx.createBiquadFilter(); cf.type='highpass'; cf.frequency.value=3200;
+    const cg=audioCtx.createGain(); cg.gain.setValueAtTime(0.09,now); cg.gain.exponentialRampToValueAtTime(0.001,now+0.02);
+    crack.connect(cf); cf.connect(cg); cg.connect(audioCtx.destination); crack.start(now); crack.stop(now+0.025);
   }catch(e){}
 }
 
@@ -236,9 +240,9 @@ document.body.prepend(renderer.domElement);
 // Lights — only lit materials (planets/asteroids) use these; creature & sky use Basic/Points (unlit).
 // The ENTITY is the sun: a point light at the world origin so orbiting planets get a real day/night
 // terminator (lit hemisphere faces the core). Faint ambient keeps the dark side from going pure black.
-scene.add(new THREE.AmbientLight(0x222a3a, 0.55));
-const sunLight = new THREE.PointLight(0xffe2b0, 3.0, 80, 1.1); sunLight.position.set(0, 0, 0); scene.add(sunLight);
-const fillLight = new THREE.DirectionalLight(0x35507a, 0.35); fillLight.position.set(-5, 3, 6); scene.add(fillLight);
+scene.add(new THREE.AmbientLight(0x222a3a, 0.28));   // space has no fill light — night sides go nearly black (was 0.55: flat, toy-like)
+const sunLight = new THREE.PointLight(0xffe2b0, 3.4, 80, 1.1); sunLight.position.set(0, 0, 0); scene.add(sunLight);
+const fillLight = new THREE.DirectionalLight(0x35507a, 0.15); fillLight.position.set(-5, 3, 6); scene.add(fillLight);
 
 // ── STARFIELD ─────────────────────────────────────────────────
 // Catalog-completion "dust" between the bright HYG stars: fixed at infinity (sphere shell → no parallax, which is
@@ -373,6 +377,19 @@ const mwTex = (()=>{
       d[i+1]=Math.round(208 + warm*8);
       d[i+2]=Math.round(182 + warm*18);
       d[i+3]=Math.round(v*120);                                                  // faint underglow beneath the band stars
+    }
+  }
+  // seam removal — the noise isn't periodic in u, so the wrap at u=0/1 showed as a hard vertical
+  // line ("painting stuck on a sphere"). Near both edges, blend toward the SAME strip from the
+  // texture's middle: both ends converge to identical pixels → the wrap is continuous.
+  const BLEND=160, src=new Uint8ClampedArray(d);
+  for(let y=0;y<H;y++){
+    for(let x=0;x<W;x++){
+      const edge=Math.min(x, W-1-x);
+      if(edge>=BLEND) continue;
+      const t=1-edge/BLEND;                       // 1 at the very edge → fully the mid strip
+      const i=(y*W+x)*4, j=(y*W+((x+(W>>2))%W))*4;    // quarter-offset strip: plain band, NOT the bright core at u=0.5
+      d[i+3]=Math.round(src[i+3]*(1-t)+src[j+3]*t);   // alpha carries the band → blending it kills the seam
     }
   }
   g.putImageData(img,0,0);
@@ -1585,6 +1602,7 @@ function planetTexture(type){
   const tx=_texLoader.load(new URL('textures/2k_'+TEX_BODY[type]+'.jpg', document.baseURI).href, undefined, undefined,
     ()=>{ tx.image=proceduralPlanetCanvas(type); tx.needsUpdate=true; });  // fallback: procedural canvas if asset missing
   tx.colorSpace=THREE.SRGBColorSpace; tx.wrapS=THREE.RepeatWrapping;       // sRGB so the maps aren't dark/desaturated
+  tx.anisotropy=renderer.capabilities.getMaxAnisotropy();                  // stays crisp at glancing angles (blurry limb = instant toy)
   return tx;
 }
 function proceduralPlanetCanvas(type){
@@ -1614,10 +1632,18 @@ function proceduralPlanetCanvas(type){
 function spawnPlanet(){
   const type=PLANET_TYPES[(Math.random()*PLANET_TYPES.length)|0];
   const rad=0.05+Math.random()*0.12, orbitR=3.8+Math.random()*5.4;   // smaller worlds, orbits pushed out (3.8–9.2) so they clear the disc and don't hug the entity
-  const geo=new THREE.SphereGeometry(rad, 32, 24);
+  const geo=new THREE.SphereGeometry(rad, 48, 32);
   const mat=new THREE.MeshStandardMaterial({map:planetTexture(type), roughness:type==='ice'?0.5:0.95, metalness:0.0});
   if(type==='lava'){ mat.emissive=new THREE.Color(0xff4400); mat.emissiveMap=mat.map; mat.emissiveIntensity=0.6; }
   const mesh=new THREE.Mesh(geo, mat);
+  mesh.rotation.z=(Math.random()-0.5)*0.8; mesh.rotation.x=(Math.random()-0.5)*0.4;   // axial tilt — perfectly-upright worlds read as toys
+  // thin atmosphere rim (worlds that have one) — backside fresnel shell, the classic limb glow from orbit
+  const ATMO={gas:0xd8b58a, ice:0x86b8ff, ocean:0x6fa8ff};
+  if(ATMO[type]){
+    const atmo=new THREE.Mesh(new THREE.SphereGeometry(rad*1.045, 32, 24),
+      new THREE.MeshBasicMaterial({color:ATMO[type], transparent:true, opacity:0.11, side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false}));
+    mesh.add(atmo); mesh.userData.atmo=atmo;
+  }
   // orbital plane: tilt the equator so orbits criss-cross in 3D
   const tiltX=(Math.random()-0.5)*1.2, tiltZ=(Math.random()-0.5)*1.2;
   const ang=Math.random()*Math.PI*2;
@@ -1641,6 +1667,7 @@ function placePlanet(p, dt){
 function updatePlanets(dt){ for(const p of planets) placePlanet(p, dt); }
 function removePlanet(p){ const i=planets.indexOf(p); if(i<0) return; planets.splice(i,1);
   planetGroup.remove(p.mesh); p.mesh.geometry.dispose(); if(p.mesh.material.map) p.mesh.material.map.dispose(); p.mesh.material.dispose();
+  const at=p.mesh.userData.atmo; if(at){ at.geometry.dispose(); at.material.dispose(); }
   planetNext = Math.min(planetNext, PLANET_BASE + planets.length*PLANET_SLOW); } // refill schedule tracks current count
 window.__planet=spawnPlanet; // debug: spawn a planet now
 window.__dbg={camera, planets, fly, get nPlanets(){return planets.length;}}; // test harness handle
@@ -2656,7 +2683,7 @@ function damageEntity(n, at){
 function handleThreatImpact(t){
   if(t.hitShield) return; t.hitShield=true;
   const at=t.p.clone();
-  if(!shieldDown()){ try{ shieldBlock(at); }catch(e){} try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffaa66, 1.0); }catch(e){} destroyThreat(t,false); }
+  if(!shieldDown()){ try{ shieldBlock(at); }catch(e){} try{ spawnExplosion(at, t.kind==='comet'?0x9fd0ff:0xffaa66, 0.5); }catch(e){} destroyThreat(t,false); }   // soft pop — the shield absorbs, it doesn't detonate
   else { destroyThreat(t,false); damageEntity(1, at); }
 }
 function updateThreats(dt){
@@ -2727,7 +2754,7 @@ function animate(){
   // Free-orbit trackball — drag rotates the world in ANY direction (no axis clamp). Plus slow idle drift
   // and a subtle cursor-lean on top. HUD stays centered.
   // idle yaw drift — only AFTER you've stopped interacting for a few seconds, so it never fights your drag
-  if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.0014); worldQuat.premultiply(_qDy); }
+  if(!isDragging && performance.now()-lastInteractT>3500){ _qDy.setFromAxisAngle(_AXY, 0.00045); worldQuat.premultiply(_qDy); }   // barely-perceptible station drift (was 0.0014 — read as spinning)
   world.quaternion.copy(worldQuat);   // the drag is the ONLY thing that orients the view — cursor-lean removed (it slid the scene like a sheet on hover)
 
   // comets / asteroids drift past now and then — suppressed during the game (threats replace them)
