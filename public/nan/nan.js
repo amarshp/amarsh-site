@@ -1796,7 +1796,10 @@ let _wallTimer=null; const WALL_IDLE_MS=30000;
 function wakeUI(){
   document.body.classList.remove('wall');
   clearTimeout(_wallTimer);
-  _wallTimer=setTimeout(()=>{ if(gameState.enabled||voiceMode||tutActive||tourActive) return; document.body.classList.add('wall'); }, WALL_IDLE_MS);
+  _wallTimer=setTimeout(()=>{ if(gameState.enabled||voiceMode||tutActive||tourActive) return;
+    const says=document.getElementById('nanSays');
+    if(says&&says.classList.contains('vis')){ wakeUI(); return; }   // NaN mid-sentence → try again later, never wipe his line
+    document.body.classList.add('wall'); }, WALL_IDLE_MS);
 }
 ['mousemove','mousedown','wheel','keydown','touchstart','click'].forEach(ev=>window.addEventListener(ev, wakeUI, {passive:true}));
 wakeUI();
@@ -3899,6 +3902,7 @@ setTimeout(()=>{
     ['SHIFT + DRAW','draw a gesture to jump between sections'],
     ['SPACE','fire a dark-matter bolt — the only way to attack NaN'],
     ['SHOOT NaN','spend his orbiting dot-shield, then keep firing for a nova'],
+    ['◆ DEFEND NaN','the DEFEND node arms the siege game — waves, bosses, powerups'],
     ['SHOOT bodies','blast the drifting comets & planets apart'],
     ['OPEN A NODE','NaN projects a hologram — click a card or pod to expand it'],
     ['◈ THE PROBE','click the bottom-right schematic — inspect it in 3D & blow it apart'],
