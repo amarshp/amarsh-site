@@ -1,0 +1,780 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NEXUS // AP</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:    #01040f;
+  --blue:  #1a8fff;
+  --glow:  #00ccff;
+  --gold:  #ff9d00;
+  --text:  #c8e0ff;
+  --muted: #3a567a;
+  --dim:   #0d1a2e;
+  --orb:   'Orbitron', sans-serif;
+  --mono:  'Share Tech Mono', monospace;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased; }
+
+/* ─── STARS ─── */
+#stars { position: fixed; inset: 0; z-index: 0; }
+
+/* ─── HUD WRAPPER ─── */
+#hud {
+  position: fixed; inset: 0; z-index: 1;
+  display: flex; flex-direction: column;
+  opacity: 0; transition: opacity 0.8s;
+}
+
+/* ─── CORNER BRACKETS ─── */
+.corner {
+  position: fixed; width: 36px; height: 36px;
+  animation: corner-in 0.6s ease forwards;
+  opacity: 0;
+}
+.corner.tl { top: 14px; left: 14px; border-top: 1px solid var(--glow); border-left: 1px solid var(--glow); animation-delay: 0.1s; }
+.corner.tr { top: 14px; right: 14px; border-top: 1px solid var(--glow); border-right: 1px solid var(--glow); animation-delay: 0.2s; }
+.corner.bl { bottom: 14px; left: 14px; border-bottom: 1px solid var(--glow); border-left: 1px solid var(--glow); animation-delay: 0.3s; }
+.corner.br { bottom: 14px; right: 14px; border-bottom: 1px solid var(--glow); border-right: 1px solid var(--glow); animation-delay: 0.4s; }
+@keyframes corner-in { from { opacity:0; transform: scale(1.4); } to { opacity:1; transform: scale(1); } }
+
+/* ─── TOP BAR ─── */
+#topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 16px 60px;
+  font-family: var(--mono); font-size: 10px; letter-spacing: 2px;
+  border-bottom: 1px solid rgba(0,204,255,0.1);
+  background: rgba(1,4,15,0.6);
+  backdrop-filter: blur(10px);
+  color: var(--muted);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+#topbar .tc { color: var(--glow); font-family: var(--orb); font-size: 13px; font-weight: 600; letter-spacing: 6px; text-shadow: 0 0 20px rgba(0,204,255,0.7); }
+.tb-dot { display:inline-block; width:6px; height:6px; border-radius:50%; background:var(--glow); box-shadow:0 0 8px var(--glow); margin-right:6px; animation: pulse-dot 2s ease-in-out infinite; vertical-align: middle; }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.3;} }
+
+/* ─── MAIN AREA ─── */
+#main {
+  flex: 1; display: flex; min-height: 0;
+}
+
+/* ─── LEFT: GYRO + NAV ─── */
+#left {
+  width: 42%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* ─── GYROSCOPE ─── */
+.gyro-scene {
+  position: relative;
+  width: 300px;
+  height: 300px;
+}
+
+.gyro-wrap {
+  position: absolute;
+  inset: 40px;
+  perspective: 700px;
+}
+
+.gyro {
+  width: 100%; height: 100%;
+  transform-style: preserve-3d;
+  position: relative;
+}
+
+.ring {
+  position: absolute; inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgba(26, 143, 255, 0.75);
+  box-shadow: 0 0 8px rgba(0,204,255,0.4), 0 0 24px rgba(0,204,255,0.12), inset 0 0 8px rgba(0,204,255,0.08);
+}
+
+.r1 { animation: r1 8s linear infinite; }
+.r2 { animation: r2 13s linear infinite; }
+.r3 {
+  inset: 18px;
+  border-color: rgba(255,157,0,0.7);
+  box-shadow: 0 0 8px rgba(255,157,0,0.45), 0 0 22px rgba(255,157,0,0.12);
+  animation: r3 18s linear infinite reverse;
+}
+.r4 {
+  inset: 30px;
+  border-color: rgba(26,143,255,0.4);
+  animation: r4 23s linear infinite;
+}
+
+@keyframes r1 { from{transform:rotateY(0deg) rotateX(20deg);} to{transform:rotateY(360deg) rotateX(20deg);} }
+@keyframes r2 { from{transform:rotateX(65deg) rotateZ(0deg);} to{transform:rotateX(65deg) rotateZ(360deg);} }
+@keyframes r3 { from{transform:rotateX(40deg) rotateY(0deg) rotateZ(25deg);} to{transform:rotateX(40deg) rotateY(360deg) rotateZ(25deg);} }
+@keyframes r4 { from{transform:rotateX(15deg) rotateZ(0deg);} to{transform:rotateX(15deg) rotateZ(360deg);} }
+
+.core {
+  position: absolute;
+  inset: 38%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(0,220,255,0.5) 0%, rgba(0,150,255,0.15) 60%, transparent 100%);
+  box-shadow: 0 0 20px rgba(0,204,255,0.6), 0 0 50px rgba(0,204,255,0.25);
+  animation: core-breathe 3.5s ease-in-out infinite;
+}
+@keyframes core-breathe {
+  0%,100%{ box-shadow:0 0 20px rgba(0,204,255,0.6),0 0 50px rgba(0,204,255,0.2); }
+  50%    { box-shadow:0 0 35px rgba(0,204,255,0.9),0 0 80px rgba(0,204,255,0.35); }
+}
+
+/* Pulse rings */
+.pulse-ring {
+  position: absolute;
+  inset: 18%;
+  border-radius: 50%;
+  border: 1px solid rgba(0,204,255,0.5);
+  animation: pulse-expand 4s ease-out infinite;
+}
+.pulse-ring:nth-child(2) { animation-delay: 2s; }
+@keyframes pulse-expand {
+  from { transform: scale(1); opacity: 0.6; }
+  to   { transform: scale(2.2); opacity: 0; }
+}
+
+/* ─── NAVIGATION NODES ─── */
+.nav-svg {
+  position: absolute; inset: 0;
+  pointer-events: none; overflow: visible;
+}
+
+.nav-node {
+  position: absolute;
+  cursor: pointer;
+  transform: translate(-50%, -50%);
+  display: flex; align-items: center; gap: 8px;
+  transition: all 0.2s;
+}
+
+.nd-pip {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  border: 1px solid var(--glow);
+  background: transparent;
+  box-shadow: 0 0 6px rgba(0,204,255,0.4);
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.nav-node.active .nd-pip,
+.nav-node:hover .nd-pip {
+  background: var(--glow);
+  box-shadow: 0 0 12px var(--glow), 0 0 24px rgba(0,204,255,0.4);
+}
+
+.nd-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 2px;
+  color: var(--muted);
+  text-transform: uppercase;
+  transition: color 0.2s;
+  white-space: nowrap;
+}
+
+.nav-node:hover .nd-label { color: var(--glow); }
+.nav-node.active .nd-label { color: var(--glow); text-shadow: 0 0 10px rgba(0,204,255,0.7); }
+
+/* Left-side labels: pip then label. Right-side: label then pip */
+.nav-node.right { flex-direction: row-reverse; }
+
+/* ─── DIVIDER ─── */
+#divider {
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, rgba(0,204,255,0.15) 20%, rgba(0,204,255,0.15) 80%, transparent);
+  flex-shrink: 0;
+}
+
+/* ─── RIGHT: CONTENT PANEL ─── */
+#right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  position: relative;
+  padding: 36px 48px 36px 40px;
+  overflow: hidden;
+}
+
+/* Scan reveal effect on the right panel */
+#right::before {
+  content: '';
+  position: absolute;
+  left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--glow) 30%, var(--glow) 70%, transparent);
+  box-shadow: 0 0 20px var(--glow), 0 0 40px rgba(0,204,255,0.3);
+  z-index: 10;
+  top: -4px;
+  animation: scan-pass 0.001s linear;
+  pointer-events: none;
+}
+
+#right.scanning::before {
+  animation: scan-pass 0.7s ease forwards;
+}
+
+@keyframes scan-pass {
+  from { top: 0%; opacity: 1; }
+  to   { top: 100%; opacity: 0; }
+}
+
+#section-tag {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 3px;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+  opacity: 0;
+  animation: fade-up 0.4s 0.5s ease forwards;
+}
+
+#section-title {
+  font-family: var(--orb);
+  font-size: clamp(22px, 3vw, 36px);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  margin-bottom: 24px;
+  line-height: 1.1;
+  text-shadow: 0 0 30px rgba(0,204,255,0.3);
+  opacity: 0;
+  animation: fade-up 0.4s 0.55s ease forwards;
+}
+
+#section-title .accent { color: var(--glow); }
+
+#section-body {
+  flex: 1;
+  overflow-y: auto;
+  opacity: 0;
+  animation: fade-up 0.4s 0.65s ease forwards;
+}
+#section-body::-webkit-scrollbar { width: 2px; }
+#section-body::-webkit-scrollbar-track { background: transparent; }
+#section-body::-webkit-scrollbar-thumb { background: var(--dim); }
+
+@keyframes fade-up {
+  from { opacity:0; transform:translateY(10px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+/* ─── CONTENT STYLES ─── */
+.c-lead {
+  font-family: var(--mono);
+  font-size: 14px;
+  line-height: 1.9;
+  color: var(--text);
+  margin-bottom: 28px;
+  max-width: 580px;
+}
+
+.c-lead strong { color: var(--glow); font-weight: 400; }
+
+.c-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 14px; margin-bottom: 24px; }
+
+.c-card {
+  background: rgba(13,26,46,0.6);
+  border: 1px solid rgba(26,143,255,0.15);
+  border-radius: 4px;
+  padding: 16px 18px;
+  transition: border-color 0.2s, background 0.2s;
+  position: relative;
+  overflow: hidden;
+}
+.c-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,204,255,0.3), transparent);
+}
+.c-card:hover {
+  border-color: rgba(0,204,255,0.3);
+  background: rgba(0,204,255,0.04);
+}
+
+.cc-id    { font-family:var(--mono); font-size:9px; color:var(--muted); letter-spacing:1.5px; text-transform:uppercase; margin-bottom:8px; }
+.cc-title { font-family:var(--orb); font-size:12px; font-weight:500; color:var(--text); margin-bottom:6px; letter-spacing:1px; }
+.cc-body  { font-family:var(--mono); font-size:11px; color:var(--muted); line-height:1.7; margin-bottom:10px; }
+.cc-tags  { display:flex; flex-wrap:wrap; gap:5px; }
+.tag {
+  font-family:var(--mono); font-size:9px;
+  color: var(--glow); background: rgba(0,204,255,0.07);
+  border: 1px solid rgba(0,204,255,0.2);
+  border-radius: 2px; padding: 2px 7px;
+}
+.tag.gold { color:var(--gold); background:rgba(255,157,0,0.07); border-color:rgba(255,157,0,0.25); }
+
+/* Skill bars */
+.skill-block { margin-bottom: 24px; }
+.skill-cat { font-family:var(--orb); font-size:9px; letter-spacing:3px; color:var(--muted); text-transform:uppercase; margin-bottom:12px; }
+.s-row { display:flex; align-items:center; gap:14px; margin-bottom:9px; }
+.s-name { font-family:var(--mono); font-size:11px; color:var(--text); width:130px; flex-shrink:0; }
+.s-bg { flex:1; height:2px; background:rgba(255,255,255,0.05); position:relative; }
+.s-fill { height:100%; background:linear-gradient(90deg, var(--blue), var(--glow)); box-shadow:0 0 6px rgba(0,204,255,0.4); width:0; transition:width 1.2s cubic-bezier(0.4,0,0.2,1); }
+.s-pct { font-family:var(--mono); font-size:10px; color:var(--muted); width:32px; text-align:right; }
+
+/* Timeline */
+.tl-item { position:relative; padding-left:22px; margin-bottom:26px; }
+.tl-item::before { content:''; position:absolute; left:0; top:7px; width:5px; height:5px; border-radius:50%; background:var(--glow); box-shadow:0 0 8px var(--glow); }
+.tl-item::after { content:''; position:absolute; left:2px; top:14px; bottom:-18px; width:1px; background:rgba(0,204,255,0.1); }
+.tl-item:last-child::after { display:none; }
+.tl-co   { font-family:var(--orb); font-size:13px; font-weight:500; color:var(--text); letter-spacing:1px; }
+.tl-role { font-family:var(--mono); font-size:11px; color:var(--glow); margin:3px 0 2px; }
+.tl-date { font-family:var(--mono); font-size:10px; color:var(--muted); margin-bottom:8px; }
+.tl-pt   { font-family:var(--mono); font-size:11.5px; color:var(--muted); line-height:1.7; padding-left:12px; position:relative; margin-bottom:3px; }
+.tl-pt::before { content:'›'; position:absolute; left:0; color:rgba(0,204,255,0.4); }
+
+/* Metrics */
+.m-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:12px; margin-bottom:20px; }
+.m-card { background:rgba(13,26,46,0.8); border:1px solid rgba(26,143,255,0.12); border-radius:4px; padding:18px 14px; text-align:center; position:relative; overflow:hidden; }
+.m-card::after { content:''; position:absolute; bottom:0; left:20%; right:20%; height:1px; background:linear-gradient(90deg, transparent, rgba(0,204,255,0.3), transparent); }
+.m-num   { font-family:var(--orb); font-size:26px; font-weight:700; color:var(--glow); text-shadow:0 0 20px rgba(0,204,255,0.5); display:block; margin-bottom:6px; }
+.m-num.gold { color:var(--gold); text-shadow:0 0 20px rgba(255,157,0,0.5); }
+.m-lbl   { font-family:var(--mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+
+/* Contact */
+.ct-list { display:flex; flex-direction:column; gap:10px; max-width:420px; }
+.ct-item { display:flex; align-items:center; gap:16px; background:rgba(13,26,46,0.6); border:1px solid rgba(26,143,255,0.12); border-radius:4px; padding:14px 18px; text-decoration:none; transition:border-color 0.2s, background 0.2s; }
+.ct-item:hover { border-color:rgba(0,204,255,0.3); background:rgba(0,204,255,0.04); }
+.ct-icon { font-family:var(--orb); font-size:11px; color:var(--glow); width:24px; flex-shrink:0; }
+.ct-label { font-family:var(--mono); font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1.5px; margin-bottom:3px; }
+.ct-val   { font-family:var(--mono); font-size:12px; color:var(--text); }
+
+/* ─── BOTTOM BAR ─── */
+#bottombar {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 60px;
+  font-family: var(--mono); font-size: 9px; letter-spacing: 1.5px;
+  border-top: 1px solid rgba(0,204,255,0.08);
+  background: rgba(1,4,15,0.6);
+  backdrop-filter: blur(10px);
+  color: var(--muted);
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.bb-live { color: var(--glow); }
+
+/* ─── BOOT ─── */
+#boot {
+  position: fixed; inset: 0; z-index: 100;
+  background: var(--bg);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 5px;
+  font-family: var(--mono); font-size: 11px;
+  transition: opacity 0.6s;
+}
+#boot.out { opacity:0; pointer-events:none; }
+.bl {
+  display: flex; gap: 12px;
+  color: var(--muted);
+  opacity: 0;
+  animation: bl-show 0.12s ease forwards;
+}
+.bl .ok   { color: var(--glow); }
+.bl .warn { color: var(--gold); }
+.bl .sys  { color: var(--blue); }
+@keyframes bl-show { to { opacity:1; } }
+#bbar-wrap { width:160px; height:1px; background: rgba(0,204,255,0.1); margin-top:22px; opacity:0; animation:bl-show 0.1s 0.4s ease forwards; }
+#bbar { height:100%; width:0; background:linear-gradient(90deg,var(--blue),var(--glow)); box-shadow:0 0 10px var(--glow); transition:width 1.5s cubic-bezier(0.4,0,0.2,1); }
+</style>
+</head>
+<body>
+
+<canvas id="stars"></canvas>
+
+<!-- BOOT -->
+<div id="boot">
+  <div class="bl" style="animation-delay:.05s"><span class="sys">[SYS]</span><span>nexus v3.0 · initializing subsystems</span></div>
+  <div class="bl" style="animation-delay:.3s"><span class="ok">[ OK ]</span><span>holographic interface · calibrated</span></div>
+  <div class="bl" style="animation-delay:.6s"><span class="ok">[ OK ]</span><span>agent registry · 6 nodes online</span></div>
+  <div class="bl" style="animation-delay:.9s"><span class="ok">[ OK ]</span><span>neural link · established</span></div>
+  <div class="bl" style="animation-delay:1.2s"><span class="warn">[ !! ]</span><span>anomalous intelligence detected · origin: ap</span></div>
+  <div id="bbar-wrap"><div id="bbar"></div></div>
+</div>
+
+<!-- HUD -->
+<div id="hud">
+  <div class="corner tl"></div>
+  <div class="corner tr"></div>
+  <div class="corner bl"></div>
+  <div class="corner br"></div>
+
+  <div id="topbar">
+    <span>NEXUS // CLEARANCE: ALPHA // NODE: HYD-01</span>
+    <span class="tc">A · P</span>
+    <span><span class="tb-dot"></span>SENIOR AI ENGINEER // ONLINE</span>
+  </div>
+
+  <div id="main">
+    <!-- LEFT: Gyro + Nav -->
+    <div id="left">
+      <div class="gyro-scene">
+        <!-- SVG lines from center to nav nodes -->
+        <svg class="nav-svg" viewBox="0 0 300 300">
+          <!-- Center: 150,150 -->
+          <!-- Nodes at pentagon positions (radius 128) -->
+          <!-- top: 150,22  top-right: 272,113  bottom-right: 225,260  bottom-left: 75,260  left: 28,113 -->
+          <line x1="150" y1="150" x2="150" y2="22" stroke="rgba(0,204,255,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="150" y1="150" x2="272" y2="113" stroke="rgba(0,204,255,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="150" y1="150" x2="225" y2="260" stroke="rgba(0,204,255,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="150" y1="150" x2="75" y2="260" stroke="rgba(0,204,255,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
+          <line x1="150" y1="150" x2="28" y2="113" stroke="rgba(0,204,255,0.12)" stroke-width="1" stroke-dasharray="3 5"/>
+        </svg>
+
+        <!-- Gyroscope -->
+        <div class="gyro-wrap">
+          <div class="gyro">
+            <div class="ring r1"></div>
+            <div class="ring r2"></div>
+            <div class="ring r3"></div>
+            <div class="ring r4"></div>
+            <div class="core"></div>
+          </div>
+          <div class="pulse-ring"></div>
+          <div class="pulse-ring"></div>
+        </div>
+
+        <!-- Nav nodes -->
+        <div class="nav-node active" id="n-identity" style="left:150px;top:22px;" onclick="show('identity')">
+          <div class="nd-pip"></div>
+          <span class="nd-label">IDENTITY</span>
+        </div>
+        <div class="nav-node right" id="n-projects" style="left:272px;top:113px;" onclick="show('projects')">
+          <span class="nd-label">PROJECTS</span>
+          <div class="nd-pip"></div>
+        </div>
+        <div class="nav-node right" id="n-skills" style="left:225px;top:260px;" onclick="show('skills')">
+          <span class="nd-label">SKILLS</span>
+          <div class="nd-pip"></div>
+        </div>
+        <div class="nav-node" id="n-experience" style="left:75px;top:260px;" onclick="show('experience')">
+          <div class="nd-pip"></div>
+          <span class="nd-label">EXPERIENCE</span>
+        </div>
+        <div class="nav-node" id="n-contact" style="left:28px;top:113px;" onclick="show('contact')">
+          <div class="nd-pip"></div>
+          <span class="nd-label">CONTACT</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="divider"></div>
+
+    <!-- RIGHT: Content -->
+    <div id="right">
+      <div id="section-tag">// IDENTITY · NODE-01</div>
+      <div id="section-title">AMARSH <span class="accent">PEDAPATI</span></div>
+      <div id="section-body"></div>
+    </div>
+  </div>
+
+  <div id="bottombar">
+    <span>● HYD · INDIA</span>
+    <span class="bb-live">// STATUS: AVAILABLE // NOTICE: 30 DAYS</span>
+    <span>amarsh.pedapati@gmail.com</span>
+  </div>
+</div>
+
+<script>
+// ════════════════════════════════════════════
+// STARS
+// ════════════════════════════════════════════
+const sc = document.getElementById('stars');
+const sx = sc.getContext('2d');
+let SW, SH, stars;
+
+function rsz() { SW = sc.width = window.innerWidth; SH = sc.height = window.innerHeight; }
+
+class Star {
+  constructor() { this.reset(); }
+  reset() {
+    this.x = Math.random() * SW;
+    this.y = Math.random() * SH;
+    this.r = Math.random() * 0.9 + 0.1;
+    this.a = Math.random() * 0.6 + 0.1;
+    this.da = (Math.random() - 0.5) * 0.003;
+  }
+  tick() {
+    this.a += this.da;
+    if (this.a > 0.8 || this.a < 0.05) this.da *= -1;
+  }
+  draw() {
+    sx.beginPath();
+    sx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+    sx.fillStyle = `rgba(200,224,255,${this.a})`;
+    sx.fill();
+  }
+}
+
+rsz();
+stars = Array.from({ length: 180 }, () => new Star());
+
+// Subtle nebula
+function drawNebula() {
+  const g = sx.createRadialGradient(SW*0.3, SH*0.4, 0, SW*0.3, SH*0.4, SW*0.5);
+  g.addColorStop(0, 'rgba(10,30,80,0.18)');
+  g.addColorStop(1, 'transparent');
+  sx.fillStyle = g;
+  sx.fillRect(0, 0, SW, SH);
+  const g2 = sx.createRadialGradient(SW*0.7, SH*0.6, 0, SW*0.7, SH*0.6, SW*0.4);
+  g2.addColorStop(0, 'rgba(0,50,100,0.1)');
+  g2.addColorStop(1, 'transparent');
+  sx.fillStyle = g2;
+  sx.fillRect(0, 0, SW, SH);
+}
+
+function sframe() {
+  sx.clearRect(0, 0, SW, SH);
+  drawNebula();
+  stars.forEach(s => { s.tick(); s.draw(); });
+  requestAnimationFrame(sframe);
+}
+sframe();
+window.addEventListener('resize', rsz);
+
+// ════════════════════════════════════════════
+// BOOT
+// ════════════════════════════════════════════
+window.addEventListener('load', () => {
+  const bar = document.getElementById('bbar');
+  setTimeout(() => { bar.style.width = '100%'; }, 500);
+  setTimeout(() => {
+    document.getElementById('boot').classList.add('out');
+    document.getElementById('hud').style.opacity = '1';
+    setTimeout(() => show('identity'), 500);
+  }, 2400);
+});
+
+// ════════════════════════════════════════════
+// SECTION DATA
+// ════════════════════════════════════════════
+const SECTIONS = {
+  identity: {
+    tag: '// IDENTITY · NODE-01',
+    title: 'AMARSH <span class="accent">PEDAPATI</span>',
+    body: `
+      <p class="c-lead">
+        Senior AI Engineer specializing in <strong>agentic systems</strong> — building orchestration layers that compress weeks of work into hours.<br><br>
+        Designed the <strong>AI Cockpit</strong> at OpenText: a master agent using A2A protocol and MCP that reduced enterprise analysis from 2 weeks to 2 days. Shipped production RAG pipelines serving <strong>13.4M Walmart customers</strong>.<br><br>
+        My edge: I don't build AI features — I build <strong>autonomous agents that operate at scale</strong>.
+      </p>
+      <div class="c-grid">
+        <div class="c-card"><div class="cc-id">specialization</div><div class="cc-title">AGENTIC SYSTEMS</div><div class="cc-body">LangGraph orchestrators, A2A protocol, MCP integration, multi-agent coordination</div></div>
+        <div class="c-card"><div class="cc-id">domain</div><div class="cc-title">RAG & EVALUATION</div><div class="cc-body">Hybrid retrieval, RAGAS evaluation, LLM-as-Judge frameworks, persona-aware RAG</div></div>
+        <div class="c-card"><div class="cc-id">impact</div><div class="cc-title">PRODUCTION SCALE</div><div class="cc-body">13.4M users, enterprise deployments, C-suite visibility, hackathon winner</div></div>
+      </div>
+    `
+  },
+  projects: {
+    tag: '// PORTFOLIO · NODE-02',
+    title: '<span class="accent">OPERATIONS</span> LOG',
+    body: `
+      <div class="c-grid">
+        <div class="c-card">
+          <div class="cc-id">OP-001 · OPENTEXT · 2026</div>
+          <div class="cc-title">AI COCKPIT</div>
+          <div class="cc-body">Master orchestrator coordinating specialized agents via A2A + MCP. Enterprise BI acceleration.</div>
+          <div class="cc-tags"><span class="tag gold">2W → 2 DAYS</span><span class="tag">A2A · MCP</span><span class="tag">SAP HANA</span></div>
+        </div>
+        <div class="c-card">
+          <div class="cc-id">OP-002 · OPENTEXT · 2025</div>
+          <div class="cc-title">CI/CD AGENT</div>
+          <div class="cc-body">Autonomous pipeline agent diagnosing and resolving build failures. 770 jobs automated.</div>
+          <div class="cc-tags"><span class="tag gold">12× FASTER</span><span class="tag">#1 / 200</span><span class="tag">770 JOBS</span></div>
+        </div>
+        <div class="c-card">
+          <div class="cc-id">OP-003 · BLEND360 · 2024</div>
+          <div class="cc-title">VISA GENAI</div>
+          <div class="cc-body">Explainability pipeline for Visa GenAI using hybrid retrieval and LLM-as-Judge evaluation.</div>
+          <div class="cc-tags"><span class="tag">RAG · RAGAS</span><span class="tag">C-SUITE</span></div>
+        </div>
+        <div class="c-card">
+          <div class="cc-id">OP-004 · BLEND360 · 2024</div>
+          <div class="cc-title">WALMART UPLIFT</div>
+          <div class="cc-body">ML recommendation system at Walmart scale. 7× Snowflake, 1000× ETL improvement.</div>
+          <div class="cc-tags"><span class="tag gold">45% UPLIFT</span><span class="tag">13.4M USERS</span></div>
+        </div>
+        <div class="c-card">
+          <div class="cc-id">OP-005 · PERSONAL · 2024</div>
+          <div class="cc-title">PERSONA RAG</div>
+          <div class="cc-body">Multi-persona retrieval over 4.75M word corpus. Perfect evaluation pass rate.</div>
+          <div class="cc-tags"><span class="tag gold">37/37 EVALS</span><span class="tag">0 FALSE POS</span></div>
+        </div>
+      </div>
+    `
+  },
+  skills: {
+    tag: '// SKILL MATRIX · NODE-03',
+    title: '<span class="accent">CAPABILITY</span> MATRIX',
+    body: `
+      <div class="skill-block">
+        <div class="skill-cat">Agentic Frameworks</div>
+        ${sr('LangGraph',95)}${sr('LangChain',92)}${sr('MCP / A2A',90)}${sr('LangSmith',85)}
+      </div>
+      <div class="skill-block">
+        <div class="skill-cat">RAG & Evaluation</div>
+        ${sr('RAG / Hybrid Retrieval',95)}${sr('RAGAS / Eval',90)}${sr('LLM-as-Judge',88)}${sr('FAISS · Pinecone',83)}
+      </div>
+      <div class="skill-block">
+        <div class="skill-cat">ML / AI</div>
+        ${sr('AWS Bedrock',85)}${sr('PyTorch',80)}${sr('SageMaker',78)}
+      </div>
+      <div class="skill-block">
+        <div class="skill-cat">Engineering</div>
+        ${sr('FastAPI · Python',92)}${sr('Docker · Kubernetes',82)}${sr('PostgreSQL · Redis',80)}${sr('Snowflake',78)}
+      </div>
+    `
+  },
+  experience: {
+    tag: '// FIELD RECORD · NODE-04',
+    title: '<span class="accent">MISSION</span> HISTORY',
+    body: `
+      <div class="tl-item">
+        <div class="tl-co">OPENTEXT</div>
+        <div class="tl-role">Senior AI Engineer</div>
+        <div class="tl-date">JAN 2026 — PRESENT</div>
+        <div class="tl-pt">AI Cockpit: master agent orchestrating sub-agents via A2A + MCP</div>
+        <div class="tl-pt">Enterprise analysis cycle compressed: 2 weeks → 2 days</div>
+        <div class="tl-pt">CI/CD autonomous agent — 12× speed · #1 of ~200 at hackathon</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-co">BLEND360</div>
+        <div class="tl-role">AI / ML Engineer</div>
+        <div class="tl-date">OCT 2023 — DEC 2025</div>
+        <div class="tl-pt">Visa GenAI: RAG + RAGAS explainability pipeline for C-suite</div>
+        <div class="tl-pt">Walmart: 45% recommendation uplift across 13.4M customers</div>
+        <div class="tl-pt">7× Snowflake optimization · 1000× ETL pipeline improvement</div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-co">AIBOD INC. (JAPAN)</div>
+        <div class="tl-role">ML Engineer</div>
+        <div class="tl-date">JAN 2022 — JUN 2022</div>
+        <div class="tl-pt">32% reduction in production misclassification rate</div>
+        <div class="tl-pt">18% accuracy improvement on production models</div>
+      </div>
+    `
+  },
+  contact: {
+    tag: '// SECURE UPLINK · NODE-05',
+    title: '<span class="accent">ESTABLISH</span> CONTACT',
+    body: `
+      <p class="c-lead" style="margin-bottom:20px;">Available for senior / lead roles in <strong>agentic AI</strong>. Notice period: <strong>30 days</strong>.</p>
+      <div class="ct-list">
+        <a class="ct-item" href="mailto:amarsh.pedapati@gmail.com"><div class="ct-icon">✉</div><div><div class="ct-label">Email</div><div class="ct-val">amarsh.pedapati@gmail.com</div></div></a>
+        <a class="ct-item" href="https://linkedin.com/in/amarshp" target="_blank"><div class="ct-icon">↗</div><div><div class="ct-label">LinkedIn</div><div class="ct-val">linkedin.com/in/amarshp</div></div></a>
+        <a class="ct-item" href="https://github.com/amarshp" target="_blank"><div class="ct-icon">⌥</div><div><div class="ct-label">GitHub</div><div class="ct-val">github.com/amarshp</div></div></a>
+        <div class="ct-item" style="cursor:default;"><div class="ct-icon">◉</div><div><div class="ct-label">Location</div><div class="ct-val">Hyderabad, India</div></div></div>
+        <div class="ct-item" style="cursor:default;"><div class="ct-icon">⚡</div><div><div class="ct-label">Notice Period</div><div class="ct-val">30 days</div></div></div>
+      </div>
+    `
+  }
+};
+
+function sr(n, p) {
+  return `<div class="s-row"><div class="s-name">${n}</div><div class="s-bg"><div class="s-fill" data-pct="${p}"></div></div><div class="s-pct">${p}%</div></div>`;
+}
+
+// ════════════════════════════════════════════
+// SECTION SWITCHING
+// ════════════════════════════════════════════
+let current = null;
+
+function show(id) {
+  if (current === id) return;
+  current = id;
+
+  const s = SECTIONS[id];
+  if (!s) return;
+
+  // Update nav nodes
+  document.querySelectorAll('.nav-node').forEach(n => n.classList.remove('active'));
+  const node = document.getElementById('n-' + id);
+  if (node) node.classList.add('active');
+
+  // Trigger scan
+  const right = document.getElementById('right');
+  right.classList.remove('scanning');
+  void right.offsetWidth; // reflow
+  right.classList.add('scanning');
+
+  // Update content after short delay
+  setTimeout(() => {
+    document.getElementById('section-tag').style.animation = 'none';
+    document.getElementById('section-title').style.animation = 'none';
+    document.getElementById('section-body').style.animation = 'none';
+    void right.offsetWidth;
+
+    document.getElementById('section-tag').textContent = '';
+    document.getElementById('section-title').innerHTML = '';
+    document.getElementById('section-body').innerHTML = '';
+
+    requestAnimationFrame(() => {
+      document.getElementById('section-tag').style.animation = '';
+      document.getElementById('section-title').style.animation = '';
+      document.getElementById('section-body').style.animation = '';
+
+      document.getElementById('section-tag').innerHTML = s.tag;
+      document.getElementById('section-title').innerHTML = s.title;
+      document.getElementById('section-body').innerHTML = s.body;
+
+      // Animate skill bars
+      setTimeout(() => {
+        document.querySelectorAll('.s-fill').forEach(el => {
+          el.style.width = el.dataset.pct + '%';
+        });
+      }, 100);
+
+      // Scramble title
+      const titleEl = document.getElementById('section-title');
+      scrambleEl(titleEl, 700);
+    });
+  }, 150);
+}
+
+// ════════════════════════════════════════════
+// TEXT SCRAMBLE
+// ════════════════════════════════════════════
+function scrambleEl(el, dur) {
+  const CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  const original = el.textContent;
+  const len = original.length;
+  let start = null;
+
+  function step(ts) {
+    if (!start) start = ts;
+    const p = Math.min((ts - start) / dur, 1);
+    const settled = Math.floor(p * len);
+    let out = '';
+    for (let i = 0; i < len; i++) {
+      const c = original[i];
+      if (i < settled || c === ' ' || c === '·' || c === '/') out += c;
+      else out += CHARS[Math.floor(Math.random() * CHARS.length)];
+    }
+    el.textContent = out;
+    if (p < 1) requestAnimationFrame(step);
+    else el.innerHTML = SECTIONS[current]?.title || original;
+  }
+  requestAnimationFrame(step);
+}
+</script>
+</body>
+</html>

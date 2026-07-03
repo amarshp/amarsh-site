@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AMARSH PEDAPATI — AGENTIC AI ENGINEER</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:#000;overflow:hidden;cursor:none;}
+body{font-family:'Share Tech Mono',monospace;}
+#c{position:fixed;inset:0;display:block;}
+
+#cur{position:fixed;width:8px;height:8px;background:#ccff00;border-radius:50%;pointer-events:none;z-index:999;transform:translate(-50%,-50%);mix-blend-mode:screen;}
+#cur2{position:fixed;width:22px;height:22px;border:1px solid rgba(204,255,0,0.45);border-radius:50%;pointer-events:none;z-index:998;transform:translate(-50%,-50%);transition:width .12s,height .12s,border-color .2s;}
+body.drag-mode #cur2{border-color:rgba(0,238,255,0.7);width:16px;height:16px;}
+
+#top{position:fixed;top:20px;left:24px;right:24px;display:flex;justify-content:space-between;align-items:flex-start;z-index:50;pointer-events:none;}
+.tn{font-family:'Orbitron',sans-serif;font-weight:900;font-size:12px;color:#fff;letter-spacing:5px;}
+.ts{font-size:9px;color:rgba(204,255,0,0.5);letter-spacing:3px;margin-top:4px;}
+.tr{text-align:right;}
+.tstat{font-size:9px;color:#ccff00;letter-spacing:2px;display:flex;align-items:center;gap:6px;justify-content:flex-end;}
+.td{width:5px;height:5px;border-radius:50%;background:#ccff00;animation:pb 2s infinite;}
+@keyframes pb{0%,100%{opacity:1;box-shadow:0 0 6px #ccff00;}50%{opacity:.2;box-shadow:none;}}
+
+#panel{
+  position:fixed;bottom:0;left:0;right:0;height:0;
+  background:rgba(0,0,0,0.98);
+  border-top:1px solid rgba(204,255,0,0.2);
+  z-index:60;
+  transition:height .6s cubic-bezier(.22,.68,.35,1);
+  overflow:hidden;
+}
+#panel.open{height:46vh;}
+#pi{
+  padding:20px 40px 20px 40px;
+  height:100%;overflow-y:auto;
+  display:grid;grid-template-columns:150px 1fr;gap:28px;
+  align-content:start;
+}
+#pi::-webkit-scrollbar{width:2px;}
+#pi::-webkit-scrollbar-thumb{background:rgba(204,255,0,0.2);}
+
+.pl{border-right:1px solid rgba(204,255,0,0.08);padding-right:20px;display:flex;flex-direction:column;}
+.plbl{font-family:'Orbitron',sans-serif;font-size:7px;letter-spacing:4px;color:rgba(204,255,0,.35);margin-bottom:12px;}
+.ptitle{font-family:'Orbitron',sans-serif;font-size:15px;font-weight:700;color:#ccff00;letter-spacing:2px;text-shadow:0 0 18px rgba(204,255,0,.3);margin-bottom:8px;line-height:1.25;}
+.sv{font-family:'Orbitron',sans-serif;font-size:24px;font-weight:900;color:#ccff00;line-height:1;}
+.sl{font-size:7.5px;letter-spacing:2px;color:rgba(255,255,255,.2);margin-bottom:10px;margin-top:2px;}
+.sdivider{width:32px;height:1px;background:rgba(204,255,0,.15);margin-bottom:10px;}
+
+/* TAGS */
+.tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;}
+.tag{font-size:8px;padding:3px 9px;border:1px solid rgba(204,255,0,.18);color:rgba(204,255,0,.6);letter-spacing:1px;transition:all .2s;cursor:default;}
+.tag:hover{background:rgba(204,255,0,.07);border-color:rgba(204,255,0,.45);}
+
+/* TIMELINE */
+.tl{display:flex;flex-direction:column;margin-top:10px;}
+.ti{padding:8px 0 8px 16px;border-left:1px solid rgba(204,255,0,.12);border-bottom:1px solid rgba(255,255,255,.04);position:relative;}
+.ti:last-child{border-bottom:none;}
+.ti::before{content:'';position:absolute;left:-4px;top:13px;width:7px;height:7px;border-radius:50%;border:1px solid #ccff00;background:#000;}
+.tyr{font-size:7.5px;color:rgba(204,255,0,.45);letter-spacing:2px;margin-bottom:2px;}
+.tco{font-family:'Orbitron',sans-serif;font-size:9.5px;color:#fff;margin-bottom:1px;letter-spacing:.5px;}
+.trl{font-size:8.5px;color:rgba(204,255,0,.4);margin-bottom:3px;}
+.td2{font-size:9px;color:rgba(255,255,255,.32);line-height:1.65;}
+
+/* PROJECTS */
+.prow{display:flex;flex-direction:column;overflow-y:auto;max-height:calc(46vh - 48px);}
+.prow::-webkit-scrollbar{width:1px;}
+.prow::-webkit-scrollbar-thumb{background:rgba(204,255,0,.15);}
+.pitem{padding:11px 0 11px 14px;border-bottom:1px solid rgba(255,255,255,.05);border-left:2px solid transparent;transition:border-color .2s;}
+.pitem:hover{border-left-color:rgba(204,255,0,.45);}
+.pid{font-size:7.5px;letter-spacing:3px;color:rgba(204,255,0,.3);margin-bottom:3px;display:flex;justify-content:space-between;align-items:center;}
+.pst-d{font-size:7.5px;color:#00ff88;letter-spacing:1.5px;}
+.pst-a{font-size:7.5px;color:#00eeff;letter-spacing:1.5px;}
+.pst-p{font-size:7.5px;color:#ff9966;letter-spacing:1.5px;}
+.pn{font-family:'Orbitron',sans-serif;font-size:10px;color:#fff;margin-bottom:4px;letter-spacing:.5px;}
+.pd{font-size:9.5px;color:rgba(255,255,255,.38);line-height:1.7;margin-bottom:6px;}
+.phl{color:rgba(204,255,0,.65);}
+.chips{display:flex;flex-wrap:wrap;gap:4px;}
+.ch{font-size:7.5px;padding:2px 7px;background:rgba(139,92,246,.08);border:1px solid rgba(139,92,246,.22);color:#a78bfa;}
+
+/* SKILLS */
+.sk-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px;}
+.sk-cat-hd{font-family:'Orbitron',sans-serif;font-size:7px;letter-spacing:3px;color:rgba(204,255,0,.28);border-bottom:1px solid rgba(204,255,0,.1);padding-bottom:4px;margin-bottom:7px;}
+.sk-item{display:flex;align-items:center;margin-bottom:5px;}
+.sk-name{font-size:8px;color:rgba(255,255,255,.48);width:82px;flex-shrink:0;}
+.sk-bar{flex:1;height:2px;background:rgba(255,255,255,.07);margin-right:5px;}
+.sk-fill{height:100%;background:#ccff00;}
+.sk-lvl{font-size:7px;color:rgba(204,255,0,.4);width:24px;text-align:right;flex-shrink:0;}
+
+/* CONTACT */
+.ci{width:100%;background:rgba(204,255,0,.02);border:1px solid rgba(204,255,0,.12);color:#fff;padding:8px 12px;font-family:'Share Tech Mono',monospace;font-size:11px;outline:none;margin-bottom:8px;transition:border .2s,background .2s;display:block;}
+.ci:focus{border-color:rgba(204,255,0,.4);background:rgba(204,255,0,.04);}
+.fl{display:block;font-size:7.5px;letter-spacing:2.5px;color:rgba(204,255,0,.3);margin-bottom:3px;}
+.cbtn{font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:3px;background:#ccff00;color:#000;border:none;padding:9px 24px;cursor:pointer;transition:all .2s;margin-bottom:12px;}
+.cbtn:hover{background:#fff;box-shadow:0 0 24px rgba(204,255,0,.4);}
+.clinks{display:flex;gap:10px;flex-wrap:wrap;}
+.clink{font-size:8px;letter-spacing:1.5px;color:rgba(204,255,0,.4);border:1px solid rgba(204,255,0,.12);padding:5px 12px;cursor:pointer;transition:all .2s;text-decoration:none;display:inline-block;}
+.clink:hover{color:#ccff00;border-color:rgba(204,255,0,.4);background:rgba(204,255,0,.04);}
+
+.sec{display:none;}
+.sec.on{display:contents;}
+
+#xbtn{position:fixed;z-index:61;bottom:calc(46vh + 10px);right:20px;font-size:9px;letter-spacing:2px;color:rgba(204,255,0,.45);border:1px solid rgba(204,255,0,.15);padding:6px 12px;cursor:pointer;background:#000;display:none;transition:all .2s;}
+#xbtn.vis{display:block;}
+#xbtn:hover{color:#ccff00;border-color:rgba(204,255,0,.5);}
+
+#hint{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);font-size:8px;letter-spacing:4px;color:rgba(255,255,255,.15);z-index:50;pointer-events:none;animation:hb 3s infinite;transition:opacity .4s;}
+@keyframes hb{0%,100%{opacity:.15;}50%{opacity:.35;}}
+#drag-hint{position:fixed;bottom:20px;right:24px;font-size:8px;letter-spacing:2px;color:rgba(255,255,255,.1);z-index:50;pointer-events:none;}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="cur"></div><div id="cur2"></div>
+
+<div id="top">
+  <div>
+    <div class="tn">AMARSH PEDAPATI</div>
+    <div class="ts">SENIOR AGENTIC AI ENGINEER</div>
+  </div>
+  <div class="tr">
+    <div class="tstat"><div class="td"></div>NEURAL CORE ONLINE</div>
+    <div class="ts" style="margin-top:5px;">LANGGRAPH · MCP · RAG · BEDROCK</div>
+  </div>
+</div>
+
+<div id="hint">[ SELECT A NODE TO INTERFACE ]</div>
+<div id="drag-hint">DRAG TO ROTATE</div>
+
+<div id="panel">
+  <div id="pi">
+
+    <!-- ABOUT -->
+    <div class="sec" id="s-home">
+      <div class="pl">
+        <div class="plbl">// SYSTEMS</div>
+        <div class="sv">4+</div><div class="sl">YRS EXPERIENCE</div>
+        <div class="sv">12+</div><div class="sl">AGENTS SHIPPED</div>
+        <div class="sv">$2M+</div><div class="sl">VALUE UNLOCKED</div>
+        <div class="sdivider"></div>
+        <div style="font-size:8px;color:rgba(0,255,136,.55);letter-spacing:1.5px;line-height:2;">ALL SYSTEMS<br>OPERATIONAL</div>
+      </div>
+      <div>
+        <div class="ptitle">NEURAL CORE ACTIVE</div>
+        <div style="font-size:10px;line-height:1.85;color:rgba(255,255,255,.4);margin-bottom:12px;max-width:560px;">Designing and deploying autonomous multi-agent systems that solve enterprise-scale problems. Specialize in LangGraph orchestration, production RAG pipelines, and LLM evaluation frameworks that ship to millions of requests.</div>
+        <div class="tl">
+          <div class="ti">
+            <div class="tyr">2024 — PRESENT</div>
+            <div class="tco">SENIOR AGENTIC AI ENGINEER</div>
+            <div class="trl">Leading multi-agent system architecture</div>
+            <div class="td2">LangGraph orchestration · AWS Bedrock · A2A protocols · LLM evaluation at enterprise scale</div>
+          </div>
+          <div class="ti">
+            <div class="tyr">2022 — 2024</div>
+            <div class="tco">AI ENGINEER</div>
+            <div class="trl">RAG systems & LLM integration</div>
+            <div class="td2">Production RAG · LangChain · SageMaker · Custom judge models · Real-time drift monitoring</div>
+          </div>
+          <div class="ti">
+            <div class="tyr">2020 — 2022</div>
+            <div class="tco">SOFTWARE ENGINEER</div>
+            <div class="trl">Backend systems & ML data pipelines</div>
+            <div class="td2">Python · FastAPI · Cloud infrastructure · ML pipeline design · API architecture</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROJECTS -->
+    <div class="sec" id="s-projects">
+      <div class="pl">
+        <div class="plbl">// MISSIONS</div>
+        <div class="sv" style="font-size:20px;">5</div>
+        <div class="sl">ACTIVE SYSTEMS</div>
+        <div class="sdivider"></div>
+        <div style="font-size:8px;color:rgba(0,255,136,.55);letter-spacing:1.5px;line-height:2.2;">ALL SYSTEMS<br>OPERATIONAL</div>
+        <div style="margin-top:12px;font-size:7.5px;color:rgba(255,255,255,.18);letter-spacing:1px;line-height:2;">↓ SCROLL<br>TO VIEW ALL</div>
+      </div>
+      <div class="prow">
+        <div class="pitem">
+          <div class="pid">PRJ-001 <span class="pst-d">● DEPLOYED</span></div>
+          <div class="pn">MULTI-AGENT RAG ORCHESTRATOR</div>
+          <div class="pd">LangGraph pipeline orchestrating 8 specialized agents with LLM-as-Judge + RAGAS evaluation. <span class="phl">73% hallucination reduction</span> across 200K+ daily queries in production.</div>
+          <div class="chips"><span class="ch">LANGGRAPH</span><span class="ch">RAG</span><span class="ch">RAGAS</span><span class="ch">BEDROCK</span><span class="ch">LANGSMITH</span></div>
+        </div>
+        <div class="pitem">
+          <div class="pid">PRJ-002 <span class="pst-a">● ACTIVE</span></div>
+          <div class="pn">MCP TOOL-CALLING FRAMEWORK</div>
+          <div class="pd">Production MCP server with A2A protocol bridges for cross-agent communication. <span class="phl">50K+ tool calls/day</span> at sub-200ms p99 latency with zero downtime deployments.</div>
+          <div class="chips"><span class="ch">MCP</span><span class="ch">A2A</span><span class="ch">LANGCHAIN</span><span class="ch">FASTAPI</span></div>
+        </div>
+        <div class="pitem">
+          <div class="pid">PRJ-003 <span class="pst-p">● PROD</span></div>
+          <div class="pn">NEURAL EVAL PIPELINE</div>
+          <div class="pd">LangSmith + custom judge models monitoring <span class="phl">15+ production AI endpoints</span>. Real-time drift alerting with automated rollback reduces MTTR by 80%.</div>
+          <div class="chips"><span class="ch">LANGSMITH</span><span class="ch">LLM-JUDGE</span><span class="ch">SAGEMAKER</span><span class="ch">PYTHON</span></div>
+        </div>
+        <div class="pitem">
+          <div class="pid">PRJ-004 <span class="pst-d">● DEPLOYED</span></div>
+          <div class="pn">CONVERSATIONAL AGENT PLATFORM</div>
+          <div class="pd">Enterprise-grade conversational AI with persistent memory, multi-tool use, and multi-turn reasoning. Handles <span class="phl">10K+ concurrent users</span> at 99.9% SLA.</div>
+          <div class="chips"><span class="ch">LANGCHAIN</span><span class="ch">OPENAI API</span><span class="ch">BEDROCK</span><span class="ch">REDIS</span></div>
+        </div>
+        <div class="pitem">
+          <div class="pid">PRJ-005 <span class="pst-a">● ACTIVE</span></div>
+          <div class="pn">AUTONOMOUS RESEARCH AGENT</div>
+          <div class="pd">Self-directed ReAct agent synthesizing multi-source information into structured reports. <span class="phl">85% time reduction</span> vs manual research workflows across enterprise teams.</div>
+          <div class="chips"><span class="ch">REACT</span><span class="ch">MCP</span><span class="ch">LANGGRAPH</span><span class="ch">PYTHON</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SKILLS -->
+    <div class="sec" id="s-skills">
+      <div class="pl">
+        <div class="plbl">// MODULES</div>
+        <div class="sv" style="font-size:20px;">18</div>
+        <div class="sl">CORE MODULES<br>ONLINE</div>
+        <div class="sdivider"></div>
+        <div style="font-size:7.5px;color:rgba(204,255,0,.35);letter-spacing:1.5px;line-height:2.3;">PRIMARY<br>PYTHON<br><span style="color:rgba(0,255,136,.5);">● EXPERT</span></div>
+      </div>
+      <div>
+        <div style="font-family:'Orbitron',sans-serif;font-size:7.5px;letter-spacing:3px;color:rgba(204,255,0,.28);margin-bottom:12px;">ACTIVE SKILL MATRIX</div>
+        <div class="sk-grid">
+          <div>
+            <div class="sk-cat-hd">ORCHESTRATION</div>
+            <div class="sk-item"><span class="sk-name">LANGGRAPH</span><div class="sk-bar"><div class="sk-fill" style="width:96%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">LANGCHAIN</span><div class="sk-bar"><div class="sk-fill" style="width:91%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">MCP</span><div class="sk-bar"><div class="sk-fill" style="width:93%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">A2A PROTO</span><div class="sk-bar"><div class="sk-fill" style="width:85%"></div></div><span class="sk-lvl">ADV</span></div>
+            <div class="sk-item"><span class="sk-name">RAG</span><div class="sk-bar"><div class="sk-fill" style="width:95%"></div></div><span class="sk-lvl">EXP</span></div>
+          </div>
+          <div>
+            <div class="sk-cat-hd">EVALUATION</div>
+            <div class="sk-item"><span class="sk-name">RAGAS</span><div class="sk-bar"><div class="sk-fill" style="width:94%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">LANGSMITH</span><div class="sk-bar"><div class="sk-fill" style="width:92%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">LLM-JUDGE</span><div class="sk-bar"><div class="sk-fill" style="width:88%"></div></div><span class="sk-lvl">ADV</span></div>
+            <div class="sk-cat-hd" style="margin-top:10px;">LANGUAGES</div>
+            <div class="sk-item"><span class="sk-name">PYTHON</span><div class="sk-bar"><div class="sk-fill" style="width:97%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">TYPESCRIPT</span><div class="sk-bar"><div class="sk-fill" style="width:74%"></div></div><span class="sk-lvl">INT</span></div>
+          </div>
+          <div>
+            <div class="sk-cat-hd">CLOUD & INFRA</div>
+            <div class="sk-item"><span class="sk-name">AWS BEDROCK</span><div class="sk-bar"><div class="sk-fill" style="width:91%"></div></div><span class="sk-lvl">EXP</span></div>
+            <div class="sk-item"><span class="sk-name">SAGEMAKER</span><div class="sk-bar"><div class="sk-fill" style="width:86%"></div></div><span class="sk-lvl">ADV</span></div>
+            <div class="sk-item"><span class="sk-name">FASTAPI</span><div class="sk-bar"><div class="sk-fill" style="width:89%"></div></div><span class="sk-lvl">ADV</span></div>
+            <div class="sk-item"><span class="sk-name">DOCKER</span><div class="sk-bar"><div class="sk-fill" style="width:81%"></div></div><span class="sk-lvl">ADV</span></div>
+            <div class="sk-item"><span class="sk-name">OPENAI API</span><div class="sk-bar"><div class="sk-fill" style="width:93%"></div></div><span class="sk-lvl">EXP</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CONTACT -->
+    <div class="sec" id="s-contact">
+      <div class="pl">
+        <div class="plbl">// TRANSMIT</div>
+        <div style="font-size:8.5px;color:rgba(204,255,0,.4);line-height:2.3;margin-top:4px;">NEURAL LINK<br>ESTABLISHED<br><span style="font-size:8px;color:rgba(0,255,136,.5);">ENCRYPTED</span></div>
+        <div class="sdivider" style="margin-top:12px;"></div>
+        <div style="font-size:7.5px;color:rgba(255,255,255,.18);letter-spacing:1px;line-height:2.2;">IST TIMEZONE<br>RESPONSE<br>&lt; 24 HRS</div>
+      </div>
+      <div>
+        <div class="ptitle" style="font-size:13px;margin-bottom:4px;">SEND TRANSMISSION</div>
+        <div style="font-size:9px;color:rgba(255,255,255,.22);margin-bottom:12px;">Direct link to Amarsh Pedapati. All transmissions encrypted end-to-end.</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 14px;">
+          <div><label class="fl">SENDER</label><input class="ci" placeholder="Your name"></div>
+          <div><label class="fl">FREQUENCY</label><input class="ci" type="email" placeholder="your@email.com"></div>
+        </div>
+        <label class="fl">PAYLOAD</label>
+        <textarea class="ci" style="resize:none;height:48px;" placeholder="Your message"></textarea>
+        <button class="cbtn">TRANSMIT →</button>
+        <div class="clinks">
+          <a class="clink" href="mailto:pedapatiamarsh@gmail.com">✉ EMAIL</a>
+          <a class="clink" href="#" target="_blank">⬡ LINKEDIN</a>
+          <a class="clink" href="#" target="_blank">◈ GITHUB</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+<div id="xbtn" onclick="closePanel()">✕ CLOSE</div>
+
+<script>
+// Dense sphere: local mesh + sparse long-range connections
+const N = 110;
+let PTS = [], EDGES = [];
+(function buildSphere(){
+  for(let i=0;i<N;i++){
+    const u=Math.random(),v=Math.random();
+    const th=2*Math.PI*u, ph=Math.acos(2*v-1);
+    PTS.push([Math.sin(ph)*Math.cos(th), Math.cos(ph), Math.sin(ph)*Math.sin(th)]);
+  }
+  for(let i=0;i<N;i++) for(let j=i+1;j<N;j++){
+    const d2=(PTS[i][0]-PTS[j][0])**2+(PTS[i][1]-PTS[j][1])**2+(PTS[i][2]-PTS[j][2])**2;
+    if(d2 < 0.60) EDGES.push([i,j,0]);
+    else if(d2 > 1.6 && d2 < 2.2 && Math.random()<0.07) EDGES.push([i,j,1]);
+  }
+})();
+
+const NAV = [
+  {lbl:'ABOUT',    ang:-Math.PI/2, sec:'s-home',     col:'#ccff00'},
+  {lbl:'PROJECTS', ang:0,          sec:'s-projects', col:'#00eeff'},
+  {lbl:'SKILLS',   ang:Math.PI,    sec:'s-skills',   col:'#ff6bff'},
+  {lbl:'CONTACT',  ang:Math.PI/2,  sec:'s-contact',  col:'#ff9966'},
+];
+
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let W,H,CX,CY,R;
+function resize(){W=cv.width=innerWidth;H=cv.height=innerHeight;CX=W/2;CY=H/2;R=Math.min(W,H)*.22;}
+window.addEventListener('resize',resize);resize();
+
+let mx=0,my=0,crx=0,cry=0;
+let lagRX=0,lagRY=0,tRX=0,tRY=0,autoRY=0;
+let manualRX=0,manualRY=0;
+let isDragging=false,dragX=0,dragY=0,dragRX=0,dragRY=0;
+let hovNav=-1,activeSec=null;
+let panelOffset=0,targetPOffset=0;
+let ripples=[];
+const t0=Date.now();
+let projPts=[];
+
+const curEl=document.getElementById('cur'),ringEl=document.getElementById('cur2');
+document.addEventListener('mousemove',e=>{
+  mx=e.clientX;my=e.clientY;
+  curEl.style.left=mx+'px';curEl.style.top=my+'px';
+  if(!isDragging){tRX=(my-CY)/CY*.2;tRY=(mx-CX)/CX*.2;}
+  else{manualRX=dragRX+(e.clientY-dragY)*0.007;manualRY=dragRY+(e.clientX-dragX)*0.009;}
+});
+(function animRing(){crx+=(mx-crx)*.12;cry+=(my-cry)*.12;ringEl.style.left=crx+'px';ringEl.style.top=cry+'px';requestAnimationFrame(animRing);})();
+
+cv.addEventListener('mousedown',e=>{if(hovNav>=0)return;isDragging=true;dragX=e.clientX;dragY=e.clientY;dragRX=manualRX;dragRY=manualRY;document.body.classList.add('drag-mode');});
+window.addEventListener('mouseup',()=>{isDragging=false;document.body.classList.remove('drag-mode');});
+cv.addEventListener('click',e=>{if(hovNav>=0){openSection(NAV[hovNav].sec);return;}ripples.push({x:e.clientX,y:e.clientY,r:0,maxR:80,t:0});});
+
+function rot3(x,y,z,rx,ry){
+  const cy=Math.cos(ry),sy=Math.sin(ry);
+  const nx=x*cy+z*sy,nz=-x*sy+z*cy;
+  const cx=Math.cos(rx),sx=Math.sin(rx);
+  return [nx,y*cx-nz*sx,y*sx+nz*cx];
+}
+
+const BIN='1011001011010000101101001011011010010101100101101000010110100101101101001010';
+let eCX=0,eCY=0;
+
+function draw(){
+  const t=(Date.now()-t0)/1000;
+  ctx.clearRect(0,0,W,H);
+  ctx.fillStyle='#000';ctx.fillRect(0,0,W,H);
+
+  panelOffset+=(targetPOffset-panelOffset)*0.07;
+  eCX=CX;eCY=CY-panelOffset;
+
+  autoRY+=0.004;
+  if(!isDragging){lagRX+=(tRX-lagRX)*.04;lagRY+=(tRY-lagRY)*.04;}
+  const rX=lagRX+manualRX;
+  const rY=autoRY+lagRY+manualRY;
+
+  drawEdgeBinary(t);
+  drawOuterRing(t);
+  drawWireframe(rX,rY);
+  drawCore(t);
+  drawNavDiamonds(t);
+  drawCenterText();
+  drawRipples();
+  drawCornerHUD();
+  drawSideHUD(t);
+
+  cv.style.cursor=hovNav>=0?'pointer':(isDragging?'grabbing':'none');
+  requestAnimationFrame(draw);
+}
+
+function drawEdgeBinary(t){
+  ctx.font='10px "Share Tech Mono",monospace';
+  const sc=Math.floor(t*9)%BIN.length;
+  for(let i=0;i<26;i++){
+    const ch=BIN[(i+sc)%BIN.length];
+    ctx.fillStyle=`rgba(255,255,255,${i%4===0?.13:.045})`;
+    ctx.fillText(ch,8,50+i*17);
+    ctx.fillText(ch,W-16,50+i*17);
+  }
+  for(let i=0;i<18;i++){
+    ctx.fillStyle='rgba(255,255,255,0.03)';
+    ctx.fillText(BIN[(i+sc+9)%BIN.length],80+i*30,14);
+    ctx.fillText(BIN[(i+sc+9)%BIN.length],80+i*30,H-7);
+  }
+}
+
+function drawOuterRing(t){
+  const OR=Math.min(W,H)*.415;
+  ctx.save();ctx.translate(eCX,eCY);
+  ctx.beginPath();ctx.setLineDash([3,6]);
+  ctx.arc(0,0,OR,0,Math.PI*2);
+  ctx.strokeStyle='rgba(255,255,255,0.09)';ctx.lineWidth=1;ctx.stroke();ctx.setLineDash([]);
+  const rot=t*.04;
+  for(let i=0;i<90;i++){
+    const a=i/90*Math.PI*2+rot,major=i%9===0;
+    const r1=OR-1,r2=OR-(major?14:5);
+    ctx.beginPath();ctx.moveTo(Math.cos(a)*r1,Math.sin(a)*r1);ctx.lineTo(Math.cos(a)*r2,Math.sin(a)*r2);
+    ctx.strokeStyle=major?'rgba(204,255,0,.38)':'rgba(255,255,255,.05)';
+    ctx.lineWidth=major?1.5:.5;ctx.stroke();
+  }
+  ctx.beginPath();ctx.setLineDash([2,5]);
+  ctx.arc(0,0,R*1.48,0,Math.PI*2);
+  ctx.strokeStyle='rgba(204,255,0,.07)';ctx.lineWidth=.8;ctx.stroke();ctx.setLineDash([]);
+  for(let i=0;i<4;i++){
+    const a=i/4*Math.PI*2+t*.02;
+    ctx.beginPath();ctx.arc(0,0,OR+12,a,a+Math.PI*.18);
+    ctx.strokeStyle='rgba(204,255,0,.18)';ctx.lineWidth=2;ctx.stroke();
+  }
+  ctx.restore();
+}
+
+function drawWireframe(rX,rY){
+  projPts=[];
+  for(let i=0;i<N;i++){
+    const p=rot3(PTS[i][0],PTS[i][1],PTS[i][2],rX,rY);
+    projPts.push({x:eCX+p[0]*R,y:eCY+p[1]*R,z:p[2]});
+  }
+  const passes=[
+    {dx:-4,dy:-2,col:'rgba(255,20,20,0.18)',lw:.7},
+    {dx:4,dy:2,col:'rgba(20,50,255,0.18)',lw:.7},
+    {dx:.5,dy:.5,col:'rgba(20,255,80,0.05)',lw:.5},
+    {dx:0,dy:0,col:'rgba(205,240,255,0.45)',lw:.85},
+  ];
+  passes.forEach(pass=>{
+    ctx.save();ctx.translate(pass.dx,pass.dy);
+    EDGES.forEach(([a,b,type])=>{
+      const pa=projPts[a],pb=projPts[b];
+      const alpha=((pa.z+1)/2)*((pb.z+1)/2)*.9;
+      ctx.globalAlpha=type===1?alpha*.28:alpha;
+      ctx.strokeStyle=pass.col;
+      ctx.lineWidth=type===1?pass.lw*.45:pass.lw;
+      ctx.beginPath();ctx.moveTo(pa.x,pa.y);ctx.lineTo(pb.x,pb.y);ctx.stroke();
+    });
+    ctx.globalAlpha=1;ctx.restore();
+  });
+  projPts.forEach(p=>{
+    const dx=mx-p.x,dy=my-p.y,dist=Math.sqrt(dx*dx+dy*dy);
+    if(dist<55&&p.z>-.3){
+      const s=1-dist/55;
+      ctx.beginPath();ctx.arc(p.x,p.y,3+s*4,0,Math.PI*2);
+      ctx.fillStyle=`rgba(204,255,0,${s*.7})`;
+      ctx.shadowColor='#ccff00';ctx.shadowBlur=8*s;ctx.fill();ctx.shadowBlur=0;
+    }
+  });
+}
+
+function drawCore(t){
+  ctx.save();ctx.translate(eCX,eCY);
+  const p=.88+Math.sin(t*1.9)*.12;
+  let g=ctx.createRadialGradient(0,0,0,0,0,R*.55*p);
+  g.addColorStop(0,'rgba(0,200,255,0.75)');g.addColorStop(.2,'rgba(0,130,210,0.38)');
+  g.addColorStop(.6,'rgba(0,50,100,0.15)');g.addColorStop(1,'transparent');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,R*.55*p,0,Math.PI*2);ctx.fill();
+  for(let i=1;i<=4;i++){
+    ctx.beginPath();ctx.arc(0,0,R*(.14+i*.065),0,Math.PI*2);
+    ctx.strokeStyle=`rgba(0,238,255,${.14-i*.03})`;ctx.lineWidth=.7;ctx.stroke();
+  }
+  g=ctx.createRadialGradient(0,0,0,0,0,R*.14);
+  g.addColorStop(0,'rgba(230,255,255,1)');g.addColorStop(.35,'rgba(0,238,255,.9)');g.addColorStop(1,'rgba(0,150,200,0)');
+  ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,R*.14,0,Math.PI*2);ctx.fill();
+  ctx.restore();
+}
+
+function drawNavDiamonds(t){
+  hovNav=-1;
+  const nodeR=R*1.47;
+  NAV.forEach((nd,i)=>{
+    const nx=eCX+Math.cos(nd.ang)*nodeR,ny=eCY+Math.sin(nd.ang)*nodeR;
+    const hit=Math.sqrt((mx-nx)**2+(my-ny)**2)<34;
+    if(hit)hovNav=i;
+    const active=hit||(activeSec===nd.sec);
+    ctx.save();ctx.translate(nx,ny);
+    const sz=active?18:12;
+
+    if(active){
+      const g=ctx.createRadialGradient(0,0,0,0,0,50);
+      g.addColorStop(0,nd.col+'28');g.addColorStop(1,'transparent');
+      ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,50,0,Math.PI*2);ctx.fill();
+      const a1=t*1.8;
+      ctx.beginPath();ctx.arc(0,0,sz+13,a1,a1+Math.PI*.55);ctx.strokeStyle=nd.col;ctx.lineWidth=1.5;ctx.stroke();
+      ctx.beginPath();ctx.arc(0,0,sz+13,a1+Math.PI,a1+Math.PI*1.55);ctx.strokeStyle=nd.col;ctx.lineWidth=1.5;ctx.stroke();
+    }
+
+    const distToCore=Math.sqrt((nx-eCX)**2+(ny-eCY)**2)-sz-R*.14;
+    const angToCore=Math.atan2(eCY-ny,eCX-nx);
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(angToCore)*sz,Math.sin(angToCore)*sz);
+    ctx.lineTo(Math.cos(angToCore)*(sz+distToCore),Math.sin(angToCore)*(sz+distToCore));
+    ctx.setLineDash([3,7]);
+    ctx.strokeStyle=active?nd.col+'50':'rgba(255,255,255,0.05)';
+    ctx.lineWidth=active?1:.5;ctx.stroke();ctx.setLineDash([]);
+
+    ctx.beginPath();ctx.moveTo(0,-sz);ctx.lineTo(sz,0);ctx.lineTo(0,sz);ctx.lineTo(-sz,0);ctx.closePath();
+    ctx.fillStyle=active?nd.col+'1a':'rgba(0,0,0,0.5)';ctx.fill();
+    ctx.strokeStyle=active?nd.col:'rgba(255,255,255,0.22)';ctx.lineWidth=active?2:1;ctx.stroke();
+
+    const s2=sz*.42;
+    ctx.beginPath();ctx.moveTo(0,-s2);ctx.lineTo(s2,0);ctx.lineTo(0,s2);ctx.lineTo(-s2,0);ctx.closePath();
+    ctx.fillStyle=active?nd.col:'rgba(255,255,255,0.25)';ctx.fill();
+
+    const lpad=30;
+    const lx=Math.cos(nd.ang)*lpad,ly=Math.sin(nd.ang)*lpad;
+    const vOff=Math.abs(Math.sin(nd.ang))>.5?(Math.sin(nd.ang)>0?17:-13):4;
+    ctx.font=`${active?'700':'400'} 9px "Orbitron",sans-serif`;
+    ctx.fillStyle=active?nd.col:'rgba(255,255,255,0.35)';
+    ctx.textAlign='center';ctx.fillText(nd.lbl,lx,ly+vOff);
+    ctx.restore();
+  });
+}
+
+function drawCenterText(){
+  ctx.save();ctx.translate(eCX,eCY);ctx.textAlign='center';
+  ctx.font='900 18px "Orbitron",sans-serif';
+  ctx.fillStyle='rgba(255,255,255,0.05)';ctx.fillText('AGENTIC',-55,5);
+  ctx.fillStyle='rgba(204,255,0,0.07)';ctx.fillText('AI',62,5);
+  ctx.font='8px "Share Tech Mono",monospace';
+  ctx.fillStyle='rgba(0,238,255,0.06)';ctx.fillText('NEURAL CORE v3.0',0,20);
+  ctx.restore();
+}
+
+function drawRipples(){
+  ripples=ripples.filter(r=>r.t<1);
+  ripples.forEach(r=>{
+    r.t+=0.04;r.r=r.maxR*r.t;
+    ctx.beginPath();ctx.arc(r.x,r.y,r.r,0,Math.PI*2);
+    ctx.strokeStyle=`rgba(204,255,0,${(1-r.t)*.5})`;ctx.lineWidth=1.5*(1-r.t);ctx.stroke();
+    if(r.t>.2){
+      ctx.beginPath();ctx.arc(r.x,r.y,r.r*.65,0,Math.PI*2);
+      ctx.strokeStyle=`rgba(0,238,255,${(1-r.t)*.3})`;ctx.lineWidth=.8;ctx.stroke();
+    }
+  });
+}
+
+function drawCornerHUD(){
+  const p=15,l=22;
+  ctx.strokeStyle='rgba(204,255,0,0.22)';ctx.lineWidth=1.5;
+  [[p,p,1,1],[W-p,p,-1,1],[p,H-p,1,-1],[W-p,H-p,-1,-1]].forEach(([x,y,sx,sy])=>{
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x+sx*l,y);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(x,y);ctx.lineTo(x,y+sy*l);ctx.stroke();
+  });
+  [[p,p],[W-p,p],[p,H-p],[W-p,H-p]].forEach(([x,y])=>{
+    ctx.beginPath();ctx.arc(x,y,2,0,Math.PI*2);ctx.fillStyle='rgba(204,255,0,0.4)';ctx.fill();
+  });
+}
+
+function drawSideHUD(t){
+  [[W*.08,1],[W*.92,-1]].forEach(([x,dir])=>{
+    ctx.save();ctx.translate(x,eCY);
+    ctx.fillStyle='rgba(204,255,0,0.55)';ctx.fillRect(-2.5,-2.5,5,5);
+    ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(dir*52,0);
+    ctx.strokeStyle='rgba(204,255,0,0.18)';ctx.lineWidth=1;ctx.stroke();
+    ctx.font='8px "Share Tech Mono",monospace';
+    ctx.fillStyle='rgba(204,255,0,0.25)';ctx.textAlign=dir>0?'left':'right';
+    ctx.fillText('AG-NET-01',dir*56,3);
+    ctx.fillText((Math.sin(t+dir)*22+72).toFixed(0)+'%',dir*56,14);
+    ctx.restore();
+  });
+}
+
+draw();
+
+function openSection(secId){
+  document.querySelectorAll('.sec').forEach(s=>s.classList.remove('on'));
+  document.getElementById(secId)?.classList.add('on');
+  activeSec=secId;
+  document.getElementById('panel').classList.add('open');
+  document.getElementById('xbtn').classList.add('vis');
+  document.getElementById('hint').style.opacity='0';
+  document.getElementById('drag-hint').style.opacity='0';
+  targetPOffset=H*0.19;
+}
+
+function closePanel(){
+  activeSec=null;
+  document.getElementById('panel').classList.remove('open');
+  document.getElementById('xbtn').classList.remove('vis');
+  document.getElementById('hint').style.opacity='';
+  document.getElementById('drag-hint').style.opacity='';
+  targetPOffset=0;
+}
+</script>
+</body>
+</html>
