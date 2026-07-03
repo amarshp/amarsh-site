@@ -1543,6 +1543,7 @@ window.addEventListener('keydown',e=>{                                  // game-
   if(/^(INPUT|TEXTAREA)$/.test((e.target||{}).tagName)) return;
   if(e.key==='Escape'){ e.preventDefault(); togglePause(); }
   else if(e.key==='q'||e.key==='Q'){ e.preventDefault(); exitDefendMode(); }
+  else if(e.code==='Space' && gameState.phase==='STORY'){ gameState.phase='STARTING'; gameState.phaseT=1.2; }   // skip the intro
 });
 window.__fire=fireBolt; // debug hook (time-based behaviour can't be seen in a single screenshot)
 window.__shield=(frac)=>{ const keep=Math.round(DISC_N*frac); discLive=0; for(let i=0;i<DISC_N;i++){ if(i<keep){ discState[i]=0; discLive++; } else discState[i]=2; } lastAttackT=performance.now(); };  // debug: set shield fraction
@@ -2295,13 +2296,24 @@ function gamePlaying(){ return gameState.enabled && (gameState.phase==='WAVE_ACT
 // start-screen + game-over DOM overlays
 const gOverlay=document.createElement('div');
 gOverlay.style.cssText='position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;pointer-events:none;font-family:Orbitron,monospace;';
-gOverlay.innerHTML='<div style="pointer-events:auto;text-align:center;background:rgba(4,10,18,.85);border:1px solid rgba(255,59,107,.5);border-radius:10px;padding:34px 46px;box-shadow:0 0 50px rgba(255,59,107,.25);backdrop-filter:blur(4px);">'
+const _puCard=(col,glyph,name,desc,dur)=>'<div style="flex:1;min-width:120px;background:rgba(255,255,255,.03);border:1px solid '+col+'55;border-top:2px solid '+col+';border-radius:6px;padding:9px 8px 8px;">'
+  +'<div style="font-size:19px;color:'+col+';line-height:1;">'+glyph+'</div>'
+  +'<div style="font-size:11px;letter-spacing:2px;color:'+col+';margin:5px 0 3px;font-weight:700;">'+name+(dur?' <span style="opacity:.6;font-weight:400;">'+dur+'s</span>':'')+'</div>'
+  +'<div style="font-size:10.5px;line-height:1.45;letter-spacing:.3px;color:rgba(190,225,245,.65);font-family:\'Share Tech Mono\',monospace;">'+desc+'</div></div>';
+gOverlay.innerHTML='<div style="pointer-events:auto;text-align:center;background:rgba(4,10,18,.88);border:1px solid rgba(255,59,107,.5);border-radius:10px;padding:30px 42px;box-shadow:0 0 50px rgba(255,59,107,.25);backdrop-filter:blur(4px);max-width:620px;">'
   +'<div style="font-size:14px;letter-spacing:5px;color:#ff8aa6;">DARK-MATTER SIEGE</div>'
   +'<div style="font-size:34px;letter-spacing:4px;color:#fff;margin:8px 0 4px;font-weight:900;">DEFEND <span style="color:#ff3b6b;">NaN</span></div>'
-  +'<div style="font-size:14px;letter-spacing:.5px;color:rgba(190,225,245,.72);line-height:1.8;max-width:420px;margin:10px auto 6px;">Asteroids &amp; comets are inbound to destroy NaN. SHOOT them [SPACE] before they breach the shield. Grab boosters. Keep the core alive.</div>'
-  +'<div id="g-hs" style="font-size:14px;letter-spacing:2px;color:#ffd24d;margin:10px 0;">HIGH SCORE · 0</div>'
-  +'<button id="g-start-btn" style="pointer-events:auto;font-family:Orbitron;font-weight:700;font-size:13px;letter-spacing:3px;background:#ff3b6b;color:#fff;border:none;padding:12px 40px;cursor:pointer;border-radius:4px;margin-top:6px;">START ▸</button>'
-  +'<div style="font-size:12.5px;letter-spacing:2px;color:rgba(255,255,255,.3);margin-top:14px;">[SPACE] FIRE · ESC PAUSE · Q QUIT</div></div>';
+  +'<div style="font-size:13.5px;letter-spacing:.5px;color:rgba(190,225,245,.72);line-height:1.7;max-width:460px;margin:8px auto 4px;">Asteroids &amp; comets are inbound to destroy NaN. SHOOT them [SPACE] before they breach the shield. Keep the core alive.</div>'
+  +'<div style="font-size:11px;letter-spacing:3px;color:rgba(255,255,255,.45);margin:14px 0 8px;">ARSENAL — kills drop capsules · SHOOT a capsule to grab it</div>'
+  +'<div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap;max-width:560px;margin:0 auto;">'
+    +_puCard('#ff2a8c','≡','LANCE','auto-sweeping laser — melts everything it touches',7)
+    +_puCard('#aaff00','◎','AUTO','turret takes over the aiming',10)
+    +_puCard('#00eaff','⟶','RANGE','engage threats further out',12)
+    +_puCard('#ffd24d','✦','SHIELD','rebuilds the ring + absorbs the next breach',0)
+  +'</div>'
+  +'<div id="g-hs" style="font-size:14px;letter-spacing:2px;color:#ffd24d;margin:14px 0 8px;">HIGH SCORE · 0</div>'
+  +'<button id="g-start-btn" style="pointer-events:auto;font-family:Orbitron;font-weight:700;font-size:13px;letter-spacing:3px;background:#ff3b6b;color:#fff;border:none;padding:12px 40px;cursor:pointer;border-radius:4px;margin-top:2px;">START ▸</button>'
+  +'<div style="font-size:12.5px;letter-spacing:2px;color:rgba(255,255,255,.3);margin-top:12px;">[SPACE] FIRE · ESC PAUSE · Q QUIT</div></div>';
 document.body.appendChild(gOverlay);
 const gOver=document.createElement('div');
 gOver.style.cssText='position:fixed;inset:0;z-index:70;display:none;align-items:center;justify-content:center;pointer-events:none;font-family:Orbitron,monospace;';
@@ -2319,10 +2331,20 @@ function startRun(){
   const P=gameState;
   P.phase='STARTING'; P.phaseT=0; P.wave=0; P.score=0; P.combo=0; P.comboMult=1; P.comboTimer=0;
   P.killCount=0; P.entityHP=P.entityHPMax; P.survAccum=0; P.cardShown=false;
-  P.boosts={rangeUntil:0,autoUntil:0,shieldAbsorbCharges:0}; P.rangeMax=P.rangeBase; P.runStartMs=performance.now();
+  P.boosts={rangeUntil:0,autoUntil:0,laserUntil:0,shieldAbsorbCharges:0}; P.rangeMax=P.rangeBase; P.runStartMs=performance.now();
+  P.pickupHinted=false; P.saidKeys={}; P.lastSayMs=0;
   gOverlay.style.display='none'; gOver.style.display='none';
   try{ resetShield(); }catch(e){}
-  try{ nanReply("They're coming. Don't let them reach me.", 'fight', 4); }catch(e){}
+  // first run gets the short story intro (skippable with SPACE); replays jump straight in
+  if(!P.introSeen){ P.introSeen=true; P.phase='STORY'; P.storyBeat=-1; }
+  else try{ nanReply("They're coming. Don't let them reach me.", 'fight', 4); }catch(e){}
+}
+// in-game reactive lines — one global cooldown + once-per-run keys so NaN talks, never spams
+function gameSay(key, text, mood){
+  const P=gameState, now=performance.now();
+  if(P.saidKeys[key] || now-P.lastSayMs<3500) return;
+  P.saidKeys[key]=1; P.lastSayMs=now;
+  try{ nanReply(text, mood||'fight', 3); }catch(e){}
 }
 function exitDefendMode(){
   for(let i=gameState.threats.length-1;i>=0;i--){ try{ destroyThreat(gameState.threats[i], false); }catch(e){} }
@@ -2351,6 +2373,7 @@ function spawnBoss(){
   t.hp=8+w; t.hpMax=t.hp; t.points=1000; t.isBoss=true;
   t.speed*=0.55; t.v.multiplyScalar(0.55); t.rad*=2.3; t.obj.scale.setScalar(2.3);
   if(t.obj.material){ t.obj.material.color.setHex(0x8a5a4a); t.obj.material.emissive=new THREE.Color(0x3a0e08); }
+  gameState.lastSayMs=0; gameSay('boss'+w, "That one's HUGE. Focus everything on it — NOW!", 'scared');
 }
 function updateWaveSpawner(dt){
   const P=gameState;
@@ -2369,9 +2392,20 @@ function completeWave(){
   if(P.wave>=5) ach('defender');
   try{ nanReply(nanPick(["Wave clear — nicely done!","We held them. Next wave incoming.","Still standing. Keep it up."]), 'happy', 3); }catch(e){}
 }
+const SIEGE_BEATS=[
+  [0.3, "Something's found the rift. Deep contacts — a LOT of them.", 'scared'],
+  [3.4, "They're not explorers. They're coming for the anomaly. They're coming for ME.", 'scared'],
+  [6.6, "The dot-ring buys seconds, not minutes. You're the only gun I've got — make it count.", 'fight'],
+];
 function updateGame(dt){
   if(!gameState.enabled) return;
   const P=gameState; const now=performance.now();
+  if(P.phase==='STORY'){ P.phaseT+=dt;
+    const nb=P.storyBeat+1;
+    if(nb<SIEGE_BEATS.length && P.phaseT>=SIEGE_BEATS[nb][0]){ P.storyBeat=nb;
+      try{ nanReply(SIEGE_BEATS[nb][1], SIEGE_BEATS[nb][2], 3.4); }catch(e){} }
+    if(P.phaseT>=10){ P.phase='STARTING'; P.phaseT=1.2; }
+    return; }
   if(P.phase==='STARTING'){ P.phaseT+=dt; if(P.phaseT>=2) startWave(1); return; }
   if(P.phase==='GAME_OVER'){ if(!novaActive && !P.cardShown && now>=P.restartArmedMs) showGameOverCard(); return; }   // card appears once the black-hole sequence ends
   if(P.paused || P.phase==='IDLE') return;
@@ -2379,6 +2413,7 @@ function updateGame(dt){
   if(P.phase==='WAVE_CLEAR'){ P.phaseT+=dt; if(P.phaseT>=2.5) startWave(P.wave+1); }
   if(P.phase==='WAVE_ACTIVE'){
     P.survAccum += dt*10; if(P.survAccum>=1){ const a=Math.floor(P.survAccum); P.score+=a; P.survAccum-=a; }   // +10/s survival
+    try{ if(discFrac()<0.35) gameSay('shieldlow', "The ring's FRAYING — grab a ✦ SHIELD drop if you see one!", 'scared'); }catch(e){}
     if(P.comboTimer>0){ P.comboTimer-=dt; if(P.comboTimer<=0){ P.combo=0; P.comboMult=1; } }
     updateWaveSpawner(dt);
     if(P.boosts.autoUntil>now){ P.autoFireT=(P.autoFireT||0)+dt; if(P.autoFireT>=0.45){ P.autoFireT=0; autoFireNearest(); } }   // AUTO-TARGET
@@ -2386,6 +2421,7 @@ function updateGame(dt){
   }
   updateThreats(dt);   // threats keep homing across WAVE_ACTIVE/WAVE_CLEAR
   updatePickups(dt);
+  updateLaser(dt);
 }
 function drawDefendHUD(){
   if(!gameState.enabled) return;
@@ -2400,14 +2436,18 @@ function drawDefendHUD(){
   for(let i=0;i<P.entityHPMax;i++){ ctx.globalAlpha=i<P.entityHP?1:0.22; ctx.fillText('◆', hx, y+100); hx+=17; }
   ctx.globalAlpha=1; ctx.font='9px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.4)'; ctx.fillText('CORE INTEGRITY', x, y+116);
   if(P.comboMult>1){ ctx.font='700 16px Orbitron, monospace'; ctx.fillStyle='#aaff00'; ctx.fillText('×'+P.comboMult.toFixed(1)+' COMBO', x, y+144); }
-  // active booster chips
+  // active booster chips — countdown text + a draining timer bar so you always know what's running out
   const nowB=performance.now(); let by=y+168;
-  const chip=(txt,col)=>{ ctx.font='700 11px Orbitron, monospace'; const w=ctx.measureText(txt).width+14;
+  const chip=(txt,col,frac)=>{ ctx.font='700 11px Orbitron, monospace'; const w=Math.max(118, ctx.measureText(txt).width+14);
     ctx.fillStyle=col+'22'; ctx.fillRect(x,by-12,w,17); ctx.strokeStyle=col; ctx.lineWidth=1; ctx.strokeRect(x,by-12,w,17);
-    ctx.fillStyle=col; ctx.fillText(txt, x+7, by+1); by+=22; };
-  if(P.boosts.rangeUntil>nowB) chip('⟶ RANGE '+Math.ceil((P.boosts.rangeUntil-nowB)/1000)+'s', '#00eaff');
-  if(P.boosts.autoUntil>nowB) chip('◎ AUTO-AIM '+Math.ceil((P.boosts.autoUntil-nowB)/1000)+'s', '#aaff00');
-  if(P.boosts.shieldAbsorbCharges>0) chip('✦ ABSORB ×'+P.boosts.shieldAbsorbCharges, '#ffd24d');
+    ctx.fillStyle=col; ctx.fillText(txt, x+7, by+1);
+    if(frac!=null){ ctx.fillStyle=col+'33'; ctx.fillRect(x,by+7,w,3); ctx.fillStyle=col; ctx.fillRect(x,by+7,w*Math.max(0,Math.min(1,frac)),3); by+=6; }
+    by+=22; };
+  if(P.boosts.rangeUntil>nowB) chip('⟶ RANGE '+Math.ceil((P.boosts.rangeUntil-nowB)/1000)+'s', '#00eaff', (P.boosts.rangeUntil-nowB)/12000);
+  if(P.boosts.autoUntil>nowB) chip('◎ AUTO '+Math.ceil((P.boosts.autoUntil-nowB)/1000)+'s', '#aaff00', (P.boosts.autoUntil-nowB)/10000);
+  if(P.boosts.laserUntil>nowB) chip('≡ LANCE '+Math.ceil((P.boosts.laserUntil-nowB)/1000)+'s', '#ff2a8c', (P.boosts.laserUntil-nowB)/7000);
+  if(P.boosts.shieldAbsorbCharges>0) chip('✦ ABSORB ×'+P.boosts.shieldAbsorbCharges, '#ffd24d', null);
+  if(P.phase==='STORY'){ ctx.textAlign='center'; ctx.font='11px "Share Tech Mono"'; ctx.fillStyle='rgba(255,255,255,.45)'; ctx.fillText('[ SPACE — skip intro ]', W/2, H*0.88); }
   if(P.phase==='STARTING'){ ctx.textAlign='center'; ctx.font='700 30px Orbitron'; ctx.fillStyle='rgba(255,255,255,.85)'; ctx.fillText('WAVE 1 INCOMING…', W/2, H*0.42); }
   if(P.phase==='WAVE_CLEAR'){ ctx.textAlign='center'; ctx.font='900 34px Orbitron'; ctx.fillStyle='#aaff00'; ctx.shadowColor='#aaff00'; ctx.shadowBlur=14;
     ctx.fillText('WAVE '+P.wave+' CLEAR', W/2, H*0.40); ctx.shadowBlur=0;
@@ -2488,27 +2528,48 @@ function onThreatKilled(t){
   P.combo++; P.comboTimer=2.5; P.comboMult=1+Math.min(4, Math.floor(P.combo/5)*0.5);   // streak within 2.5s ramps the multiplier (max 5×)
   P.score += Math.round(t.points*P.comboMult);
   P.killCount++; P.killedThisWave=(P.killedThisWave||0)+1;
+  if(P.killCount===1) gameSay('firstkill', "First blood! That's it — keep that rhythm.", 'fight');
+  else if(t.isBoss) gameSay('bosskill'+P.wave, "The big one's DOWN! Beautiful shooting.", 'happy');
+  else if(P.comboMult>=3) gameSay('combo3', "Look at you GO — the void's on fire!", 'fight');
+  else if(P.comboMult>=2) gameSay('combo2', "×2 streak! Don't let it cool off.", 'fight');
   try{ spawnExplosion(t.p.clone(), t.kind==='comet'?0x9fd0ff:0xffaa55, 1.25); }catch(e){}
   try{ playSound('eject'); }catch(e){}
   maybeDropPickup(t);   // Phase 4
 }
 // ── BOOSTERS (Phase 4) — drop from kills, SHOOT to collect ──
-const PICKUP_DEF={ range:{c:0x00eaff,glyph:'R'}, auto:{c:0xaaff00,glyph:'A'}, shield:{c:0xffd24d,glyph:'S'} };
+const PICKUP_DEF={
+  range: {c:0x00eaff, glyph:'⟶', name:'RANGE',  dur:12, desc:'engage further out',        say:"Range extender — twelve seconds. Reach out and touch them."},
+  auto:  {c:0xaaff00, glyph:'◎', name:'AUTO',   dur:10, desc:'turret targets for you',    say:"Auto-turret online — ten seconds. I'll help you aim."},
+  shield:{c:0xffd24d, glyph:'✦', name:'SHIELD', dur:0,  desc:'restores ring + absorbs a hit', say:"Shield patched — and the next breach gets eaten. Thank you."},
+  laser: {c:0xff2a8c, glyph:'≡', name:'LANCE',  dur:7,  desc:'auto-sweeping laser beam',  say:"A dark-matter LANCE?! Seven seconds — sweep them out of my sky!"},
+};
 const _pickupTex={};
 function pickupTexture(kind){ if(_pickupTex[kind]) return _pickupTex[kind];
   const d=PICKUP_DEF[kind], col='#'+d.c.toString(16).padStart(6,'0');
-  const c=document.createElement('canvas'); c.width=c.height=128; const g=c.getContext('2d');
-  g.globalAlpha=0.16; g.fillStyle=col; g.beginPath(); g.arc(64,64,52,0,Math.PI*2); g.fill(); g.globalAlpha=1;
-  g.strokeStyle=col; g.lineWidth=7; g.beginPath(); g.arc(64,64,48,0,Math.PI*2); g.stroke();
-  g.strokeStyle='rgba(255,255,255,.5)'; g.lineWidth=2; g.beginPath(); g.arc(64,64,48,0,Math.PI*2); g.stroke();
-  g.fillStyle='#fff'; g.font='bold 52px Orbitron, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(d.glyph,64,70);
+  const c=document.createElement('canvas'); c.width=c.height=256; const g=c.getContext('2d');
+  // hex capsule frame + glyph + NAME label — readable at a glance, unmistakably a pickup
+  g.translate(128,108);
+  g.globalAlpha=0.18; g.fillStyle=col; g.beginPath();
+  for(let i=0;i<6;i++){ const a=Math.PI/6+i*Math.PI/3; g[i?'lineTo':'moveTo'](Math.cos(a)*78, Math.sin(a)*78); }
+  g.closePath(); g.fill(); g.globalAlpha=1;
+  g.strokeStyle=col; g.lineWidth=9; g.stroke();
+  g.strokeStyle='rgba(255,255,255,.65)'; g.lineWidth=2.5; g.beginPath();
+  for(let i=0;i<6;i++){ const a=Math.PI/6+i*Math.PI/3; g[i?'lineTo':'moveTo'](Math.cos(a)*66, Math.sin(a)*66); }
+  g.closePath(); g.stroke();
+  g.fillStyle='#fff'; g.shadowColor=col; g.shadowBlur=18;
+  g.font='bold 78px Orbitron, sans-serif'; g.textAlign='center'; g.textBaseline='middle'; g.fillText(d.glyph,0,4);
+  g.shadowBlur=0; g.setTransform(1,0,0,1,0,0);
+  g.fillStyle=col; g.font='bold 30px Orbitron, sans-serif'; g.textAlign='center'; g.fillText(d.name,128,228);
   const tx=new THREE.CanvasTexture(c); tx.colorSpace=THREE.SRGBColorSpace; _pickupTex[kind]=tx; return tx;
 }
 function spawnPickup(kind, pos){
   const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:pickupTexture(kind), transparent:true, depthWrite:false, opacity:1}));
-  sp.scale.setScalar(0.62); sp.position.copy(pos); threatGroup.add(sp);
-  const pk={ kind, obj:sp, p:pos.clone(), v:new THREE.Vector3((Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4+0.15,(Math.random()-0.5)*0.4), life:0, maxLife:8, rad:0.42 };
-  gameState.pickups.push(pk); return pk;
+  sp.scale.setScalar(0.8); sp.position.copy(pos); threatGroup.add(sp);
+  const pk={ kind, obj:sp, p:pos.clone(), v:new THREE.Vector3((Math.random()-0.5)*0.4,(Math.random()-0.5)*0.4+0.15,(Math.random()-0.5)*0.4), life:0, maxLife:9, rad:0.5 };
+  gameState.pickups.push(pk);
+  if(!gameState.pickupHinted){ gameState.pickupHinted=true;
+    try{ nanReply("A booster capsule broke loose — SHOOT it to grab it!", 'happy', 3); }catch(e){} }
+  return pk;
 }
 function destroyPickup(pk){ if(!pk) return; const idx=gameState.pickups.indexOf(pk); if(idx>=0) gameState.pickups.splice(idx,1);
   if(pk.obj){ threatGroup.remove(pk.obj); if(pk.obj.material) pk.obj.material.dispose(); } }   // shared cached texture not disposed
@@ -2516,9 +2577,9 @@ function updatePickups(dt){
   const P=gameState; if(!P.pickups.length) return;
   for(let i=P.pickups.length-1;i>=0;i--){ const pk=P.pickups[i]; if(!pk) continue; pk.life+=dt;
     pk.v.multiplyScalar(0.985); pk.p.addScaledVector(pk.v,dt); pk.obj.position.copy(pk.p);
-    pk.obj.material.rotation += dt*0.9;
-    const k=pk.life/pk.maxLife; pk.obj.material.opacity = k<0.8?1:Math.max(0,(1-k)/0.2);
-    pk.obj.scale.setScalar(0.6+Math.sin(pk.life*5)*0.07);
+    const left=pk.maxLife-pk.life;
+    pk.obj.material.opacity = left>2.5 ? 1 : (Math.sin(pk.life*14)>0 ? 0.9 : 0.25);   // blink hard when about to despawn
+    pk.obj.scale.setScalar(0.78+Math.sin(pk.life*5)*0.08);
     if(pk.life>=pk.maxLife) destroyPickup(pk);
   }
 }
@@ -2526,14 +2587,18 @@ function applyPickup(kind){
   const P=gameState, now=performance.now();
   if(kind==='range'){ P.boosts.rangeUntil=now+12000; P.rangeMax=P.rangeBoost; }
   else if(kind==='auto'){ P.boosts.autoUntil=now+10000; }
+  else if(kind==='laser'){ P.boosts.laserUntil=now+7000; }
   else if(kind==='shield'){ let revived=0; for(let i=0;i<DISC_N && revived<24;i++){ if(discState[i]===2){ discState[i]=0; discLive++; revived++; } }
     P.boosts.shieldAbsorbCharges=Math.min(3, P.boosts.shieldAbsorbCharges+1); }
   try{ spawnExplosion(creatureMesh.getWorldPosition(_tmpV).clone(), PICKUP_DEF[kind].c, 1.0); }catch(e){}
-  try{ nanReply(nanPick(["Booster online!","Got it — recharging!","Nice grab, keep it up!"]), 'happy', 2); }catch(e){}
+  try{ playSound('select'); }catch(e){}
+  try{ nanReply(PICKUP_DEF[kind].say, 'happy', 2.5); }catch(e){}
 }
 function maybeDropPickup(t){
   const r=Math.random();
-  const tbl = t.kind==='comet' ? [['range',0.06],['auto',0.08],['shield',0.05]] : [['range',0.08],['auto',0.05],['shield',0.07]];
+  const tbl = t.kind==='comet'
+    ? [['range',0.07],['auto',0.09],['shield',0.06],['laser',0.05]]
+    : [['range',0.09],['auto',0.06],['shield',0.08],['laser',0.04]];
   let acc=0, kind=null; for(const e of tbl){ acc+=e[1]; if(r<acc){ kind=e[0]; break; } }
   if(kind) spawnPickup(kind, t.p.clone());
 }
@@ -2544,6 +2609,36 @@ function autoFireNearest(){
   spawnBolt(new THREE.Vector3(0,0,camDist-1.2), _tmpV.clone(), {kind:'threat',t:best});
   try{ playSound('eject'); }catch(e){}
 }
+// ── LANCE — the laser pickup: a continuous beam that auto-sweeps to the nearest threat and melts it ──
+const _laserUp=new THREE.Vector3(0,1,0), _laserDir=new THREE.Vector3(), _laserMid=new THREE.Vector3(), _laserQ=new THREE.Quaternion();
+const laserBeam=(()=>{
+  const grp=new THREE.Group();
+  const core=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.03,1,6,1,true),
+    new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.95,blending:THREE.AdditiveBlending,depthWrite:false}));
+  const glow=new THREE.Mesh(new THREE.CylinderGeometry(0.11,0.11,1,6,1,true),
+    new THREE.MeshBasicMaterial({color:0xff2a8c,transparent:true,opacity:0.45,blending:THREE.AdditiveBlending,depthWrite:false}));
+  grp.add(core); grp.add(glow); grp.visible=false; scene.add(grp);
+  return grp;
+})();
+let laserSparkT=0;
+function updateLaser(dt){
+  const P=gameState, now=performance.now();
+  const active = P.enabled && P.boosts.laserUntil>now && !P.paused && P.phase!=='GAME_OVER';
+  let best=null, bd=1e9;
+  if(active) for(const t of P.threats){ const d=t.p.length(); if(d<bd){ bd=d; best=t; } }
+  if(!best){ laserBeam.visible=false; return; }
+  best.obj.getWorldPosition(_tmpV);                              // beam: muzzle (in front of the feed) → target
+  const from=_laserMid.set(0,0,camDist-1.4);                     // reuse scratch as 'from' briefly
+  _laserDir.copy(_tmpV).sub(from); const len=_laserDir.length(); _laserDir.normalize();
+  laserBeam.position.copy(from).addScaledVector(_laserDir, len/2);
+  _laserQ.setFromUnitVectors(_laserUp, _laserDir); laserBeam.quaternion.copy(_laserQ);
+  laserBeam.scale.set(1,len,1); laserBeam.visible=true;
+  laserBeam.children[1].material.opacity=0.3+Math.sin(now*0.02)*0.12;   // live hum flicker
+  best.hp -= dt*2.6;                                             // melts a basic asteroid in well under a second
+  laserSparkT+=dt;
+  if(laserSparkT>0.12){ laserSparkT=0; try{ spawnExplosion(_tmpV.clone(), 0xff2a8c, 0.35); }catch(e){} }
+  if(best.hp<=0) destroyThreat(best, true);
+}
 function damageEntity(n, at){
   const P=gameState;
   if(P.boosts.shieldAbsorbCharges>0){ P.boosts.shieldAbsorbCharges--; try{ spawnExplosion(at,0x66ffd0,1.3); }catch(e){} return; }
@@ -2551,7 +2646,8 @@ function damageEntity(n, at){
   try{ discEject(0.9); }catch(e){}
   try{ spawnExplosion(creatureMesh.getWorldPosition(_tmpV).clone(), 0xff4466, 1.7); }catch(e){}
   warp=Math.max(warp,0.45);
-  try{ nanReply(nanPick(["Argh — core breach!","That one got through!","I'm taking damage — cover me!"]), 'scared', 3); }catch(e){}
+  if(P.entityHP===1) { P.lastSayMs=0; gameSay('lasthp', "One more hit and I'm GONE. Please— don't let them through.", 'scared'); }
+  else try{ nanReply(nanPick(["Argh — core breach!","That one got through!","I'm taking damage — cover me!"]), 'scared', 3); }catch(e){}
   if(P.entityHP<=0) enterGameOver();
 }
 function handleThreatImpact(t){
