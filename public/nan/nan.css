@@ -270,6 +270,9 @@ body.game-on #satframe .rec{color:rgba(255,138,166,.7);}
 body.mobile{cursor:auto;}
 body.mobile #cur,body.mobile #cur2{display:none!important;}
 body.mobile #sat-traj,body.mobile #sat-blueprint,body.mobile #weapon,body.mobile #manual-strip,body.mobile #manual,body.mobile #gesture-hint,body.mobile #drag-hint,body.mobile #hint,body.mobile #sat-stats,body.mobile #sat-feed,body.mobile #satframe .rec{display:none!important;}
+/* the full-viewport inset frame-border cut straight through the name on phones; drop it + the top corner brackets */
+body.mobile #satframe::before{display:none;}
+body.mobile #satframe .tl,body.mobile #satframe .tr{display:none;}
 body.mobile #top{top:calc(12px + env(safe-area-inset-top,0));left:16px;right:64px;}
 body.mobile .tn{font-size:15px;letter-spacing:3px;}
 body.mobile .ts{font-size:8px;letter-spacing:1.5px;margin-top:2px;}

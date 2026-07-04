@@ -1722,11 +1722,13 @@ function spawnPlanet(){
   if(type==='lava'){ mat.emissive=new THREE.Color(0xff4400); mat.emissiveMap=mat.map; mat.emissiveIntensity=0.6; }
   const mesh=new THREE.Mesh(geo, mat);
   mesh.rotation.z=(Math.random()-0.5)*0.8; mesh.rotation.x=(Math.random()-0.5)*0.4;   // axial tilt — perfectly-upright worlds read as toys
-  // thin atmosphere rim (worlds that have one) — backside fresnel shell, the classic limb glow from orbit
-  const ATMO={gas:0xd8b58a, ice:0x86b8ff, ocean:0x6fa8ff};
+  // thin atmosphere rim (worlds that have one) — backside shell, the classic limb glow from orbit.
+  // Normal (not additive) blend + saturated colours: additive stacks toward white at the limb → reads as a
+  // "white coating"; alpha-blended colour keeps a soft blue/amber haze instead.
+  const ATMO={gas:0xe0a860, ice:0x5fa0ff, ocean:0x3f82ff};
   if(ATMO[type]){
-    const atmo=new THREE.Mesh(new THREE.SphereGeometry(rad*1.045, 32, 24),
-      new THREE.MeshBasicMaterial({color:ATMO[type], transparent:true, opacity:0.11, side:THREE.BackSide, blending:THREE.AdditiveBlending, depthWrite:false}));
+    const atmo=new THREE.Mesh(new THREE.SphereGeometry(rad*1.05, 32, 24),
+      new THREE.MeshBasicMaterial({color:ATMO[type], transparent:true, opacity:0.22, side:THREE.BackSide, depthWrite:false}));
     mesh.add(atmo); mesh.userData.atmo=atmo;
   }
   // orbital plane: tilt the equator so orbits criss-cross in 3D
@@ -2029,6 +2031,20 @@ window.__novaState=()=>{ const v=bhShadow.getWorldPosition(new THREE.Vector3()).
 renderer.domElement.addEventListener('click',e=>{
   if(dragMoved){ dragMoved=false; return; }   // that "click" was actually a drag-to-rotate → don't poke/select
   if(document.body.classList.contains('mobile')){ const sh=document.getElementById('m-sheet'); if(sh && sh.classList.contains('open')){ if(window.__mCloseSheet) window.__mCloseSheet(); return; } }   // tap the scene → close the open panel
+  // MOBILE STRIKE — no SPACE key on touch, so a tap that lands on NaN IS the weapon: the dot-shield intercepts first,
+  // then bolts land on the core, and enough hits collapse it into a black hole (mirrors the desktop SPACE mechanic).
+  if(document.body.classList.contains('mobile') && !novaActive && !gameState.enabled && !secActive && !projActive){
+    _ndc.set((e.clientX/W)*2-1, -(e.clientY/H)*2+1); _ray.setFromCamera(_ndc, camera);
+    const eh=_ray.intersectObject(membrane, false);   // real geometry hit — only a tap on the glass shape strikes
+    if(eh.length){
+      const pt=eh[0].point.clone(); idleClock=0;
+      if(mode==='sleep'){ mode='shock'; modeTime=0; shockHold=0.4; }
+      if(!shieldDown()){ shieldBlock(pt.clone().multiplyScalar(1.12)); }   // ring rushes in to block — spends the shield
+      else { spawnExplosion(pt, 0xff5533, 1.0); onEntityShot(); }          // shield spent → the hit lands, rage builds → nova
+      try{ navigator.vibrate && navigator.vibrate(shieldDown()?26:12); }catch(_){}
+      return;
+    }
+  }
   if(hovNav>=0){ const nd=NAV[hovNav];
     if(nd.game){ if(gameState.enabled) exitDefendMode(); else enterDefendMode(); return; }   // DEFEND node toggles the game
     if(gameState.enabled) return;                                              // no section nav while the game is running
@@ -2988,8 +3004,7 @@ function animate(){
   drawOuterRing(t, eCX, eCY);
   if(!_wall){
     drawBinary(t);
-    drawCornerHUD();
-    drawSideHUD(t, eCX, eCY);
+    if(!document.body.classList.contains('mobile')){ drawCornerHUD(); drawSideHUD(t, eCX, eCY); }   // instrument chrome flanks NaN on a phone → drop it (nav diamonds already gated in drawNavDiamonds)
     drawNavDiamonds(t, eCX, eCY);
   } else { hovNav=-1; }
   lastCoreX=eCX; lastCoreY=eCY;
@@ -3730,19 +3745,30 @@ const TUTORIAL=[
   "Something you should know about me: I'm not fragile. There's a fire key — [SPACE]. Point it at me and hold. Keep pushing… and you'll see exactly what a thing like me collapses into.",
   "Or take my side instead. The DEFEND node lights the fuse — things come for me out of the dark, and it's on you to keep me alive. See how long you last.",
 ];
+// Touch has no SPACE, no bottom-corner schematics, no in-orbit markers — a purpose-built walkthrough for phones.
+const TUTORIAL_M=[
+  "Quick orientation, since you dropped in from nowhere. You've slipped through a fold in space into Amarsh's corner of the universe — his story, his work, the things he loves. Not just a résumé — a place. And I'm NaN, the anomaly holding it together.",
+  "Getting around is easy. Drag anywhere to spin your view around me, pinch to zoom. The nodes along the bottom — ABOUT, HOBBIES, MILES, WORK, CONTACT — are doors. Tap one and you drop straight in.",
+  "Something you should know about me: I'm not fragile. Poke me — tap the core, and keep tapping. Push hard enough and you'll see exactly what a thing like me collapses into.",
+  "And ● TALK opens a live uplink. Tap it and just talk to me out loud — I answer.",
+];
+function _tut(){ return document.body.classList.contains('mobile') ? TUTORIAL_M : TUTORIAL; }
 let tutActive=false, tutI=-1;
 function _tutSeen(){ try{ localStorage.setItem('nan_tut_v1','1'); }catch(e){} }
 function startTutorial(){ _tutSeen(); tutActive=true; tutI=-1; document.body.classList.remove('wall'); tutNext(); }
 function tutNext(){
+  const T=_tut();
   tutI++;
-  if(tutI>=TUTORIAL.length) return tutEnd(false);
-  const last=tutI===TUTORIAL.length-1;
-  nanReply(TUTORIAL[tutI],'happy',5,null,[{label:last?'Got it →':'Next →',cmd:'tut:next'},{label:'Skip',cmd:'tut:skip'}]);
+  if(tutI>=T.length) return tutEnd(false);
+  const last=tutI===T.length-1;
+  nanReply(T[tutI],'happy',5,null,[{label:last?'Got it →':'Next →',cmd:'tut:next'},{label:'Skip',cmd:'tut:skip'}]);
 }
 function tutEnd(skip){
   tutActive=false; _tutSeen();
+  const mob=document.body.classList.contains('mobile');
   const t = skip
-    ? "All yours. Wander any node, shoot me, or defend me — no wrong moves. Or open the UPLINK and just talk to me."
+    ? (mob ? "All yours. Tap any node below, poke me into a black hole, or open the UPLINK and just talk to me."
+           : "All yours. Wander any node, shoot me, or defend me — no wrong moves. Or open the UPLINK and just talk to me.")
     : "That's the place. Want the guided walk through his story — or take it from here yourself?";
   nanReply(t,'happy',5,null,[{label:'▶ Walk me through it',cmd:'tour'},'Who is Amarsh?',{label:'I\'ll explore',cmd:'close'}]);
 }
@@ -3977,7 +4003,9 @@ setTimeout(()=>{
     g += "  ·  Looks like you dropped in from nowhere. This is Amarsh's corner of space — more than a résumé — and I'm NaN, your guide. Want the ten-second tour of how this place works?";
     nanReply(g, 'happy', 6, null, [{label:'▶ Show me the ropes',cmd:'tut'},{label:'Skip',cmd:'tut:skip'}]);
   } else {
-    g += "  ·  This is Amarsh's corner of space — and I'm your guide. Want the walk-through? Or open the UPLINK (top-right) to talk to me out loud.";
+    g += document.body.classList.contains('mobile')
+      ? "  ·  This is Amarsh's corner of space — and I'm your guide. Want the walk-through? Or tap ● TALK below to talk to me out loud."
+      : "  ·  This is Amarsh's corner of space — and I'm your guide. Want the walk-through? Or open the UPLINK (top-right) to talk to me out loud.";
     nanReply(g, 'happy', 6, null, [{label:'▶ Walk me through it',cmd:'tour'},'Who is Amarsh?','Who are you?']);
   }
 }, 1300);
