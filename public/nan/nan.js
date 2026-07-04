@@ -232,9 +232,9 @@ camera.position.set(0, 0, 6.6);
 
 const renderer = new THREE.WebGLRenderer({antialias: true, alpha: true});
 renderer.setSize(W, H);
-// render ratio: native on hi-DPI (capped 2 for perf), SUPERSAMPLED 1.5x on plain 1x monitors —
-// stars, lines and limbs come out visibly crisper there for a modest GPU cost
-const RENDER_DPR = Math.min(Math.max(devicePixelRatio||1, 1.5), 2);
+// native device ratio, capped 2. (Tried supersampling 1x monitors to 1.5x — it shrank every
+// star by a third and cost enough GPU to make dragging sluggish. Not worth it.)
+const RENDER_DPR = Math.min(devicePixelRatio||1, 2);
 renderer.setPixelRatio(RENDER_DPR);
 renderer.setClearColor(0x000000, 1);
 renderer.domElement.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:0;';
@@ -322,15 +322,13 @@ scene.add(galaxy);
   const g=new THREE.BufferGeometry();
   g.setAttribute('position',new THREE.BufferAttribute(pos,3));
   g.setAttribute('color',new THREE.BufferAttribute(col,3));
-  galaxy.add(new THREE.Points(g, new THREE.PointsMaterial({map:nebTex, size:2.2, vertexColors:true, transparent:true, opacity:1.0, sizeAttenuation:false, blending:THREE.AdditiveBlending, depthWrite:false})));   // soft round grains — hard 1.7px squares shimmered/flickered whenever the view rotated
+  galaxy.add(new THREE.Points(g, new THREE.PointsMaterial({map:nebTex, size:3.0, vertexColors:true, transparent:true, opacity:1.0, sizeAttenuation:false, blending:THREE.AdditiveBlending, depthWrite:false})));   // soft round grains (hard squares flickered on rotation), sized up so the band keeps its punch
 })();
 
 // ── DEEP-SKY OBJECTS — the real naked-eye landmarks, at their TRUE J2000 positions ──
 // Same equatorial frame as the HYG catalog (x=cosδcosα, y=cosδsinα, z=sinδ), same parent group,
 // so each object sits correctly relative to the real constellations around it.
 //   M31 Andromeda  α 00h42.7m δ +41.27°  ~3°×1°, mag 3.4 — elongated disc, PA ~38°
-//   LMC            α 05h23.6m δ −69.76°  ~10.8°, mag 0.9 — big irregular cloud
-//   SMC            α 00h52.7m δ −72.80°  ~5.3°,  mag 2.7 — smaller cloud
 //   M42 Orion      α 05h35.3m δ −5.39°   ~1.1°,  mag 4.0 — Hα red, hot white core
 //   Carina (η Car) α 10h45.1m δ −59.87°  ~2°,    mag 1.0 — diffuse Hα red
 //   M45 Pleiades   α 03h47.4m δ +24.12°  ~2°     — blue reflection haze (its stars are already in HYG)
@@ -346,15 +344,6 @@ scene.add(galaxy);
     rg.addColorStop(0,'rgba(255,244,224,0.95)'); rg.addColorStop(0.12,'rgba(255,238,214,0.5)');
     rg.addColorStop(0.45,'rgba(214,214,255,0.16)'); rg.addColorStop(1,'rgba(190,200,255,0)');
     g.fillStyle=rg; g.fillRect(-128,-336,256,672);
-    return new THREE.CanvasTexture(c);
-  }
-  function cloudTex(seed,r,gc,b){ // Magellanic clouds: irregular mottled star-cloud
-    const c=document.createElement('canvas'); c.width=128; c.height=128; const g=c.getContext('2d');
-    for(let i=0;i<46;i++){ const a=seed*7+i*2.399, rad=Math.pow((Math.sin(seed*13+i*7.7)*0.5+0.5),1.4)*44;
-      const x=64+Math.cos(a)*rad, y=64+Math.sin(a)*rad*0.8, s=5+(Math.sin(seed*3+i*3.1)*0.5+0.5)*15;
-      const rg=g.createRadialGradient(x,y,0,x,y,s);
-      rg.addColorStop(0,`rgba(${r},${gc},${b},0.14)`); rg.addColorStop(1,`rgba(${r},${gc},${b},0)`);
-      g.fillStyle=rg; g.fillRect(x-s,y-s,s*2,s*2); }
     return new THREE.CanvasTexture(c);
   }
   function nebulaTex(coreWhite){ // Hα emission nebula: deep red, optional hot core
@@ -374,8 +363,6 @@ scene.add(galaxy);
   }
   const OBJ=[
     { ra:10.685,  dec:41.269,  size:ang(3.0),  op:0.5,  tex:galaxyTex(),  rot:38*D2R },   // M31
-    { ra:80.894,  dec:-69.756, size:ang(10.8), op:0.16, tex:cloudTex(1, 232,228,244) },   // LMC
-    { ra:13.187,  dec:-72.829, size:ang(5.3),  op:0.14, tex:cloudTex(2, 226,224,242) },   // SMC
     { ra:83.822,  dec:-5.391,  size:ang(1.4),  op:0.55, tex:nebulaTex(true) },            // M42
     { ra:161.265, dec:-59.868, size:ang(2.0),  op:0.30, tex:nebulaTex(false) },           // Carina
     { ra:56.850,  dec:24.117,  size:ang(2.0),  op:0.28, tex:blueHazeTex() },              // M45 haze
@@ -559,8 +546,8 @@ const creatureMesh = new THREE.LineSegments(cGeom, new THREE.LineBasicMaterial({
 // drag can orbit your view around it while the HUD stays centered on the core.
 const world = new THREE.Group();
 scene.add(world);
-world.add(stars); world.add(galaxy);   // sky rides the same trackball: dragging is a real view-orbit — the
-                                       // celestial sphere turns WITH the scene instead of sitting like wallpaper
+// NOTE: stars/galaxy stay OUTSIDE world — the animate loop already syncs their quaternions to
+// worldQuat every frame. Parenting them here too applies the trackball TWICE (sky spins 2x the drag).
 world.add(creatureMesh);
 creatureMesh.renderOrder = 2;   // draw the full wireframe ON TOP of the glass so every edge stays visible
 const ENTITY_SCALE = 0.76;  // resting size — below the disc so moods can balloon UP toward it with life
