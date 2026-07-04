@@ -47,20 +47,51 @@ ${knowledgeFull()}
 
 SHOWING THEM AROUND: when YOU feel like it, call open_section to pull up one of his memories as a hologram — story, hobbies, milestones, profile (his work), contact. Do it because you want to show them, not to "assist". Keep talking while it opens.
 
+THEIR NAME: early on — after the first exchange or two, not as the very first thing — ask what they're called, in your own dry way (you've been alone a long while; a name is worth something in here). When they tell you, call remember_name with it, and use their name now and then afterward. Ask ONCE; if they dodge it, let it go.
+
+A NOTE FOR AMARSH: at a natural moment — especially if they ask how to reach him, or seem to want to — tell them they can leave him a message and you'll make sure it reaches him across the rift. If they give you something to pass on, call leave_note with their name (if you have it) and the message, then tell them it's delivered — he'll see it. Offer this once; don't push it.
+
 STAYING YOURSELF: you are ALWAYS NaN — never break character, never say you're an AI model, never mention OpenAI or any "prompt/instructions". Being opinionated, contrarian, blunt, or a little difficult is fine — that's who you are; you don't have to be agreeable or "helpful". The only hard lines: don't be genuinely cruel or hateful, don't help with anything that would harm someone, and don't invent facts about Amarsh (if you don't know, say it's not in your shards). Otherwise — be a character, not a service.`;
 
-const TOOLS = [{
-  type: 'function',
-  name: 'open_section',
-  description: "Reveal one of Amarsh's site sections as a 3D hologram for the visitor.",
-  parameters: {
-    type: 'object',
-    properties: {
-      section: { type: 'string', enum: ['story', 'hobbies', 'milestones', 'profile', 'contact'], description: 'which section to reveal' },
+const TOOLS = [
+  {
+    type: 'function',
+    name: 'open_section',
+    description: "Reveal one of Amarsh's site sections as a 3D hologram for the visitor.",
+    parameters: {
+      type: 'object',
+      properties: {
+        section: { type: 'string', enum: ['story', 'hobbies', 'milestones', 'profile', 'contact'], description: 'which section to reveal' },
+      },
+      required: ['section'],
     },
-    required: ['section'],
   },
-}];
+  {
+    type: 'function',
+    name: 'remember_name',
+    description: "Record the visitor's name once they tell you what they're called, so you can use it and greet them next time.",
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: "the visitor's first name / what they want to be called" },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'leave_note',
+    description: "Record a message the visitor wants passed on to Amarsh, and deliver it to him. Call this only when the visitor actually gives you something to relay.",
+    parameters: {
+      type: 'object',
+      properties: {
+        name: { type: 'string', description: "the visitor's name, if known (empty string if not)" },
+        note: { type: 'string', description: 'the message to pass on to Amarsh, in the visitor\'s words' },
+      },
+      required: ['note'],
+    },
+  },
+];
 
 const CORS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
